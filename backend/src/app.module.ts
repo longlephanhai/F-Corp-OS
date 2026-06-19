@@ -6,6 +6,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './modules/users/users.module';
 import { User } from 'modules/users/entities/user.entity';
 import { AuthModule } from './modules/auth/auth.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { Role } from 'modules/roles/entities/role.entity';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { Permission } from 'modules/permissions/entities/permission.entity';
 
 @Module({
   imports: [
@@ -20,7 +24,9 @@ import { AuthModule } from './modules/auth/auth.module';
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         entities: [
-          User
+          User,
+          Role,
+          Permission
         ],
         synchronize: true,
       }),
@@ -28,6 +34,8 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     UsersModule,
     AuthModule,
+    RolesModule,
+    PermissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

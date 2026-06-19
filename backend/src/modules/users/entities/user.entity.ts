@@ -1,5 +1,6 @@
 import { UserStatusType } from "common/enum/user.enum";
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Role } from "modules/roles/entities/role.entity";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('users')
 export class User {
@@ -9,16 +10,16 @@ export class User {
     @Column({ type: 'varchar', length: 100, unique: true })
     email: string;
 
-    @Column({ type: 'varchar', length: 255 }) 
+    @Column({ type: 'varchar', length: 255 })
     password: string;
 
     @Column({ type: 'varchar', length: 100 })
     fullName: string;
 
-   
-    // role_id n-1
-    // @Column({ type: 'enum', enum: ['ADMIN', 'PM', 'DEV'], default: 'DEV' })
-    // role: string;
+
+    @ManyToOne(() => Role, { eager: true })
+    @JoinColumn({ name: 'role_id', referencedColumnName: 'id' })
+    role: Role;
 
     // allocation  1-n
 
