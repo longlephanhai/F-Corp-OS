@@ -6,11 +6,23 @@ export interface IUser {
     email: string;
     password: string;
     fullName: string;
-    
-    // role_id n-1
-    role: string;
+
+    role: {
+        id: string;
+        name: string;
+        description: string;
+        permissions?: {
+            id: number;
+            name: string;
+            description: string;
+            apiPath: string;
+            method: string;
+            module: string;
+        }[]
+    }
 
     // allocation  1-n
+
     status: UserStatusType;
 
 }

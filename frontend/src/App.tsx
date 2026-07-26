@@ -2,9 +2,19 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import LayoutAdmin from "./layout/admin"
 import ErrorPage from "./pages/result/error"
 import NotFoundPage from "./pages/result/not-found"
+import LoginPage from "./pages/auth/login"
+import { useAppDispatch } from "./hooks/hooks"
+import { useEffect } from "react"
+import { fetchAccount } from "./redux/account/accountSlice"
 
 
 function App() {
+
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    dispatch(fetchAccount())
+  }, [])
 
   const router = createBrowserRouter([
     {
@@ -18,7 +28,7 @@ function App() {
     },
     {
       path: "/login",
-      element: <div>Login</div>
+      element: <LoginPage />
     },
     {
       path: "/register",

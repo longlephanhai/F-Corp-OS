@@ -1,6 +1,6 @@
 import { UserStatusType } from "common/enum/user.enum";
 import { Role } from "modules/roles/entities/role.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('users')
 export class User {
@@ -24,13 +24,41 @@ export class User {
     // allocation  1-n
 
 
+    @Column({ type: 'text', nullable: true })
+    refreshToken: string;
+
 
     @Column({ type: 'enum', enum: UserStatusType, default: UserStatusType.AVAILABLE })
     status: UserStatusType;
+
+    @Column({ type: 'json', nullable: true })
+    createdBy: {
+        id: string;
+        email: string;
+    }
+
+    @Column({ type: 'json', nullable: true })
+    updatedBy: {
+        id: string;
+        email: string;
+    }
+
+    @Column({ type: 'json', nullable: true })
+    deletedBy: {
+        id: string;
+        email: string;
+    };
+
 
     @CreateDateColumn({ type: 'timestamp' })
     createdAt: Date;
 
     @UpdateDateColumn({ type: 'timestamp' })
     updatedAt: Date;
+
+    @DeleteDateColumn({ type: 'timestamp' })
+    deletedAt: Date;
+
+    @Column({ default: false })
+    isDeleted: boolean;
 }

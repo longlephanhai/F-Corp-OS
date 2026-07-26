@@ -15,4 +15,6 @@ export class CreateUserDto {
     fullName: string;
 
     // role_id
+    role_id: string;
+
 }

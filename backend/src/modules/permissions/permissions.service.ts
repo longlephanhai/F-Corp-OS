@@ -4,6 +4,7 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Permission } from './entities/permission.entity';
 import { Repository } from 'typeorm';
+import { IUser } from 'common/types/user.interface';
 
 @Injectable()
 export class PermissionsService {
@@ -12,7 +13,7 @@ export class PermissionsService {
     @InjectRepository(Permission) private permissionRepository: Repository<Permission>
   ) { }
 
-  async create(createPermissionDto: CreatePermissionDto) {
+  async create(createPermissionDto: CreatePermissionDto, user: IUser) {
     const { description, api_path, method, module } = createPermissionDto;
 
     const isExist = await this.permissionRepository.findOne({
@@ -27,7 +28,11 @@ export class PermissionsService {
       description,
       api_path,
       method,
-      module
+      module,
+      createdBy: {
+        id: user.id,
+        email: user.email
+      }
     });
     return newPermission;
   }

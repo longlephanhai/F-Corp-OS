@@ -2,7 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { PermissionsService } from './permissions.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
-import { ResponseMessage } from 'decorator/customize';
+import { ResponseMessage, User } from 'decorator/customize';
+import type { IUser } from 'common/types/user.interface';
+
 
 @Controller('permissions')
 export class PermissionsController {
@@ -10,8 +12,8 @@ export class PermissionsController {
 
   @Post()
   @ResponseMessage('Permission created successfully')
-  create(@Body() createPermissionDto: CreatePermissionDto) {
-    return this.permissionsService.create(createPermissionDto);
+  create(@Body() createPermissionDto: CreatePermissionDto, @User() user: IUser) {
+    return this.permissionsService.create(createPermissionDto, user);
   }
 
   @Get()

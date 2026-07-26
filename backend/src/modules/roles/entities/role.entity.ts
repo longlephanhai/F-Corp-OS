@@ -1,12 +1,15 @@
 
 import { Permission } from "modules/permissions/entities/permission.entity";
 import { User } from "modules/users/entities/user.entity";
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('roles')
 export class Role {
     @PrimaryGeneratedColumn('uuid')
     id: string
+
+    @Column({ unique: true })
+    name: string;
 
     @Column()
     description: string;
@@ -30,11 +33,33 @@ export class Role {
     @OneToMany(() => User, (user) => user.role)
     users: User[];
 
-    @CreateDateColumn()
-    created_at: Date;
+    @Column({ type: 'json', nullable: true })
+    createdBy: {
+        id: string;
+        email: string;
+    }
 
-    @UpdateDateColumn()
-    updated_at: Date;
+    @Column({ type: 'json', nullable: true })
+    updatedBy: {
+        id: string;
+        email: string;
+    }
+
+    @Column({ type: 'json', nullable: true })
+    deletedBy: {
+        id: string;
+        email: string;
+    };
+
+
+    @CreateDateColumn({ type: 'timestamp' })
+    createdAt: Date;
+
+    @UpdateDateColumn({ type: 'timestamp' })
+    updatedAt: Date;
+
+    @DeleteDateColumn({ type: 'timestamp' })
+    deletedAt: Date;
 
     @Column({ default: false })
     isDeleted: boolean;

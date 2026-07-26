@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Role } from './entities/role.entity';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { In, Repository } from 'typeorm';
+import { IUser } from 'common/types/user.interface';
 
 @Injectable()
 export class RolesService {
@@ -14,14 +15,14 @@ export class RolesService {
     @InjectRepository(Permission) private permissionRepository: Repository<Permission>
   ) { }
 
-  async create(createRoleDto: CreateRoleDto) {
-    const { description, permissions: permissionIds } = createRoleDto;
+  async create(createRoleDto: CreateRoleDto, user: IUser) {
+    const { name, description, permissions: permissionIds } = createRoleDto;
 
     const isExist = await this.roleRepository.findOne({
-      where: { description }
+      where: { name }
     })
     if (isExist) {
-      throw new BadRequestException(`Role with description "${description}" already exists`);
+      throw new BadRequestException(`Role with name "${name}" already exists`);
     }
 
     const permissions = await this.permissionRepository.findBy({
@@ -29,8 +30,13 @@ export class RolesService {
     })
 
     const newRole = this.roleRepository.create({
+      name,
       description,
-      permissions
+      permissions,
+      createdBy:{
+        id: user.id,
+        email: user.email
+      }
     });
 
     return await this.roleRepository.save(newRole);
@@ -41,8 +47,20 @@ export class RolesService {
     return `This action returns all roles`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} role`;
+  async findOne(id: string) {
+    const role = await this.roleRepository.findOne({
+      where: { id: id },
+      relations: { permissions: true },
+      select: {
+        id: true,
+        name: true,
+        description: true
+      }
+    })
+    if (!role){
+      throw new BadRequestException(`Role with id "${id}" not found`);
+    }
+    return role;
   }
 
   update(id: number, updateRoleDto: UpdateRoleDto) {
