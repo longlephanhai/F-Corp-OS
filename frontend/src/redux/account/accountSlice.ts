@@ -72,30 +72,49 @@ export const accountSlice = createSlice({
             state.errorRefreshToken = action.payload?.message ?? "";
         }
     },
-    extraReducers: (builder)=>{
-        builder.addCase(fetchAccount.pending, (state, action)=>{
-            if(action.payload){
-                state.isAuthenticated = false;
-                state.isLoading = true;
-            }
+    extraReducers: (builder) => {
+        /**
+         * pending: action.payload luôn undefined với createAsyncThunk pending
+         * → Bỏ guard if(action.payload), set isLoading trực tiếp.
+         * (initialState đã là isLoading=true nên case này chủ yếu để tường minh)
+         */
+        builder.addCase(fetchAccount.pending, (state) => {
+            state.isAuthenticated = false;
+            state.isLoading = true;
         })
-        builder.addCase(fetchAccount.fulfilled, (state, action)=>{
-            if(action.payload){
+
+        /**
+         * fulfilled: Phải set isLoading=false TRƯỚC KHI kiểm tra payload.
+         * Bug cũ: nếu payload=undefined (API trả về rỗng / interceptor nuốt lỗi),
+         * isLoading không bao giờ được set false → ProtectedRoute spinner vô tận.
+         */
+        builder.addCase(fetchAccount.fulfilled, (state, action) => {
+            // Luôn tắt loading bất kể payload có dữ liệu hay không
+            state.isLoading = false;
+
+            if (action.payload) {
                 state.isAuthenticated = true;
-                state.isLoading = false;
                 state.user.id = action.payload.user.id;
                 state.user.email = action.payload.user.email;
                 state.user.fullName = action.payload.user.fullName;
                 state.user.status = action.payload.user.status;
                 state.user.role.name = action.payload.user.role.name;
                 state.user.permissions = action.payload.user.permissions;
+            } else {
+                // payload rỗng = token hết hạn và interceptor không throw error
+                // → Coi như chưa xác thực, ProtectedRoute sẽ redirect /login
+                state.isAuthenticated = false;
             }
         })
-        builder.addCase(fetchAccount.rejected, (state, action)=>{
-            if(action.payload){
-                state.isAuthenticated = false;
-                state.isLoading = false;
-            }
+
+        /**
+         * rejected: Tương tự — phải set isLoading=false bất điều kiện.
+         * Bug cũ: if(action.payload) → thunk reject không đính payload
+         * trừ khi dùng rejectWithValue() → handler không bao giờ chạy.
+         */
+        builder.addCase(fetchAccount.rejected, (state) => {
+            state.isAuthenticated = false;
+            state.isLoading = false;
         })
     }
 })
