@@ -4,6 +4,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { TransformInterceptor } from 'core/transform.interceptor';
 import { JwtAuthGuard } from 'modules/auth/guard/jwt-auth.guard';
 import cookieParser from 'cookie-parser';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,7 +28,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableVersioning({
     type: VersioningType.URI,
-    defaultVersion: ['1', '2']
+    defaultVersion: ['1']
   });
 
 
@@ -41,6 +42,26 @@ async function bootstrap() {
       credentials: true
     }
   );
+
+  const config = new DocumentBuilder()
+    .setTitle('APIs Documentation')
+    .setDescription('All Modules APIs Documentation')
+    .setVersion('1.0')
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      in: 'header',
+    }, 'token')
+    .addSecurityRequirements('token')
+    .build();
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, documentFactory, {
+    swaggerOptions: {
+      persistAuthorization: true
+    }
+  });
+
 
 
   await app.listen(process.env.PORT ?? 8080);

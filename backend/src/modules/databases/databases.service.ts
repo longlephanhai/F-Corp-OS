@@ -18,8 +18,7 @@ export class DatabasesService implements OnModuleInit {
         @InjectRepository(User) private userepository: Repository<User>,
         @InjectRepository(Role) private roleRepository: Repository<Role>,
         @InjectRepository(Permission) private permissionRepository: Repository<Permission>,
-        private readonly configService: ConfigService,
-        private readonly userService: UsersService
+        private readonly configService: ConfigService
     ) { }
 
     async onModuleInit() {

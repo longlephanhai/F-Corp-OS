@@ -6,6 +6,8 @@ import type { Request as REQ, Request, Response as RES } from 'express';
 import type { IUser } from 'common/types/user.interface';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { RolesService } from 'modules/roles/roles.service';
+import { ApiBody } from '@nestjs/swagger';
+import { UserLoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -16,6 +18,7 @@ export class AuthController {
 
     @Post('login')
     @ResponseMessage('Login Success')
+    @ApiBody({ type: UserLoginDto })
     @Public()
     @UseGuards(LocalAuthGuard)
     login(@Req() req: REQ & { user: IUser }, @Res({ passthrough: true }) response: RES) {
