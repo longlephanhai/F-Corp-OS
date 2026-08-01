@@ -10,6 +10,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { Role } from 'modules/roles/entities/role.entity';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
+import { DatabasesModule } from './modules/databases/databases.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { Permission } from 'modules/permissions/entities/permission.entity';
     AuthModule,
     RolesModule,
     PermissionsModule,
+    DatabasesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

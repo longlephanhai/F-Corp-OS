@@ -14,7 +14,7 @@ export class CreateUserDto {
     @IsString({ message: 'Full name must be a string' })
     fullName: string;
 
-    // role_id
+    @IsNotEmpty({ message: 'Role ID is required' })
     role_id: string;
 
 }
