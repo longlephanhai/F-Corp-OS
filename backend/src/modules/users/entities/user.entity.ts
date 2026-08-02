@@ -1,9 +1,13 @@
 import { UserStatusType } from "common/enum/user.enum";
 import { Role } from "modules/roles/entities/role.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { UserSkill } from "modules/user_skill/entities/user_skill.entity";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('users')
 export class User {
+
+
+    
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
@@ -43,12 +47,17 @@ export class User {
         email: string;
     }
 
+
+
     @Column({ type: 'json', nullable: true })
     deletedBy: {
         id: string;
         email: string;
     };
+   
 
+
+    
 
     @CreateDateColumn({ type: 'timestamp' })
     createdAt: Date;
@@ -61,4 +70,14 @@ export class User {
 
     @Column({ default: false })
     isDeleted: boolean;
+
+
+    
+//   /////////////////////////////////////////////////////////////////////////////////  // 
+    @OneToMany(() => UserSkill, (userSkill) => userSkill.user)
+    userSkills: UserSkill[];
+
+
+
+
 }

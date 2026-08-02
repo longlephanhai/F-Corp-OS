@@ -11,6 +11,10 @@ import { Role } from 'modules/roles/entities/role.entity';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { DatabasesModule } from './modules/databases/databases.module';
+import { SkillsModule } from './modules/skills/skills.module';
+import { UserSkillModule } from './modules/user_skill/user_skill.module';
+import { Skill } from 'modules/skills/entities/skill.entity';
+import { UserSkill } from 'modules/user_skill/entities/user_skill.entity';
 
 @Module({
   imports: [
@@ -24,11 +28,7 @@ import { DatabasesModule } from './modules/databases/databases.module';
         username: configService.get<string>('DATABASE_USER'),
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
-        entities: [
-          User,
-          Role,
-          Permission
-        ],
+        entities: [Skill, UserSkill, User, Role, Permission],
         synchronize: true,
       }),
       inject: [ConfigService],
@@ -38,8 +38,10 @@ import { DatabasesModule } from './modules/databases/databases.module';
     RolesModule,
     PermissionsModule,
     DatabasesModule,
+    SkillsModule,
+    UserSkillModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

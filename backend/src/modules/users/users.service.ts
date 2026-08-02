@@ -27,7 +27,7 @@ export class UsersService {
       },
     })
   }
-
+  
   isValidPassword(password: string, hash: string) {
     return compareSync(password, hash);
   }
@@ -54,7 +54,7 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto, user: IUser) {
     const { email, password, fullName, role_id } = createUserDto;
-
+     
     const isExist = await this.usersRepository.findOne({
       where: { email },
     });
