@@ -29,7 +29,7 @@ import { DatabasesModule } from './modules/databases/databases.module';
           Role,
           Permission
         ],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),
