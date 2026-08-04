@@ -1,5 +1,5 @@
 import { Layout, Menu } from 'antd';
-import { CiUser } from 'react-icons/ci';
+import { FaKey, FaShieldAlt, FaUser } from 'react-icons/fa';
 import { MdDashboard } from 'react-icons/md';
 import { useNavigate } from 'react-router';
 const { Sider } = Layout;
@@ -37,9 +37,21 @@ const SiderLayout = (props: IProps) => {
                     },
                     {
                         key: 'users',
-                        icon: <CiUser />,
+                        icon: <FaUser />,
                         label: 'Users',
                         onClick: () => navigate('users')
+                    },
+                     {
+                        key: 'roles',
+                        icon: <FaShieldAlt />,
+                        label: 'Roles',
+                        onClick: () => navigate('roles')
+                    },
+                    {
+                        key: 'permissions',
+                        icon: <FaKey />,
+                        label: 'Permissions',
+                        onClick: () => navigate('permissions')
                     }
                 ]}
             />

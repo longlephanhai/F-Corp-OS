@@ -6,6 +6,10 @@ import LoginPage from "./pages/auth/login"
 import { useAppDispatch } from "./hooks/hooks"
 import { useEffect } from "react"
 import { fetchAccount } from "./redux/account/accountSlice"
+import DashboardPage from "./pages/admin/dashboard"     
+import UsersPage from "./pages/admin/users"                
+import RolesPage from "./pages/admin/roles"              
+import PermissionsPage from "./pages/admin/permissions"    
 
 
 function App() {
@@ -24,7 +28,13 @@ function App() {
     {
       path: "/admin",
       element: <LayoutAdmin />,
-      errorElement: <ErrorPage />
+      errorElement: <ErrorPage />,
+      children: [                                   
+        { index: true, element: <DashboardPage /> },
+        { path: "users", element: <UsersPage /> },
+        { path: "roles", element: <RolesPage /> },
+        { path: "permissions", element: <PermissionsPage /> },
+      ]
     },
     {
       path: "/login",
