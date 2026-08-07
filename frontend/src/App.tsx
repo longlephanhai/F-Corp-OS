@@ -4,10 +4,6 @@ import { useEffect } from 'react';
 // ── Layouts ───────────────────────────────────────────────────────────────────
 import LayoutAdmin from './layout/admin';
 import LayoutHR from './layout/hr';
-import UserLayout from './layout/user';
-
-// ── Route Guard ───────────────────────────────────────────────────────────────
-import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 import LoginPage from './pages/auth/login';
@@ -37,13 +33,11 @@ function App() {
     }, []);
 
     const router = createBrowserRouter([
-        // ── Root: send unauthenticated users to login ─────────────────────────
         {
             path: '/',
             element: <Navigate to="/login" replace />,
         },
 
-        // ── Public ───────────────────────────────────────────────────────────
         {
             path: '/login',
             element: <LoginPage />,
@@ -53,27 +47,23 @@ function App() {
             element: <PlaceholderPage title="Đăng ký" />,
         },
 
-        // ── Branch 1 — Admin only (/admin/*) ─────────────────────────────────
         {
-            element: <ProtectedRoute allowedRoles={['ADMIN']} />,
+            // element: <ProtectedRoute allowedRoles={['ADMIN']} />,
+            path: '/admin',
             errorElement: <ErrorPage />,
+            element: <LayoutAdmin />,
             children: [
                 {
-                    element: <LayoutAdmin />,
-                    children: [
-                        {
-                            path: '/admin',
-                            element: <PlaceholderPage title="Bảng điều khiển Admin" />,
-                        },
-                        {
-                            path: '/admin/dashboard',
-                            element: <PlaceholderPage title="Bảng điều khiển Admin" />,
-                        },
-                        {
-                            path: '/admin/users',
-                            element: <PlaceholderPage title="Quản lý Người dùng" />,
-                        },
-                    ],
+                    index: true,
+                    element: <PlaceholderPage title="Bảng điều khiển Admin" />,
+                },
+                {
+                    path: 'dashboard',
+                    element: <PlaceholderPage title="Bảng điều khiển Admin" />,
+                },
+                {
+                    path: 'users',
+                    element: <PlaceholderPage title="Quản lý Người dùng" />,
                 },
             ],
         },
@@ -83,67 +73,64 @@ function App() {
         // { element: <ProtectedRoute allowedRoles={['HR', 'ADMIN']} />, ...}
         {
             errorElement: <ErrorPage />,
+            path: '/hr',
+            element: <LayoutHR />,
             children: [
                 {
-                    element: <LayoutHR />,
-                    children: [
-                        {
-                            path: '/hr/dashboard',
-                            element: <HRDashboard />,
-                        },
-                        {
-                            path: '/hr/wallet',
-                            element: <WalletAdmin />,
-                        },
-                        {
-                            path: '/hr/review',
-                            element: <ReviewConsole />,
-                        },
-                        {
-                            path: '/hr/bench',
-                            element: <PlaceholderPage title="Dự báo Bench" />,
-                        },
-                    ],
+                    path: 'dashboard',
+                    element: <HRDashboard />,
+                },
+                {
+                    path: 'wallet',
+                    element: <WalletAdmin />,
+                },
+                {
+                    path: 'review',
+                    element: <ReviewConsole />,
+                },
+                {
+                    path: 'bench',
+                    element: <PlaceholderPage title="Dự báo Bench" />,
                 },
             ],
         },
 
         // ── Branch 3 — Regular Users (/home, /profile, /projects, /tasks) ────
-        {
-            element: <ProtectedRoute allowedRoles={['DEV', 'BA', 'TESTER', 'PM']} />,
-            errorElement: <ErrorPage />,
-            children: [
-                {
-                    element: <UserLayout />,
-                    children: [
-                        {
-                            path: '/home',
-                            element: <PlaceholderPage title="Trang chủ" />,
-                        },
-                        {
-                            path: '/profile',
-                            element: <PlaceholderPage title="Hồ sơ kỹ năng" />,
-                        },
-                        {
-                            path: '/projects',
-                            element: <PlaceholderPage title="Dự án" />,
-                        },
-                        {
-                            path: '/tasks',
-                            element: <PlaceholderPage title="Nhiệm vụ" />,
-                        },
-                    ],
-                },
-            ],
-        },
+        // {
+        //     // element: <ProtectedRoute allowedRoles={['DEV', 'BA', 'TESTER', 'PM']} />,
+        //     errorElement: <ErrorPage />,
+        //     children: [
+        //         {
+        //             element: <UserLayout />,
+        //             children: [
+        //                 {
+        //                     path: '/home',
+        //                     element: <PlaceholderPage title="Trang chủ" />,
+        //                 },
+        //                 {
+        //                     path: '/profile',
+        //                     element: <PlaceholderPage title="Hồ sơ kỹ năng" />,
+        //                 },
+        //                 {
+        //                     path: '/projects',
+        //                     element: <PlaceholderPage title="Dự án" />,
+        //                 },
+        //                 {
+        //                     path: '/tasks',
+        //                     element: <PlaceholderPage title="Nhiệm vụ" />,
+        //                 },
+        //             ],
+        //         },
+        //     ],
+        // },
 
         // ── Fallback ──────────────────────────────────────────────────────────
-        {
-            path: '/403',
-            element: (
-                <PlaceholderPage title="403 — Bạn không có quyền truy cập trang này." />
-            ),
-        },
+        // {
+        //     path: '/403',
+        //     element: (
+        //         <PlaceholderPage title="403 — Bạn không có quyền truy cập trang này." />
+        //     ),
+        // },
         {
             path: '*',
             element: <NotFoundPage />,
