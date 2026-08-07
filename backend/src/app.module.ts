@@ -12,9 +12,9 @@ import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { DatabasesModule } from './modules/databases/databases.module';
 import { SkillsModule } from './modules/skills/skills.module';
-import { UserSkillModule } from './modules/user_skill/user_skill.module';
+import { UserSkillModule } from './modules/user-skill/user-skill.module';
 import { Skill } from 'modules/skills/entities/skill.entity';
-import { UserSkill } from 'modules/user_skill/entities/user_skill.entity';
+import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
 
 @Module({
   imports: [
@@ -29,7 +29,7 @@ import { UserSkill } from 'modules/user_skill/entities/user_skill.entity';
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         entities: [Skill, UserSkill, User, Role, Permission],
-        synchronize: false,
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),

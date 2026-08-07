@@ -27,7 +27,7 @@ export class UsersService {
       },
     })
   }
-  
+
   isValidPassword(password: string, hash: string) {
     return compareSync(password, hash);
   }
@@ -52,30 +52,9 @@ export class UsersService {
   }
 
 
-  async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({
-      where: { id },
-      // Lôi cả Sếp và Danh sách Lính ra cho Frontend hiển thị
-      relations :{
-        role: {
-          permissions: true
-        },
-        manager: true,
-        employees: true
-      }, 
-      select: {
-        manager: { id: true, fullName: true, email: true },
-        employees: { id: true, fullName: true, email: true, title: true } // Lấy danh sách lính
-      }
-    });
-
-    if (!user) throw new BadRequestException(`User with id "${id}" does not exist`);
-    return user;
-  }
-
   async create(createUserDto: CreateUserDto, user: IUser) {
     const { email, password, fullName, role_id } = createUserDto;
-     
+
     const isExist = await this.usersRepository.findOne({
       where: { email },
     });
@@ -113,7 +92,26 @@ export class UsersService {
     return `This action returns all users`;
   }
 
- 
+  async findOne(id: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      // Lôi cả Sếp và Danh sách Lính ra cho Frontend hiển thị
+      relations: {
+        role: {
+          permissions: true
+        },
+        manager: true,
+        employees: true
+      },
+      select: {
+        manager: { id: true, fullName: true, email: true },
+        employees: { id: true, fullName: true, email: true, title: true } 
+      }
+    });
+
+    if (!user) throw new BadRequestException(`User with id "${id}" does not exist`);
+    return user;
+  }
 
   update(id: number, updateUserDto: UpdateUserDto) {
     return `This action updates a #${id} user`;

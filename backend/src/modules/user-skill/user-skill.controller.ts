@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { UserSkillService } from './user_skill.service';
-import { CreateUserSkillDto } from './dto/create-user_skill.dto';
-import { UpdateUserSkillDto } from './dto/update-user_skill.dto';
+import { UserSkillService } from './user-skill.service';
+import { CreateUserSkillDto } from './dto/create-user-skill.dto';
+import { UpdateUserSkillDto } from './dto/update-user-skill.dto';
 
 @Controller('user-skill')
 export class UserSkillController {

@@ -1,20 +1,12 @@
-import { 
-    IsEmail, 
-    IsNotEmpty, 
-    IsString, 
-    IsOptional, 
-    IsNumber, 
-    IsUUID, 
-    IsEnum, 
-    IsDateString 
+import {
+    IsEmail,
+    IsNotEmpty,
+    IsString,
+    IsOptional,
+    IsNumber
 } from "class-validator";
-import { UserStatusType } from "common/enum/user.enum"; // Nhớ trỏ đúng đường dẫn file enum của bạn
 
 export class CreateUserDto {
-    // =========================================================================
-    // THÔNG TIN TÀI KHOẢN (BẮT BUỘC)
-    // =========================================================================
-
     @IsNotEmpty({ message: 'Email is required' })
     @IsEmail({}, { message: 'Invalid email address' })
     email: string;
@@ -28,18 +20,19 @@ export class CreateUserDto {
     fullName: string;
 
     @IsNotEmpty({ message: 'Role ID is required' })
-    @IsString({ message: 'Role ID must be a string' }) 
-    // Nếu role_id trong DB của bạn là UUID, hãy thay @IsString() bằng @IsUUID('all', { message: 'Role ID must be a valid UUID' })
+    @IsString({ message: 'Role ID must be a string' })
     role_id: string;
 
+    @IsNotEmpty({ message: 'Title is required' })
+    @IsString({ message: 'Title must be a string' })
+    title: string;
 
-    @IsOptional()
+    @IsNotEmpty({ message: 'Cost rate is required' })
     @IsNumber({}, { message: 'Cost rate must be a number' })
-    costRate?: number;
+    costRate: number;
 
 
     @IsOptional()
     @IsString({ message: 'Manager ID must be a string' })
-    // Nếu managerId là UUID, hãy đổi thành @IsUUID('all', { message: 'Manager ID must be a valid UUID' })
     managerId?: string;
 }
