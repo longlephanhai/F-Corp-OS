@@ -29,7 +29,7 @@ import { UserSkill } from 'modules/user_skill/entities/user_skill.entity';
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         entities: [Skill, UserSkill, User, Role, Permission],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),
