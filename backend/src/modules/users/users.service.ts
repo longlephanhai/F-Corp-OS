@@ -3,11 +3,12 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { getHashPassword } from 'helper';
 import { compareSync } from 'bcryptjs';
 import { Role } from 'modules/roles/entities/role.entity';
 import { IUser } from 'common/types/user.interface';
+import aqp from 'api-query-params';
 
 @Injectable()
 export class UsersService {
@@ -85,11 +86,47 @@ export class UsersService {
     });
 
     return newUser;
-
   }
 
-  findAll() {
-    return `This action returns all users`;
+  async findAll(currentPage: number, limit: number, qs: string) {
+    const { filter, sort } = aqp(qs);
+    // console.log('filter', filter);
+    // console.log('sort', sort);
+    delete filter.current;
+    delete filter.pageSize;
+
+    let offset = (+currentPage - 1) * (+limit);
+    let defaultLimit = +limit ? +limit : 10;
+
+    const result = await this.usersRepository.find({
+      where: {
+        ...filter,
+        fullName: Like('%' + filter.fullName + '%')
+      },
+      skip: offset,
+      take: defaultLimit,
+      order: sort,
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+      },
+      relations: {
+        role: {
+          permissions: true
+        }
+      }
+    });
+
+    return {
+      meta: {
+        currentPage: +currentPage,
+        pageSize: +limit,
+        pages: result.length,
+        total: Math.ceil(result.length / +limit)
+      },
+      result
+    }
   }
 
   findOne(id: number) {
