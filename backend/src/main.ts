@@ -36,10 +36,10 @@ async function bootstrap() {
 
   app.enableCors(
     {
-      "origin": "http://localhost:3000",
+      "origin": true,
       "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
       "preflightContinue": false,
-      credentials: true
+      "credentials": true
     }
   );
 
@@ -56,7 +56,7 @@ async function bootstrap() {
     .addSecurityRequirements('token')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('', app, documentFactory, {
+  SwaggerModule.setup('api', app, documentFactory, {
     swaggerOptions: {
       persistAuthorization: true
     }
