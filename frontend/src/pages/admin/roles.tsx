@@ -1,4 +1,3 @@
-// src/pages/admin/roles.tsx
 import { useState } from 'react';
 import {
     Breadcrumb,
@@ -29,10 +28,9 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
-// ⚠️ MOCK DATA — sau này thay bằng gọi API GET /roles, GET /permissions
 interface IMockRole {
     id: string;
     name: string;

@@ -1,4 +1,3 @@
-// src/pages/admin/permissions.tsx
 import { useRef, useState } from 'react';
 import {
     Breadcrumb,
@@ -22,9 +21,6 @@ import {
 import { Link } from 'react-router-dom';
 
 const { Title, Text, Paragraph } = Typography;
-
-// ⚠️ MOCK DATA — khớp đúng 12 permission thật đang seed trong init.ts (backend)
-// Sau này thay bằng gọi API GET /permissions
 interface IMockPermission {
     id: string;
     description: string;
@@ -105,8 +101,7 @@ const MODULES: IMockPermission['module'][] = ['USERS', 'ROLES', 'PERMISSIONS'];
 
 const PermissionsPage = () => {
     const [searchText, setSearchText] = useState('');
-
-    // Ref cho từng khối module — dùng để scrollIntoView khi bấm filter
+    
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const filtered = MOCK_PERMISSIONS.filter(

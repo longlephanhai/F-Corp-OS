@@ -1,4 +1,3 @@
-
 import {
     Alert,
     Button,
@@ -50,7 +49,8 @@ const LoginPage = () => {
                 localStorage.setItem('access_token', response.data.access_token);
                 dispatch(setUserLoginInfo(response.data.user));
                 message.success(`${response.message}`);
-                navigate('/admin');
+                const route = response.data.user.role.name.toLowerCase()
+                navigate(`/${route}`);
             } else {
                 setErrorMessage(
                     (response as any)?.message ?? 'Email hoặc mật khẩu không chính xác.'
@@ -67,7 +67,6 @@ const LoginPage = () => {
     const passwordLabel = (
         <Flex justify="space-between" align="center" style={{ width: '100%' }}>
             <Text strong>Mật khẩu</Text>
-            {/* Placeholder — chưa có route /forgot-password, preventDefault giữ SPA */}
             <Link
                 href="#"
                 style={{ fontWeight: 400 }}

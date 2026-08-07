@@ -1,4 +1,3 @@
-// src/pages/admin/users.tsx
 import { useState } from 'react';
 import {
     Avatar,
@@ -40,7 +39,6 @@ const MOCK_USERS: IMockUser[] = [
     { id: '4', fullName: 'Marcus Reed', email: 'm.reed@f-corp.com', role: { id: 'r2', name: 'Editor' } },
 ];
 
-// Danh sách role cho dropdown filter — sau này thay bằng gọi GET /roles
 const MOCK_ROLES = [
     { id: 'r1', name: 'Administrator' },
     { id: 'r2', name: 'Editor' },

@@ -1,7 +1,5 @@
 import { Avatar, Breadcrumb, Card, Col, Flex, List, Row, Statistic, Tag, Typography } from 'antd';
 import {
-    ArrowUpOutlined,
-    ArrowDownOutlined,
     TeamOutlined,
     SafetyOutlined,
     KeyOutlined,
@@ -56,7 +54,7 @@ const DashboardPage = () => {
                             >
                                 <TeamOutlined style={{ color: '#1677ff', fontSize: 18 }} />
                             </div>
-                          
+
                         </Flex>
                         <Statistic
                             title={<span style={{ letterSpacing: 0.5 }}>TOTAL USERS</span>}
@@ -80,7 +78,7 @@ const DashboardPage = () => {
                                 <SafetyOutlined style={{ color: '#1677ff', fontSize: 18 }} />
                             </div>
                             <Tag color="success" bordered={false}>
-                                
+
                             </Tag>
                         </Flex>
                         <Statistic
