@@ -1,22 +1,25 @@
 import { Layout, Menu } from 'antd';
-import { DashboardOutlined, UserOutlined } from '@ant-design/icons';
+import {
+    BarChartOutlined,
+    WalletOutlined,
+    CalendarOutlined,
+    FundProjectionScreenOutlined,
+} from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router';
 
 const { Sider } = Layout;
 
 interface IProps {
     collapsed: boolean;
-    pathName: string;
 }
 
-const SiderLayout = (props: IProps) => {
+const HRSider = ({ collapsed }: IProps) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { collapsed } = props;
 
-    // Derive selected key from the /admin/* segment
+    // Strip the leading /hr/ prefix to get the leaf key, e.g. "dashboard"
     const selectedKey =
-        location.pathname.replace(/^\/admin\/?/, '') || 'dashboard';
+        location.pathname.replace(/^\/hr\/?/, '') || 'dashboard';
 
     return (
         <Sider trigger={null} collapsible collapsed={collapsed}>
@@ -42,7 +45,7 @@ const SiderLayout = (props: IProps) => {
                         overflow: 'hidden',
                     }}
                 >
-                    {collapsed ? 'FC' : 'F-Corp OS'}
+                    {collapsed ? 'HR' : 'HR Module'}
                 </h2>
             </div>
 
@@ -54,15 +57,27 @@ const SiderLayout = (props: IProps) => {
                 items={[
                     {
                         key: 'dashboard',
-                        icon: <DashboardOutlined />,
-                        label: 'Dashboard',
-                        onClick: () => navigate('/admin/dashboard'),
+                        icon: <BarChartOutlined />,
+                        label: 'Tổng quan',
+                        onClick: () => navigate('/hr/dashboard'),
                     },
                     {
-                        key: 'users',
-                        icon: <UserOutlined />,
-                        label: 'Người dùng',
-                        onClick: () => navigate('/admin/users'),
+                        key: 'wallet',
+                        icon: <WalletOutlined />,
+                        label: 'Quản lý Ví F-Token',
+                        onClick: () => navigate('/hr/wallet'),
+                    },
+                    {
+                        key: 'review',
+                        icon: <CalendarOutlined />,
+                        label: 'Kỳ Đánh Giá',
+                        onClick: () => navigate('/hr/review'),
+                    },
+                    {
+                        key: 'bench',
+                        icon: <FundProjectionScreenOutlined />,
+                        label: 'Dự báo Bench',
+                        onClick: () => navigate('/hr/bench'),
                     },
                 ]}
             />
@@ -70,4 +85,4 @@ const SiderLayout = (props: IProps) => {
     );
 };
 
-export default SiderLayout;
+export default HRSider;
