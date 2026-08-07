@@ -1,7 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, UpdateDateColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, UpdateDateColumn, CreateDateColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Skill } from '../../skills/entities/skill.entity';
-import { SkillEvidence } from '../../skill-evidence/entities/skill-evidence.entity'; // Sắp tạo ở bước dưới
 
 @Entity('user_skills')
 export class UserSkill {
@@ -26,19 +25,14 @@ export class UserSkill {
   @Column({ type: 'text', nullable: true, name: 'evidence_note' })
   evidenceNote: string;
 
-  // 🔥 THÊM: Điểm tin cậy (Linh hồn của AI Matching v4)
-  // Mặc định lúc tự đánh giá chỉ được 30 điểm. PM duyệt bằng chứng xong hệ thống mới đẩy lên 100.
-  @Column({ type: 'int', default: 30, name: 'confidence_score' })
-  confidenceScore: number; 
+  confidenceScore: number;
 
-  // 🔥 THÊM: Audit update để biết Dev có lười update profile không
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  // --- Relations ---
   @ManyToOne(() => User, (user) => user.userSkills, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
@@ -47,7 +41,6 @@ export class UserSkill {
   @JoinColumn({ name: 'skill_id' })
   skill: Skill;
 
-  // 🔥 THÊM: Nối 1-N sang bảng Bằng chứng sắp tạo
-  @OneToMany(() => SkillEvidence, (evidence) => evidence.userSkill)
-  evidences: SkillEvidence[];
+  // @OneToMany(() => SkillEvidence, (evidence) => evidence.userSkill)
+  // evidences: SkillEvidence[];
 }
