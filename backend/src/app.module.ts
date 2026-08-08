@@ -11,6 +11,8 @@ import { Role } from 'modules/roles/entities/role.entity';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { DatabasesModule } from './modules/databases/databases.module';
+import { UserSprintsModule } from './modules/user-sprints/user-sprints.module';
+import { TaskModule } from './modules/task/task.module';
 
 @Module({
   imports: [
@@ -29,7 +31,7 @@ import { DatabasesModule } from './modules/databases/databases.module';
           Role,
           Permission
         ],
-        synchronize: true,
+        synchronize: false, 
       }),
       inject: [ConfigService],
     }),
@@ -38,6 +40,9 @@ import { DatabasesModule } from './modules/databases/databases.module';
     RolesModule,
     PermissionsModule,
     DatabasesModule,
+    UserSprintsModule,
+    TaskModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],
