@@ -98,32 +98,42 @@ export class UsersService {
     let offset = (+currentPage - 1) * (+limit);
     let defaultLimit = +limit ? +limit : 10;
 
-    const result = await this.usersRepository.find({
-      where: {
-        ...filter,
-        fullName: Like('%' + filter.fullName + '%')
-      },
-      skip: offset,
-      take: defaultLimit,
-      order: sort,
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-      },
-      relations: {
-        role: {
-          permissions: true
-        }
+    const queryBuilder = this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'permission')
+
+    const likeFields = ['email', 'fullName'];
+
+    Object.keys(filter).forEach((key) => {
+      if (likeFields.includes(key)) {
+        queryBuilder.andWhere(`user.${key} LIKE :${key}`, { [key]: `%${filter[key]}%` });
+      } else {
+        queryBuilder.andWhere(`user.${key} = :${key}`, { [key]: filter[key] });
       }
-    });
+    })
+
+    if (filter.role_id) {
+      queryBuilder.andWhere('role.id = :role_id', { role_id: filter.role_id });
+    }
+
+    if (sort && typeof sort === 'object') {
+      Object.entries(sort).forEach(([key, value]) => {
+        queryBuilder.addOrderBy(`user.${key}`, value === -1 ? 'DESC' : 'ASC');
+      });
+    }
+    const [result, totalItems] = await queryBuilder
+      .skip(offset)
+      .take(defaultLimit)
+      .getManyAndCount()
+
 
     return {
       meta: {
         currentPage: +currentPage,
         pageSize: +limit,
-        pages: result.length,
-        total: Math.ceil(result.length / +limit)
+        pages: Math.ceil(totalItems / defaultLimit),
+        total: totalItems,
       },
       result
     }
