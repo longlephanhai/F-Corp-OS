@@ -11,6 +11,12 @@ import { Role } from 'modules/roles/entities/role.entity';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { DatabasesModule } from './modules/databases/databases.module';
+import { SkillsModule } from './modules/skills/skills.module';
+import { UserSkillModule } from './modules/user-skill/user-skill.module';
+import { Skill } from 'modules/skills/entities/skill.entity';
+import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
+import { SkillEvidencesModule } from './modules/skill-evidences/skill-evidences.module';
+import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.entity';
 
 @Module({
   imports: [
@@ -24,11 +30,7 @@ import { DatabasesModule } from './modules/databases/databases.module';
         username: configService.get<string>('DATABASE_USER'),
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
-        entities: [
-          User,
-          Role,
-          Permission
-        ],
+        entities: [Skill, UserSkill, User, Role, Permission, SkillEvidence],
         synchronize: true,
       }),
       inject: [ConfigService],
@@ -38,6 +40,9 @@ import { DatabasesModule } from './modules/databases/databases.module';
     RolesModule,
     PermissionsModule,
     DatabasesModule,
+    SkillsModule,
+    UserSkillModule,
+    SkillEvidencesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
