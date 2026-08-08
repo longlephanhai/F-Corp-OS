@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, UpdateDateColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, UpdateDateColumn, CreateDateColumn, DeleteDateColumn, OneToMany } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Skill } from '../../skills/entities/skill.entity';
+import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.entity';
 
 @Entity('user_skills')
 export class UserSkill {
@@ -22,16 +23,11 @@ export class UserSkill {
   @Column({ type: 'float', nullable: true })
   years: number;
 
-  @Column({ type: 'text', nullable: true, name: 'evidence_note' })
+  @Column({ type: 'text', nullable: true })
   evidenceNote: string;
 
+  @Column({ type: 'float', nullable: true })
   confidenceScore: number;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 
   @ManyToOne(() => User, (user) => user.userSkills, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
@@ -41,6 +37,27 @@ export class UserSkill {
   @JoinColumn({ name: 'skill_id' })
   skill: Skill;
 
-  // @OneToMany(() => SkillEvidence, (evidence) => evidence.userSkill)
-  // evidences: SkillEvidence[];
+  @OneToMany(() => SkillEvidence, (evidence) => evidence.userSkill)
+  evidences: SkillEvidence[];
+
+  @Column({ type: 'json', nullable: true })
+  createdBy: { id: string; email: string; };
+
+  @Column({ type: 'json', nullable: true })
+  updatedBy: { id: string; email: string; };
+
+  @Column({ type: 'json', nullable: true })
+  deletedBy: { id: string; email: string; };
+
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamp' })
+  deletedAt: Date;
+
+  @Column({ default: false })
+  isDeleted: boolean;
 }

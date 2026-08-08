@@ -35,7 +35,6 @@ export class User {
     @Column({ type: 'varchar', length: 100, nullable: true })
     title: string;
 
-
     @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
     costRate: number;
 

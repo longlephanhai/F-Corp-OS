@@ -1,0 +1,6 @@
+export enum EvidenceType {
+  CERTIFICATE = 'CERTIFICATE', 
+  PROJECT_LINK = 'PROJECT_LINK',
+  DOCUMENT = 'DOCUMENT',       
+  WORK_EXPERIENCE = 'WORK_EXPERIENCE', 
+}
