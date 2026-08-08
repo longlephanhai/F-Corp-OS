@@ -18,8 +18,8 @@ export interface IUser {
             apiPath: string;
             method: string;
             module: string;
-        }
-    }
+        }[]
+    };
 
     // allocation  1-n
 

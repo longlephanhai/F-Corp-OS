@@ -139,25 +139,8 @@ export class UsersService {
     }
   }
 
-  async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({
-      where: { id },
-      // Lôi cả Sếp và Danh sách Lính ra cho Frontend hiển thị
-      relations: {
-        role: {
-          permissions: true
-        },
-        manager: true,
-        employees: true
-      },
-      select: {
-        manager: { id: true, fullName: true, email: true },
-        employees: { id: true, fullName: true, email: true, title: true } 
-      }
-    });
-
-    if (!user) throw new BadRequestException(`User with id "${id}" does not exist`);
-    return user;
+  findOne(id: number) {
+    return `This action returns a #${id} user`;
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
