@@ -1,92 +1,106 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom"
-import LayoutAdmin from "./layout/admin"
-import ErrorPage from "./pages/result/error"
-import NotFoundPage from "./pages/result/not-found"
-import LoginPage from "./pages/auth/login"
-import { useAppDispatch } from "./hooks/hooks"
-import { useEffect } from "react"
-import { fetchAccount } from "./redux/account/accountSlice"
-import DashboardPage from "./pages/admin/dashboard"
-import UsersPage from "./pages/admin/users"
-import RolesPage from "./pages/admin/roles"
-import PermissionsPage from "./pages/admin/permissions"
-import LayoutHR from './layout/hr';
-import HRDashboard from './pages/hr/Dashboard';
-import WalletAdmin from './pages/hr/WalletAdmin';
-import ReviewConsole from './pages/hr/ReviewConsole';
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import LayoutAdmin from "./layout/admin";
+import ErrorPage from "./pages/result/error";
+import NotFoundPage from "./pages/result/not-found";
+import LoginPage from "./pages/auth/login";
+import { useAppDispatch } from "./hooks/hooks";
+import { useEffect } from "react";
+import { fetchAccount } from "./redux/account/accountSlice";
+import DashboardPage from "./pages/admin/dashboard";
+import UsersPage from "./pages/admin/users";
+import RolesPage from "./pages/admin/roles";
+import PermissionsPage from "./pages/admin/permissions";
+import LayoutHR from "./layout/hr";
+import HRDashboard from "./pages/hr/Dashboard";
+import WalletAdmin from "./pages/hr/WalletAdmin";
+import ReviewConsole from "./pages/hr/ReviewConsole";
+import LayoutPM from "./layout/pm";
+
+import { SprintManagementPage } from "./pages/pm/SprintManagement";
+import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
 
 const PlaceholderPage = ({ title }: { title: string }) => (
-    <div style={{ padding: 48, textAlign: 'center', color: '#8c8c8c' }}>
-        <h2>{title}</h2>
-        <p>Trang đang được phát triển.</p>
-    </div>
+  <div style={{ padding: 48, textAlign: "center", color: "#8c8c8c" }}>
+    <h2>{title}</h2>
+    <p>Trang đang được phát triển.</p>
+  </div>
 );
 
 function App() {
-    const dispatch = useAppDispatch();
+  const dispatch = useAppDispatch();
 
-    useEffect(() => {
-        dispatch(fetchAccount());
-    }, []);
+  useEffect(() => {
+    dispatch(fetchAccount());
+  }, []);
 
-    const router = createBrowserRouter([
-        {
-            path: "/",
-            element: <div>Home</div>
-        },
-        {
-            path: "/admin",
-            element: <LayoutAdmin />,
-            errorElement: <ErrorPage />,
-            children: [
-                { index: true, element: <DashboardPage /> },
-                { path: "users", element: <UsersPage /> },
-                { path: "roles", element: <RolesPage /> },
-                { path: "permissions", element: <PermissionsPage /> },
-            ]
-        },
-        {
-            errorElement: <ErrorPage />,
-            path: '/hr',
-            element: <LayoutHR />,
-            children: [
-                {
-                    path: 'dashboard',
-                    element: <HRDashboard />,
-                },
-                {
-                    path: 'wallet',
-                    element: <WalletAdmin />,
-                },
-                {
-                    path: 'review',
-                    element: <ReviewConsole />,
-                },
-                {
-                    path: 'bench',
-                    element: <PlaceholderPage title="Dự báo Bench" />,
-                },
-            ],
-        },
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      element: <div>Home</div>,
+    },
+    {
+      path: "/admin",
+      element: <LayoutAdmin />,
+      errorElement: <ErrorPage />,
+      children: [
+        { index: true, element: <DashboardPage /> },
+        { path: "users", element: <UsersPage /> },
+        { path: "roles", element: <RolesPage /> },
+        { path: "permissions", element: <PermissionsPage /> },
+      ],
+    },
+    {
+      path: "/hr",
+      element: <LayoutHR />,
+      errorElement: <ErrorPage />,
+      children: [
+        { path: "dashboard", element: <HRDashboard /> },
+        { path: "wallet", element: <WalletAdmin /> },
+        { path: "review", element: <ReviewConsole /> },
+        { path: "bench", element: <PlaceholderPage title="Dự báo Bench" /> },
+      ],
+    },
 
-        
+    // ==========================================
+    // THÊM ROUTE CHO PM VÀO ĐÂY
+    // ==========================================
+    {
+      path: "/pm",
+      element: <LayoutPM />,
+      errorElement: <ErrorPage />,
+      children: [
         {
-            path: "/login",
-            element: <LoginPage />
+          index: true,
+          element: <MyTeamPage />,
         },
         {
-            path: "/register",
-            element: <div>Register</div>
+          path: "my-team",
+          element: <MyTeamPage />,
         },
         {
-            path: "*",
-            element: <NotFoundPage />
+          // Dùng biến động :sprintId trên URL
+          path: "sprints/:sprintId",
+          element: <SprintManagementPage />,
         },
-    ]);
+      ],
+    },
+    // ==========================================
 
+    {
+      path: "/login",
+      element: <LoginPage />,
+    },
+    {
+      path: "/register",
+      element: <div>Register</div>,
+    },
+    {
+      path: "*",
+      element: <NotFoundPage />,
+    },
+  ]);
 
-    return <RouterProvider router={router} />;
+  return <RouterProvider router={router} />;
 }
 
-export default App
-
+export default App;
