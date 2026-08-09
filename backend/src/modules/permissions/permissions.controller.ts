@@ -21,6 +21,11 @@ export class PermissionsController {
     return this.permissionsService.findAll();
   }
 
+   @Get('count')
+  count() {
+    return this.permissionsService.countPermissions();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.permissionsService.findOne(+id);

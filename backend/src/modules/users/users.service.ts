@@ -139,6 +139,11 @@ export class UsersService {
     }
   }
 
+ async countUser() {
+    const total = await this.usersRepository.count();
+    return { total };
+}
+
   findOne(id: number) {
     return `This action returns a #${id} user`;
   }

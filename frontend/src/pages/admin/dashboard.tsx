@@ -1,4 +1,4 @@
-import { Avatar, Breadcrumb, Card, Col, Flex, List, Row, Statistic, Tag, Typography } from 'antd';
+import { Avatar, Breadcrumb, Card, Col, Flex, List, Row, Spin, Statistic, Tag, Typography } from 'antd';
 import {
     TeamOutlined,
     SafetyOutlined,
@@ -6,6 +6,8 @@ import {
     LockOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { callCountUsers, callCountRoles, callCountPermissions } from '../../api';
 
 const { Title } = Typography;
 
@@ -31,6 +33,25 @@ const activityData = [
 ];
 
 const DashboardPage = () => {
+    const [totalUsers, setTotalUsers] = useState<number>(0);
+    const [totalRoles, setTotalRoles] = useState<number>(0);
+    const [totalPermissions, setTotalPermissions] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        Promise.all([
+            callCountUsers(),
+            callCountRoles(),
+            callCountPermissions(),
+        ])
+            .then(([resUsers, resRoles, resPermissions]: any[]) => {
+                if (resUsers?.data?.total !== undefined) setTotalUsers(resUsers.data.total);
+                if (resRoles?.data?.total !== undefined) setTotalRoles(resRoles.data.total);
+                if (resPermissions?.data?.total !== undefined) setTotalPermissions(resPermissions.data.total);
+            })
+            .finally(() => setLoading(false));
+    }, []);
+
     return (
         <>
             <Breadcrumb
@@ -54,14 +75,17 @@ const DashboardPage = () => {
                             >
                                 <TeamOutlined style={{ color: '#1677ff', fontSize: 18 }} />
                             </div>
-
                         </Flex>
-                        <Statistic
-                            title={<span style={{ letterSpacing: 0.5 }}>TOTAL USERS</span>}
-                            value={120}
-                            valueStyle={{ fontWeight: 600 }}
-                            style={{ marginTop: 16 }}
-                        />
+                        {loading ? (
+                            <Spin size="small" style={{ marginTop: 16, display: 'block' }} />
+                        ) : (
+                            <Statistic
+                                title={<span style={{ letterSpacing: 0.5 }}>TOTAL USERS</span>}
+                                value={totalUsers}
+                                valueStyle={{ fontWeight: 600 }}
+                                style={{ marginTop: 16 }}
+                            />
+                        )}
                     </Card>
                 </Col>
 
@@ -77,16 +101,18 @@ const DashboardPage = () => {
                             >
                                 <SafetyOutlined style={{ color: '#1677ff', fontSize: 18 }} />
                             </div>
-                            <Tag color="success" bordered={false}>
-
-                            </Tag>
+                            <Tag color="success" bordered={false}></Tag>
                         </Flex>
-                        <Statistic
-                            title={<span style={{ letterSpacing: 0.5 }}>TOTAL ROLES</span>}
-                            value={5}
-                            valueStyle={{ fontWeight: 600 }}
-                            style={{ marginTop: 16 }}
-                        />
+                        {loading ? (
+                            <Spin size="small" style={{ marginTop: 16, display: 'block' }} />
+                        ) : (
+                            <Statistic
+                                title={<span style={{ letterSpacing: 0.5 }}>TOTAL ROLES</span>}
+                                value={totalRoles}
+                                valueStyle={{ fontWeight: 600 }}
+                                style={{ marginTop: 16 }}
+                            />
+                        )}
                     </Card>
                 </Col>
 
@@ -103,12 +129,16 @@ const DashboardPage = () => {
                                 <KeyOutlined style={{ color: '#1677ff', fontSize: 18 }} />
                             </div>
                         </Flex>
-                        <Statistic
-                            title={<span style={{ letterSpacing: 0.5 }}>TOTAL PERMISSIONS</span>}
-                            value={28}
-                            valueStyle={{ fontWeight: 600 }}
-                            style={{ marginTop: 16 }}
-                        />
+                        {loading ? (
+                            <Spin size="small" style={{ marginTop: 16, display: 'block' }} />
+                        ) : (
+                            <Statistic
+                                title={<span style={{ letterSpacing: 0.5 }}>TOTAL PERMISSIONS</span>}
+                                value={totalPermissions}
+                                valueStyle={{ fontWeight: 600 }}
+                                style={{ marginTop: 16 }}
+                            />
+                        )}
                     </Card>
                 </Col>
 
@@ -124,9 +154,9 @@ const DashboardPage = () => {
                             >
                                 <LockOutlined style={{ color: '#ff4d4f', fontSize: 18 }} />
                             </div>
-                            <Tag color="error" bordered={false}>
-                            </Tag>
+                            <Tag color="error" bordered={false}></Tag>
                         </Flex>
+                        {/* ⚠️ Mock — chưa có API/field "disabled accounts" ở backend */}
                         <Statistic
                             title={<span style={{ letterSpacing: 0.5 }}>DISABLED ACCOUNTS</span>}
                             value={3}
