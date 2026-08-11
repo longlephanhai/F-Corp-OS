@@ -43,9 +43,11 @@ export class RolesService {
 
   }
 
-  findAll() {
-    return `This action returns all roles`;
-  }
+  async findAll() {
+    return this.roleRepository.find({
+        select: { id: true, name: true, description: true }
+    });
+}
 
   async findOne(id: string) {
     const role = await this.roleRepository.findOne({
