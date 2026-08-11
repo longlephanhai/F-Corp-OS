@@ -11,12 +11,20 @@ import { Role } from 'modules/roles/entities/role.entity';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { DatabasesModule } from './modules/databases/databases.module';
+
 import { SkillsModule } from './modules/skills/skills.module';
 import { UserSkillModule } from './modules/user-skill/user-skill.module';
 import { Skill } from 'modules/skills/entities/skill.entity';
 import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
 import { SkillEvidencesModule } from './modules/skill-evidences/skill-evidences.module';
 import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.entity';
+
+import { UserSprintsModule } from './modules/user-sprints/user-sprints.module';
+import { TaskModule } from './modules/task/task.module';
+import { Sprint } from 'modules/sprints/entities/sprint.entity';
+import { Task } from 'modules/task/entities/task.entity';
+import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
+
 
 @Module({
   imports: [
@@ -30,8 +38,19 @@ import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.e
         username: configService.get<string>('DATABASE_USER'),
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
-        entities: [Skill, UserSkill, User, Role, Permission, SkillEvidence],
+        entities: [
+          Skill,
+          UserSkill,
+          User,
+          Role,
+          Permission,
+          SkillEvidence,
+          Sprint,
+          Task,
+          UserSprint
+        ],
         synchronize: true,
+
       }),
       inject: [ConfigService],
     }),
@@ -43,6 +62,8 @@ import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.e
     SkillsModule,
     UserSkillModule,
     SkillEvidencesModule,
+    UserSprintsModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],
