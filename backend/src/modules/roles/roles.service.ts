@@ -47,6 +47,11 @@ export class RolesService {
     return `This action returns all roles`;
   }
 
+  async countRoles() {
+    const total = await this.roleRepository.count();
+    return { total };
+  }
+
   async findOne(id: string) {
     const role = await this.roleRepository.findOne({
       where: { id: id },

@@ -25,6 +25,12 @@ export class UsersController {
     return this.usersService.findAll(+currentPage, +limit, qs);
   }
 
+  @Get('count')
+  @ResponseMessage('Count users successfully')
+  countUser() {
+      return this.usersService.countUser();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(+id);

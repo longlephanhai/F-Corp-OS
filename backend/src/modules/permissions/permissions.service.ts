@@ -35,6 +35,11 @@ export class PermissionsService {
       }
     });
     return newPermission;
+  } 
+
+  async countPermissions() {
+    const total = await this.permissionRepository.count();
+    return { total };
   }
 
   findAll() {
