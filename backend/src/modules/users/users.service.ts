@@ -75,6 +75,7 @@ export class UsersService {
     }
 
     const newUser = await this.usersRepository.save({
+      ...createUserDto,
       email,
       password: hashedPassword,
       fullName,

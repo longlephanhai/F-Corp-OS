@@ -2,14 +2,17 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { SkillsService } from './skills.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
+import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import type { IUser } from 'common/types/user.interface';
 
 @Controller('skills')
 export class SkillsController {
-  constructor(private readonly skillsService: SkillsService) {}
+  constructor(private readonly skillsService: SkillsService) { }
 
   @Post()
-  create(@Body() createSkillDto: CreateSkillDto) {
-    return this.skillsService.create(createSkillDto);
+  @ResponseMessage('Skill created successfully')
+  create(@Body() createSkillDto: CreateSkillDto, @User() user: IUser) {
+    return this.skillsService.create(createSkillDto, user);
   }
 
   @Get()

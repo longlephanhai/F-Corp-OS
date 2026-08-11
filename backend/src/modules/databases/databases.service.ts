@@ -47,6 +47,7 @@ export class DatabasesService implements OnModuleInit {
             }
 
             if (countUser === 0) {
+                // admin
                 const adminRole = await this.roleRepository.findOne({
                     where: { name: "ADMIN" },
                     select: {
@@ -59,6 +60,45 @@ export class DatabasesService implements OnModuleInit {
                     password: getHashPassword(initPassword),
                     fullName: "Admin",
                     role: adminRole ? { id: adminRole.id } : undefined,
+                })
+                // hr
+                const hrRole = await this.roleRepository.findOne({
+                    where: { name: "HR" },
+                    select: {
+                        id: true
+                    }
+                });
+                await this.userepository.insert({
+                    email: "hr@gmail.com",
+                    password: getHashPassword(initPassword),
+                    fullName: "HR",
+                    role: hrRole ? { id: hrRole.id } : undefined,
+                })
+                // pm
+                const pmRole = await this.roleRepository.findOne({
+                    where: { name: "PM" },
+                    select: {
+                        id: true
+                    }
+                });
+                await this.userepository.insert({
+                    email: "pm@gmail.com",
+                    password: getHashPassword(initPassword),
+                    fullName: "PM",
+                    role: pmRole ? { id: pmRole.id } : undefined,
+                })
+                // developer
+                const developerRole = await this.roleRepository.findOne({
+                    where: { name: "DEVELOPER" },
+                    select: {
+                        id: true
+                    }
+                });
+                await this.userepository.insert({
+                    email: "developer@gmail.com",
+                    password: getHashPassword(initPassword),
+                    fullName: "Developer",
+                    role: developerRole ? { id: developerRole.id } : undefined,
                 })
             }
 

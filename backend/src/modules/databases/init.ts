@@ -1,4 +1,8 @@
 export const ADMIN_ROLE = "ADMIN";
+export const HR_ROLE = "HR";
+export const PM_ROLE = "PM";
+export const DEVELOPER_ROLE = "DEVELOPER";
+
 
 export const INITIAL_PERMISSIONS = [
     {
