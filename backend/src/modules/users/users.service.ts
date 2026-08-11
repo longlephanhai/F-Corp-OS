@@ -96,6 +96,9 @@ export class UsersService {
     delete filter.current;
     delete filter.pageSize;
 
+    const search = filter.search;
+    delete filter.search;
+
     let offset = (+currentPage - 1) * (+limit);
     let defaultLimit = +limit ? +limit : 10;
 
@@ -103,6 +106,13 @@ export class UsersService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('role.permissions', 'permission')
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(user.fullName LIKE :search OR user.email LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
 
     const likeFields = ['email', 'fullName'];
 

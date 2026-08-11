@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Avatar,
     Breadcrumb,
@@ -22,51 +22,86 @@ import {
     UserOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { callFetchUsers, callFetchRoles } from '../../api';
 
 const { Title } = Typography;
 
-interface IMockUser {
+interface IUser {
     id: string;
     fullName: string;
     email: string;
-    role: { id: string; name: string };
+    role: { id: string; name: string } | null;
+    isDeleted: boolean;
 }
 
-const MOCK_USERS: IMockUser[] = [
-    { id: '1', fullName: 'Sarah Jenkins', email: 's.jenkins@f-corp.com', role: { id: 'r1', name: 'Administrator' } },
-    { id: '2', fullName: 'Michael Chen', email: 'm.chen@f-corp.com', role: { id: 'r2', name: 'Editor' } },
-    { id: '3', fullName: 'Elena Patel', email: 'e.patel@f-corp.com', role: { id: 'r3', name: 'Viewer' } },
-    { id: '4', fullName: 'Marcus Reed', email: 'm.reed@f-corp.com', role: { id: 'r2', name: 'Editor' } },
-];
+interface IRole {
+    id: string;
+    name: string;
+}
 
-const MOCK_ROLES = [
-    { id: 'r1', name: 'Administrator' },
-    { id: 'r2', name: 'Editor' },
-    { id: 'r3', name: 'Viewer' },
-];
-
-const roleTagColor = (roleName: string) => {
+const roleTagColor = (roleName?: string) => {
     switch (roleName) {
-        case 'Administrator': return 'blue';
-        case 'Editor': return 'default';
-        case 'Viewer': return 'default';
-        default: return 'default';
+        case 'ADMIN':
+        case 'SUPER_ADMIN':
+            return 'blue';
+        default:
+            return 'default';
     }
 };
 
+const ALL_ROLES_VALUE = 'ALL';
+
 const UsersPage = () => {
+    const [data, setData] = useState<IUser[]>([]);
+    const [roles, setRoles] = useState<IRole[]>([]);
+    const [loading, setLoading] = useState(false);
+
     const [searchText, setSearchText] = useState('');
-    const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
+    const [roleFilter, setRoleFilter] = useState<string>(ALL_ROLES_VALUE);
 
-    const filteredData = MOCK_USERS.filter((u) => {
-        const matchSearch =
-            u.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-            u.email.toLowerCase().includes(searchText.toLowerCase());
-        const matchRole = roleFilter ? u.role.id === roleFilter : true;
-        return matchSearch && matchRole;
-    });
+    const [meta, setMeta] = useState({ current: 1, pageSize: 10, total: 0 });
 
-    const columns: TableProps<IMockUser>['columns'] = [
+    // ← ĐỔI: tham số thứ 3 đổi tên fullName -> search, gửi lên đúng key `search`
+    const fetchUsers = async (current = 1, pageSize = 10, search = '', role_id?: string) => {
+        setLoading(true);
+        let query = `current=${current}&pageSize=${pageSize}`;
+        if (search) query += `&search=${search}`;
+        if (role_id && role_id !== ALL_ROLES_VALUE) query += `&role_id=${role_id}`;
+
+        const res: any = await callFetchUsers(query);
+        if (res?.data) {
+            setData(res.data.result);
+            setMeta({
+                current: res.data.meta.currentPage,
+                pageSize: res.data.meta.pageSize,
+                total: res.data.meta.total,
+            });
+        }
+        setLoading(false);
+    };
+
+    const fetchRoles = async () => {
+        const res: any = await callFetchRoles();
+        if (res?.data) {
+            setRoles(res.data);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+        fetchRoles();
+    }, []);
+
+    const handleSearch = () => {
+        fetchUsers(1, meta.pageSize, searchText, roleFilter);
+    };
+
+    const handleRoleFilterChange = (value: string) => {
+        setRoleFilter(value);
+        fetchUsers(1, meta.pageSize, searchText, value);
+    };
+
+    const columns: TableProps<IUser>['columns'] = [
         {
             title: 'FULL NAME',
             dataIndex: 'fullName',
@@ -82,15 +117,29 @@ const UsersPage = () => {
             title: 'EMAIL',
             dataIndex: 'email',
             key: 'email',
-            render: (text) => <b style={{ color: '#595959' }}>{text}</b>,
+            render: (text) => <a href={`mailto:${text}`}>{text}</a>,
         },
         {
             title: 'ROLE',
             dataIndex: 'role',
             key: 'role',
-            render: (role: IMockUser['role']) => (
-                <Tag color={roleTagColor(role.name)} bordered={false}>
-                    {role.name}
+            render: (role: IUser['role']) =>
+                role ? (
+                    <Tag color={roleTagColor(role.name)} bordered={false}>
+                        {role.name}
+                    </Tag>
+                ) : (
+                    <Tag bordered={false}>—</Tag>
+                ),
+        },
+        {
+            title: 'DISABLED ACCOUNTS',
+            dataIndex: 'isDeleted',
+            key: 'isDeleted',
+            align: 'center',
+            render: (isDeleted: boolean) => (
+                <Tag color={isDeleted ? 'red' : 'default'} bordered={false}>
+                    {isDeleted ? "Disabled Accounts" : "Active Accounts"}
                 </Tag>
             ),
         },
@@ -100,17 +149,8 @@ const UsersPage = () => {
             width: 100,
             render: (_, record) => (
                 <Space>
-                    <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => console.log('edit', record.id)}
-                    />
-                    <Popconfirm
-                        title="Xoá người dùng này?"
-                        okText="Xoá"
-                        cancelText="Huỷ"
-                        onConfirm={() => console.log('delete', record.id)}
-                    >
+                    <Button type="text" icon={<EditOutlined />} onClick={() => console.log('edit', record.id)} />
+                    <Popconfirm title="Xoá người dùng này?" okText="Xoá" cancelText="Huỷ">
                         <Button type="text" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
                 </Space>
@@ -142,23 +182,34 @@ const UsersPage = () => {
                         style={{ maxWidth: 320 }}
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
+                        onPressEnter={handleSearch}
                         allowClear
+                        onClear={() => fetchUsers(1, meta.pageSize, '', roleFilter)}
                     />
                     <Select
                         placeholder="Filter by Role"
                         style={{ minWidth: 180 }}
-                        allowClear
                         value={roleFilter}
-                        onChange={(value) => setRoleFilter(value)}
-                        options={MOCK_ROLES.map((r) => ({ label: r.name, value: r.id }))}
+                        onChange={handleRoleFilterChange}
+                        options={[
+                            { label: 'All', value: ALL_ROLES_VALUE },
+                            ...roles.map((r) => ({ label: r.name, value: r.id })),
+                        ]}
                     />
                 </Flex>
 
                 <Table
                     rowKey="id"
+                    loading={loading}
                     columns={columns}
-                    dataSource={filteredData}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Tổng ${total} người dùng` }}
+                    dataSource={data}
+                    pagination={{
+                        current: meta.current,
+                        pageSize: meta.pageSize,
+                        total: meta.total,
+                        showTotal: (total) => `Tổng ${total} người dùng`,
+                        onChange: (page, pageSize) => fetchUsers(page, pageSize, searchText, roleFilter),
+                    }}
                 />
             </Card>
         </>

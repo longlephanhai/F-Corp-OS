@@ -7,8 +7,6 @@ export const callApiLogin = async (data: { email: string, password: string }): P
 export const callFetchAccount = async (): Promise<IBackendRes<IGetAccount>> => {
     return await axios.get('/auth/account');
 }
-
-
 //=============================== Users ==========================================
 export const callCountUsers = () => {
     return axios.get('/users/count');
@@ -20,4 +18,12 @@ export const callCountRoles = () => {
 
 export const callCountPermissions = () => {
     return axios.get('/permissions/count');
+}
+//=================API Admin-User====================
+export const callFetchUsers = (query: string) => {
+    return axios.get(`/users?${query}`);
+}
+
+export const callFetchRoles = () => {
+    return axios.get('/roles');
 }
