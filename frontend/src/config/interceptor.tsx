@@ -18,8 +18,8 @@ const NO_RETRY_HEADER = 'x-no-retry';
 
 const handleRefreshToken = async (): Promise<string | null> => {
   return await mutex.runExclusive(async () => {
-    const res = await instance.get<IBackendRes<AccessTokenResponse>>('/auth/refresh');
-    if (res && res.data && res.data.data) return res.data.data.access_token;
+    const res = await instance.get<AccessTokenResponse>('/auth/refresh');
+    if (res && res.data) return res.data.access_token;
     else return null;
   });
 };
@@ -46,7 +46,7 @@ instance.interceptors.response.use(
   async (error) => {
     if (error.config && error.response
       && +error.response.status === 401
-      && error.config.url !== '/auth/login'
+      && error.config.url !== '/api/v1/auth/login'
       && !error.config.headers[NO_RETRY_HEADER]
     ) {
       const access_token = await handleRefreshToken();
@@ -61,15 +61,15 @@ instance.interceptors.response.use(
     if (
       error.config && error.response
       && +error.response.status === 400
-      && error.config.url === '/auth/refresh'
+      && error.config.url === '/api/v1/auth/refresh'
       && location.pathname.startsWith("/admin")
     ) {
       const message = error?.response?.data?.message ?? "Có lỗi xảy ra, vui lòng login.";
       //dispatch redux action
       store.dispatch(setRefreshTokenAction({ status: true, message }));
     }
-
-    return error?.response?.data ?? Promise.reject(error);
+    console.log("Error in interceptor: ", error?.response?.data);
+    return Promise.reject(error?.response?.data ?? error);
   }
 );
 

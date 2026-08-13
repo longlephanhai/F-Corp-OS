@@ -18,6 +18,8 @@ import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
+import LayoutApp from "./components/protected-route/layout.app";
+import ProtectedRoute from "./components/protected-route";
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: 48, textAlign: "center", color: "#8c8c8c" }}>
@@ -30,8 +32,8 @@ function App() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchAccount());
-  }, []);
+    dispatch(fetchAccount())
+  }, [])
 
   const router = createBrowserRouter([
     {
@@ -40,10 +42,10 @@ function App() {
     },
     {
       path: "/admin",
-      element: <LayoutAdmin />,
+      element: <LayoutApp><LayoutAdmin /></LayoutApp>,
       errorElement: <ErrorPage />,
       children: [
-        { index: true, element: <DashboardPage /> },
+        { index: true, element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
         { path: "users", element: <UsersPage /> },
         { path: "roles", element: <RolesPage /> },
         { path: "permissions", element: <PermissionsPage /> },
@@ -61,9 +63,6 @@ function App() {
       ],
     },
 
-    // ==========================================
-    // THÊM ROUTE CHO PM VÀO ĐÂY
-    // ==========================================
     {
       path: "/pm",
       element: <LayoutPM />,
@@ -78,13 +77,11 @@ function App() {
           element: <MyTeamPage />,
         },
         {
-          // Dùng biến động :sprintId trên URL
           path: "sprints/:sprintId",
           element: <SprintManagementPage />,
         },
       ],
     },
-    // ==========================================
 
     {
       path: "/login",
@@ -100,7 +97,11 @@ function App() {
     },
   ]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+    </>
+  )
 }
 
 export default App;

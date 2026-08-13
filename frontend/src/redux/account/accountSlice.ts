@@ -4,9 +4,13 @@ import type { UserStatusType } from "../../common/enum";
 
 export const fetchAccount = createAsyncThunk(
     'account/fetchAccount',
-    async () => {
-        const response = await callFetchAccount();
-        return response.data;
+    async (_, thunkAPI) => {
+        try {
+            const response = await callFetchAccount();
+            return response.data;
+        } catch (error: any) {
+            return thunkAPI.rejectWithValue(error);
+        }
     }
 )
 
@@ -72,15 +76,15 @@ export const accountSlice = createSlice({
             state.errorRefreshToken = action.payload?.message ?? "";
         }
     },
-    extraReducers: (builder)=>{
-        builder.addCase(fetchAccount.pending, (state, action)=>{
-            if(action.payload){
+    extraReducers: (builder) => {
+        builder.addCase(fetchAccount.pending, (state, action) => {
+            if (action.payload) {
                 state.isAuthenticated = false;
                 state.isLoading = true;
             }
         })
-        builder.addCase(fetchAccount.fulfilled, (state, action)=>{
-            if(action.payload){
+        builder.addCase(fetchAccount.fulfilled, (state, action) => {
+            if (action.payload) {
                 state.isAuthenticated = true;
                 state.isLoading = false;
                 state.user.id = action.payload.user.id;
@@ -91,8 +95,8 @@ export const accountSlice = createSlice({
                 state.user.permissions = action.payload.user.permissions;
             }
         })
-        builder.addCase(fetchAccount.rejected, (state, action)=>{
-            if(action.payload){
+        builder.addCase(fetchAccount.rejected, (state, action) => {
+            if (action.payload) {
                 state.isAuthenticated = false;
                 state.isLoading = false;
             }

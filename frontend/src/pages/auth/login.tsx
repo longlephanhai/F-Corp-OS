@@ -26,12 +26,15 @@ const LoginPage = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const isAuthenticated = useAppSelector(state => state.account.isAuthenticated);
+    const user = useAppSelector(state => state.account.user);
+
 
     useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/admin');
+        if (isAuthenticated && user?.role?.name) {
+            const route = user.role.name.toLowerCase();
+            navigate(`/${route}`, { replace: true });
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated]);
 
     const [form] = Form.useForm();
     const [loading, setLoading] = useState<boolean>(false);

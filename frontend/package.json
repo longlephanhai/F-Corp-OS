@@ -20,6 +20,7 @@
     "react-redux": "^9.3.0",
     "react-router": "^6.30.4",
     "react-router-dom": "^6.30.4",
+    "react-spinners": "^0.17.0",
     "recharts": "^3.10.1"
   },
   "devDependencies": {
