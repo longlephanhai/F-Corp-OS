@@ -1,34 +1,30 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { TaskService } from './task.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
+import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { TasksService } from './task.service';
 
-@Controller('task')
-export class TaskController {
-  constructor(private readonly taskService: TaskService) {}
+@Controller('tasks')
+export class TasksController {
+  constructor(private readonly tasksService: TasksService) {}
 
+  @Get('sprint/:sprintId')
+  async getTasksBySprint(@Param('sprintId') sprintId: string) {
+    const data = await this.tasksService.getTasksBySprint(sprintId);
+    return {
+      statusCode: 200,
+      message: 'Lấy danh sách Task theo Sprint thành công',
+      data,
+    };
+  }
+
+  @Get(':taskId/candidates')
+  async getMatchingCandidates(@Param('taskId') taskId: string) {
+    const data = await this.tasksService.getMatchingCandidates(taskId);
+    return { statusCode: 200, message: 'Lấy danh sách ứng viên thành công', data };
+  }
+
+  // Tương ứng với: pmApi.createTask
   @Post()
-  create(@Body() createTaskDto: CreateTaskDto) {
-    return this.taskService.create(createTaskDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.taskService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.taskService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
-    return this.taskService.update(+id, updateTaskDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.taskService.remove(+id);
+  async createTask(@Body() body: any) {
+    const data = await this.tasksService.createTask(body);
+    return { statusCode: 201, message: 'Tạo Task mới thành công', data };
   }
 }

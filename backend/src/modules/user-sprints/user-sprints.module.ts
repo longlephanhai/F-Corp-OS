@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
-import { UserSprintsService } from './user-sprints.service';
-import { UserSprintsController } from './user-sprints.controller';
+import { UserSprintService } from './user-sprints.service';
+import { UserSprintController } from './user-sprints.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserSprint } from './entities/user-sprint.entity';
 
 @Module({
-  controllers: [UserSprintsController],
-  providers: [UserSprintsService],
+  imports: [TypeOrmModule.forFeature([UserSprint])],
+  controllers: [UserSprintController],
+  providers: [UserSprintService],
 })
 export class UserSprintsModule {}

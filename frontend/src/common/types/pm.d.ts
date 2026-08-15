@@ -21,6 +21,17 @@ export interface TaskItem {
   budgetRate?: number;
 }
 
+export interface TaskCandidate {
+  id: string;
+  fullName: string;
+  title: string;
+  status: 'available' | 'bench' | 'on_project';
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  costRate: number;
+}
+
 export interface UserSprintItem {
   id: string;
   sprintId: string;
