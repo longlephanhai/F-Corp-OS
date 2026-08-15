@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Form, Input, InputNumber, message, Modal, Table, Tag } from "antd";
+import { Button, Form, Input, InputNumber, message, Modal, Table, Tag, Tabs } from "antd";
 import { useParams } from "react-router-dom";
 import type { UserSprintItem, UserSprintStatus } from "../../common/types/pm";
 import { pmApi } from "../../api/pm";
+import { CreateTaskModal } from '../../components/pm/CreateTaskModal';
 
 type AssignUserFormValues = {
   userId: string;
@@ -16,6 +17,7 @@ export const SprintManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [userSprints, setUserSprints] = useState<UserSprintItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [form] = Form.useForm<AssignUserFormValues>();
 
   const fetchSprintUsers = useCallback(async () => {
@@ -124,14 +126,33 @@ export const SprintManagementPage: React.FC = () => {
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Quản lý Nhân sự Sprint</h2>
-        <Button type="primary" disabled={!sprintId} onClick={() => setIsModalOpen(true)}>
-          + Gán Nhân viên vào Sprint
-        </Button>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Quản lý Sprint: <span className="text-blue-600">{sprintId}</span></h2>
       </div>
 
-      <Table columns={columns} dataSource={userSprints} rowKey="id" loading={loading} />
+      <Tabs defaultActiveKey="1">
+        <Tabs.TabPane tab="Nhân sự tham gia (Allocation)" key="1">
+           <div className="flex justify-end mb-4">
+              <Button type="primary" onClick={() => setIsModalOpen(true)}>
+                + Gán Nhân viên vào Sprint
+              </Button>
+           </div>
+           <Table columns={columns} dataSource={userSprints} rowKey="id" loading={loading} />
+        </Tabs.TabPane>
+
+        <Tabs.TabPane tab="Danh sách Tasks" key="2">
+           <div className="flex justify-between items-center mb-4">
+              <span className="text-gray-500 italic">Tính năng chia việc chi tiết cho nhân sự...</span>
+              <Button type="primary" style={{ backgroundColor: '#52c41a' }} onClick={() => setIsTaskModalOpen(true)}>
+                + Tạo Task Mới
+              </Button>
+           </div>
+           
+           <div className="border border-dashed border-gray-300 rounded p-12 text-center text-gray-400">
+              Chưa có task nào được tạo trong Sprint này.
+           </div>
+        </Tabs.TabPane>
+      </Tabs>
 
       <Modal
         title="Yêu cầu gán nhân viên vào Sprint"
@@ -141,14 +162,23 @@ export const SprintManagementPage: React.FC = () => {
         destroyOnHidden
       >
         <Form form={form} layout="vertical" initialValues={{ percitant: 100 }} onFinish={handleAssignUser}>
-          <Form.Item name="userId" label="Mã/ID Nhân viên" rules={[{ required: true, message: "Vui lòng nhập User ID." }]}>
+          <Form.Item name="userId" label="Mã/ID Nhân viên" rules={[{ required: true, message: "Vui lòng nhập User ID." }]}> 
             <Input placeholder="Nhập User ID" />
           </Form.Item>
-          <Form.Item name="percitant" label="% Công suất tham gia" rules={[{ required: true, message: "Vui lòng nhập công suất." }]}>
+          <Form.Item name="percitant" label="% Công suất tham gia" rules={[{ required: true, message: "Vui lòng nhập công suất." }]}> 
             <InputNumber min={1} max={100} className="w-full" />
           </Form.Item>
         </Form>
       </Modal>
+
+      <CreateTaskModal 
+        open={isTaskModalOpen} 
+        sprintId={sprintId!} 
+        onClose={() => setIsTaskModalOpen(false)}
+        onRefresh={() => {
+          console.log("Sẽ reload lại bảng danh sách Task");
+        }}
+      />
     </div>
   );
 };
