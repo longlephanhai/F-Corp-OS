@@ -85,9 +85,7 @@ export const SprintManagementPage: React.FC = () => {
       render: (skills: TaskItem["requiredSkills"]) => (
         <div className="flex flex-wrap gap-1">
           {skills?.map((sk, idx) => {
-            // Các task cũ trong DB dùng { skill, level, years }, còn form mới
-            // dùng { skill_id, min_level, weight }. Hỗ trợ cả hai để không
-            // render ra "(Lv.)" khi xem dữ liệu đã tồn tại.
+            
             const legacySkill = sk as typeof sk & {
               skill?: string;
               level?: number;
