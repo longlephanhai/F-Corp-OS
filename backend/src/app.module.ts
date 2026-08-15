@@ -50,7 +50,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
           Task,
           UserSprint
         ],
-        synchronize: false, // Không nên để true trong môi trường production
+        synchronize: true, 
 
       }),
       inject: [ConfigService],
