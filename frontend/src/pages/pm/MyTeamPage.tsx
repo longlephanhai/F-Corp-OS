@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Table, Tag, Button, Badge, message } from "antd";
 import type { TeamMember, EmployeeStatus } from "../../common/types/pm";
 import { pmApi } from "../../api/pm";
-import { EvidenceApprovalModal } from "../../components/pm/EvidenceApprovalModal";
+import { EvidenceApprovalModal } from "../../components/pm/sprints/EvidenceApprovalModal";
 
 export const MyTeamPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
