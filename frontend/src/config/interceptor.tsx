@@ -68,7 +68,6 @@ instance.interceptors.response.use(
       //dispatch redux action
       store.dispatch(setRefreshTokenAction({ status: true, message }));
     }
-    console.log("Error in interceptor: ", error?.response?.data);
     return Promise.reject(error?.response?.data ?? error);
   }
 );

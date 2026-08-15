@@ -15,9 +15,6 @@ const LayoutApp = (props: IProps) => {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
 
-    console.log('isRefreshToken', isRefreshToken);
-    console.log('errorRefreshToken', errorRefreshToken);
-
 
     useEffect(() => {
         if (isRefreshToken === true) {

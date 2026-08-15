@@ -5,19 +5,20 @@ import { Result } from "antd";
 interface IProps {
     hideChildren?: boolean;
     children: React.ReactNode;
-    permission: { method: string, apiPath: string, module: string };
+    permission: { method: string, api_path: string, module: string };
 }
 
 const Access = (props: IProps) => {
-    //@ts-ignore
+
     const { permission, hideChildren = false } = props;
     const [allow, setAllow] = useState<boolean>(true);
     const permissions = useAppSelector(state => state.account.user.permissions);
 
+
     useEffect(() => {
         if (permissions.length) {
             const check = permissions.find(item =>
-                item.apiPath === permission.apiPath
+                item.apiPath === permission.api_path
                 && item.method === permission.method
                 && item.module === permission.module
             )
@@ -43,7 +44,7 @@ const Access = (props: IProps) => {
                         />
                         :
                         <>
-                            {/* render nothing */}
+
                         </>
                     }
                 </>

@@ -46,26 +46,26 @@ function App() {
       errorElement: <ErrorPage />,
       children: [
         { index: true, element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
-        { path: "users", element: <UsersPage /> },
-        { path: "roles", element: <RolesPage /> },
-        { path: "permissions", element: <PermissionsPage /> },
+        { path: "users", element: <ProtectedRoute><UsersPage /></ProtectedRoute> },
+        { path: "roles", element: <ProtectedRoute><RolesPage /></ProtectedRoute> },
+        { path: "permissions", element: <ProtectedRoute><PermissionsPage /></ProtectedRoute> },
       ],
     },
     {
       path: "/hr",
-      element: <LayoutHR />,
+      element: <LayoutApp><LayoutHR /></LayoutApp>,
       errorElement: <ErrorPage />,
       children: [
-        { path: "dashboard", element: <HRDashboard /> },
-        { path: "wallet", element: <WalletAdmin /> },
-        { path: "review", element: <ReviewConsole /> },
-        { path: "bench", element: <PlaceholderPage title="Dự báo Bench" /> },
+        { path: "dashboard", element: <ProtectedRoute><HRDashboard /></ProtectedRoute> },
+        { path: "wallet", element: <ProtectedRoute><WalletAdmin /></ProtectedRoute> },
+        { path: "review", element: <ProtectedRoute><ReviewConsole /></ProtectedRoute> },
+        { path: "bench", element: <ProtectedRoute><PlaceholderPage title="Dự báo Bench" /></ProtectedRoute> },
       ],
     },
 
     {
       path: "/pm",
-      element: <LayoutPM />,
+      element: <LayoutApp><LayoutPM /></LayoutApp>,
       errorElement: <ErrorPage />,
       children: [
         {
@@ -74,11 +74,11 @@ function App() {
         },
         {
           path: "my-team",
-          element: <MyTeamPage />,
+          element: <ProtectedRoute><MyTeamPage /></ProtectedRoute>,
         },
         {
           path: "sprints/:sprintId",
-          element: <SprintManagementPage />,
+          element: <ProtectedRoute><SprintManagementPage /></ProtectedRoute>,
         },
       ],
     },

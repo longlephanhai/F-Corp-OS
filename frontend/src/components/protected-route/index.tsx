@@ -12,8 +12,6 @@ const ProtectedRoute = (props: any) => {
     const isAuthenticated = useAppSelector(state => state.account.isAuthenticated);
     const isLoading = useAppSelector(state => state.account.isLoading);
 
-    console.log('ProtectedRoute isAuthenticated', isAuthenticated, 'isLoading', isLoading);
-
     return (
         <>
             {isLoading === true
