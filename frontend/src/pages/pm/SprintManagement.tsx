@@ -18,6 +18,7 @@ import type {
 } from "../../common/types/pm";
 import { pmApi } from "../../api/pm";
 import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
+import { ReleaseReviewModal } from "../../components/pm/sprints/ReleaseReviewModal";
 import { TaskMatchingDrawer } from "../../components/pm/sprints/TaskMatchingDrawer";
 
 type AssignUserFormValues = {
@@ -40,10 +41,23 @@ export const SprintManagementPage: React.FC = () => {
   const [isMatchingOpen, setIsMatchingOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
+  // Release modal states
+  const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+  const [releaseUserSprintId, setReleaseUserSprintId] = useState<string | null>(
+    null,
+  );
+  const [releaseDevName, setReleaseDevName] = useState<string>("");
+
   // Hàm mở Drawer tìm ứng viên
   const handleOpenMatching = (task: TaskItem) => {
     setSelectedTask(task);
     setIsMatchingOpen(true);
+  };
+
+  const handleOpenReleaseModal = (record: UserSprintItem) => {
+    setReleaseUserSprintId(record.id);
+    setReleaseDevName(record.user?.fullName || "Nhân sự");
+    setIsReleaseModalOpen(true);
   };
 
   // Cột cho Bảng Task
@@ -68,13 +82,29 @@ export const SprintManagementPage: React.FC = () => {
       title: "Kỹ năng yêu cầu (Required Skills)",
       dataIndex: "requiredSkills",
       key: "skills",
-      render: (skills: any[]) => (
+      render: (skills: TaskItem["requiredSkills"]) => (
         <div className="flex flex-wrap gap-1">
-          {skills?.map((sk, idx) => (
-            <Tag key={idx} color="processing">
-              {sk.skill_id} (Lv.{sk.min_level})
-            </Tag>
-          ))}
+          {skills?.map((sk, idx) => {
+            // Các task cũ trong DB dùng { skill, level, years }, còn form mới
+            // dùng { skill_id, min_level, weight }. Hỗ trợ cả hai để không
+            // render ra "(Lv.)" khi xem dữ liệu đã tồn tại.
+            const legacySkill = sk as typeof sk & {
+              skill?: string;
+              level?: number;
+              years?: number;
+            };
+            const skillName =
+              legacySkill.skill_id ?? legacySkill.skill ?? "Chưa xác định";
+            const level = legacySkill.min_level ?? legacySkill.level;
+
+            return (
+              <Tag key={`${skillName}-${idx}`} color="processing">
+                {skillName}
+                {level !== undefined ? ` (Lv.${level})` : ""}
+                {legacySkill.years ? ` · ${legacySkill.years} năm` : ""}
+              </Tag>
+            );
+          })}
         </div>
       ),
     },
@@ -113,44 +143,34 @@ export const SprintManagementPage: React.FC = () => {
     },
   ];
 
-  // Giả lập 1 Task mẫu vào mảng Tasks để test UI
-  useEffect(() => {
-    setTasks([
-      {
-        id: "task-1",
-        sprintId: sprintId!,
-        startDate: "2026-08-15",
-        endDate: "2026-08-30",
-        budgetRate: 1200,
-        requiredSkills: [
-          { skill_id: "ReactJS", min_level: 4, weight: 5 },
-          { skill_id: "Figma", min_level: 2, weight: 2 },
-        ],
-      },
-    ]);
-  }, []);
-
-  const fetchSprintUsers = useCallback(async () => {
+  const fetchSprintData = useCallback(async () => {
     if (!sprintId) {
       setUserSprints([]);
+      setTasks([]);
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await pmApi.getSprintUsers(sprintId);
-      setUserSprints(res.data.data ?? []);
+      // add thêm api thay vì mockdataa
+      const [resUsers, resTasks] = await Promise.all([
+        pmApi.getSprintUsers(sprintId),
+        pmApi.getSprintTasks(sprintId),
+      ]);
+
+      setUserSprints(resUsers?.data?.data ?? resUsers?.data ?? []);
+      setTasks(resTasks?.data?.data ?? resTasks?.data ?? []);
     } catch (error) {
-      console.error("Lỗi tải danh sách nhân sự Sprint:", error);
-      message.error("Không thể tải danh sách nhân sự Sprint.");
+      console.error("Lỗi tải dữ liệu Sprint từ Server:", error);
+      message.error("Lỗi khi tải dữ liệu Sprint từ Server!");
     } finally {
       setLoading(false);
     }
   }, [sprintId]);
 
   useEffect(() => {
-    void fetchSprintUsers();
-  }, [fetchSprintUsers]);
+    void fetchSprintData();
+  }, [fetchSprintData]);
 
   const handleUpdateStatus = async (
     id: string,
@@ -159,7 +179,7 @@ export const SprintManagementPage: React.FC = () => {
     try {
       await pmApi.updateUserSprintStatus(id, newStatus);
       message.success("Cập nhật trạng thái thành công!");
-      await fetchSprintUsers();
+      await fetchSprintData();
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái:", error);
       message.error("Lỗi khi cập nhật trạng thái.");
@@ -177,7 +197,7 @@ export const SprintManagementPage: React.FC = () => {
       message.success("Đã gửi yêu cầu gán nhân viên!");
       form.resetFields();
       setIsModalOpen(false);
-      await fetchSprintUsers();
+      await fetchSprintData();
     } catch (error) {
       console.error("Lỗi khi gán nhân viên vào Sprint:", error);
       message.error("Không thể gửi yêu cầu gán nhân viên.");
@@ -235,7 +255,7 @@ export const SprintManagementPage: React.FC = () => {
             <Button
               danger
               size="small"
-              onClick={() => void handleUpdateStatus(record.id, "released")}
+              onClick={() => handleOpenReleaseModal(record)}
             >
               Giải phóng (Release 100%)
             </Button>
@@ -327,13 +347,22 @@ export const SprintManagementPage: React.FC = () => {
         sprintId={sprintId!}
         onClose={() => setIsTaskModalOpen(false)}
         onRefresh={() => {
-          console.log("Sẽ reload lại bảng danh sách Task");
+          void fetchSprintData();
         }}
       />
       <TaskMatchingDrawer
         open={isMatchingOpen}
         task={selectedTask}
         onClose={() => setIsMatchingOpen(false)}
+      />
+      <ReleaseReviewModal
+        open={isReleaseModalOpen}
+        userSprintId={releaseUserSprintId}
+        devName={releaseDevName}
+        onClose={() => setIsReleaseModalOpen(false)}
+        onRefresh={() => {
+          void fetchSprintData();
+        }}
       />
     </div>
   );

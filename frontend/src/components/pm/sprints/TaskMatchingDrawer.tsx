@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { Drawer, Table, Button, Progress, Tag, Avatar, message, Space } from "antd";
-import type { TaskItem, TeamMember } from "../../../common/types/pm";
-import { CandidateCompareModal } from '../CandidateCompareModal';
+import React, { useCallback, useState, useEffect } from "react";
+import {
+  Drawer,
+  Table,
+  Button,
+  Progress,
+  Tag,
+  Avatar,
+  message,
+} from "antd";
+import type { TaskCandidate, TaskItem } from "../../../common/types/pm";
+import { CandidateCompareModal } from "../CandidateCompareModal";
+import { pmApi } from "../../../api/pm";
 
 interface Props {
   open: boolean;
@@ -15,46 +24,44 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
   onClose,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [candidates, setCandidates] = useState<any[]>([]);
+  const [candidates, setCandidates] = useState<TaskCandidate[]>([]);
   // --- STATE MỚI CHO TÍNH NĂNG SO SÁNH ---
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
 
-  // Giả lập gọi API tìm ứng viên mỗi khi Drawer mở ra
-  useEffect(() => {
-    if (open && task) {
-      fetchMatchingCandidates();
-    }
-  }, [open, task]);
-
-  const fetchMatchingCandidates = () => {
+  const fetchMatchingCandidates = useCallback(async (taskId: string) => {
     setLoading(true);
-    // Giả lập độ trễ API 1 giây
-    setTimeout(() => {
-      // Data giả lập BE trả về: danh sách Dev kèm tỷ lệ % khớp kỹ năng
-      setCandidates([
-        {
-          id: "dev-001",
-          fullName: "Lê Văn Lính",
-          title: "Senior Frontend",
-          status: "available",
-          matchScore: 95, // 95% khớp
-          matchedSkills: ["ReactJS", "Figma"],
-          missingSkills: [],
-        },
-        {
-          id: "dev-002",
-          fullName: "Trần Thị Backend",
-          title: "NodeJS Developer",
-          status: "bench",
-          matchScore: 60,
-          matchedSkills: ["NodeJS"],
-          missingSkills: ["ReactJS"],
-        },
-      ]);
+    try {
+      const response = await pmApi.getTaskCandidates(taskId);
+      setCandidates(response.data.data ?? []);
+    } catch (error) {
+      console.error("Không thể tải danh sách ứng viên:", error);
+      setCandidates([]);
+      message.error("Không thể tải danh sách ứng viên phù hợp.");
+    } finally {
       setLoading(false);
-    }, 1000);
-  };
+    }
+  }, []);
+
+  // Giả lập gọi API tìm ứng viên mỗi khi Drawer mở ra.
+  useEffect(() => {
+    if (!open || !task) {
+      return;
+    }
+
+    const requestTimer = window.setTimeout(() => {
+      void fetchMatchingCandidates(task.id);
+    }, 0);
+    const resetSelectionTimer = window.setTimeout(
+      () => setSelectedRowKeys([]),
+      0,
+    );
+
+    return () => {
+      window.clearTimeout(requestTimer);
+      window.clearTimeout(resetSelectionTimer);
+    };
+  }, [fetchMatchingCandidates, open, task]);
 
   const handleAssign = (devId: string) => {
     message.success(`Đã gửi yêu cầu gán Dev ${devId} vào Task này!`);
@@ -67,7 +74,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     {
       title: "Ứng viên",
       key: "user",
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: TaskCandidate) => (
         <div className="flex items-center gap-3">
           <Avatar className="bg-blue-500">{record.fullName.charAt(0)}</Avatar>
           <div>
@@ -94,7 +101,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     {
       title: "Phân tích Kỹ năng",
       key: "skills",
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: TaskCandidate) => (
         <div>
           {record.matchedSkills.map((sk: string) => (
             <Tag color="green" key={sk}>
@@ -112,7 +119,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     {
       title: "Hành động",
       key: "action",
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: TaskCandidate) => (
         <Button
           type="primary"
           size="small"
@@ -130,7 +137,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     selectedRowKeys,
     onChange: (newSelectedRowKeys: React.Key[]) => {
       if (newSelectedRowKeys.length > 3) {
-        message.warning('Chỉ được so sánh tối đa 3 ứng viên cùng lúc!');
+        message.warning("Chỉ được so sánh tối đa 3 ứng viên cùng lúc!");
         return;
       }
       setSelectedRowKeys(newSelectedRowKeys);
@@ -138,7 +145,9 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
   };
 
   // Lấy data của các ứng viên được tick chọn
-  const selectedCandidatesData = candidates.filter(c => selectedRowKeys.includes(c.id));
+  const selectedCandidatesData = candidates.filter((c) =>
+    selectedRowKeys.includes(c.id),
+  );
 
   return (
     <>
@@ -147,10 +156,12 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
           <div className="flex justify-between items-center pr-8">
             <div>
               <h3 className="text-lg font-bold m-0">Gợi ý Nhân sự</h3>
-              <span className="text-sm text-gray-500 font-normal">Cho Task: Tìm người code UI/UX</span>
+              <span className="text-sm text-gray-500 font-normal">
+                Quyết định chọn người dựa trên mức độ phù hợp kỹ năng
+              </span>
             </div>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               disabled={selectedRowKeys.length < 2}
               onClick={() => setIsCompareOpen(true)}
             >
@@ -159,22 +170,36 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
           </div>
         }
         placement="right"
-        width={750}
+        width={850}
         onClose={onClose}
         open={open}
       >
-      <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
-        <div className="font-semibold text-blue-800 mb-1">
-          Yêu cầu của Task này:
+        <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <div className="font-semibold text-blue-800 mb-1">
+            Yêu cầu của Task này:
+          </div>
+          <div className="text-sm text-gray-700">
+            {task?.requiredSkills?.length ? (
+              task.requiredSkills.map((req, idx) => {
+                const legacySkill = req as typeof req & {
+                  skill?: string;
+                  level?: number;
+                };
+                const skillName = legacySkill.skill_id ?? legacySkill.skill ?? "Chưa xác định";
+                const level = legacySkill.min_level ?? legacySkill.level;
+
+                return (
+                  <Tag key={`${skillName}-${idx}`} color="blue">
+                    {skillName}
+                    {level !== undefined ? ` (Level ${level})` : ""}
+                  </Tag>
+                );
+              })
+            ) : (
+              <span className="italic">Chưa có kỹ năng yêu cầu</span>
+            )}
+          </div>
         </div>
-        <div className="text-sm text-gray-700">
-          {task?.requiredSkills?.map((req, idx) => (
-            <Tag key={idx} color="blue">
-              {req.skill_id} (Level {req.min_level})
-            </Tag>
-          )) || <span className="italic">Chưa có kỹ năng yêu cầu</span>}
-        </div>
-      </div>
 
         <Table
           rowSelection={rowSelection}
@@ -183,6 +208,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
           loading={loading}
           rowKey="id"
           pagination={false}
+          className="border border-gray-200 rounded-lg"
         />
       </Drawer>
 
