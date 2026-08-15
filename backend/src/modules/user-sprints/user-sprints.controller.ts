@@ -1,34 +1,32 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { UserSprintsService } from './user-sprints.service';
-import { CreateUserSprintDto } from './dto/create-user-sprint.dto';
-import { UpdateUserSprintDto } from './dto/update-user-sprint.dto';
+import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { UserSprintService } from './user-sprints.service';
+import { UserSprintStatus } from './entities/user-sprint.entity';
 
-@Controller('user-sprints')
-export class UserSprintsController {
-  constructor(private readonly userSprintsService: UserSprintsService) {}
+@Controller('user-sprint')
+export class UserSprintController {
+  constructor(private readonly userSprintService: UserSprintService) {}
 
+  // Tương ứng với: pmApi.getSprintUsers
+  @Get('sprint/:sprintId')
+  async getSprintUsers(@Param('sprintId') sprintId: string) {
+    const data = await this.userSprintService.getSprintUsers(sprintId);
+    return { statusCode: 200, message: 'Lấy danh sách thành công', data };
+  }
+
+  // Tương ứng với: pmApi.assignUserToSprint
   @Post()
-  create(@Body() createUserSprintDto: CreateUserSprintDto) {
-    return this.userSprintsService.create(createUserSprintDto);
+  async assignUserToSprint(@Body() body: any) {
+    const data = await this.userSprintService.assignUserToSprint(body);
+    return { statusCode: 201, message: 'Đã gửi yêu cầu gán nhân sự', data };
   }
 
-  @Get()
-  findAll() {
-    return this.userSprintsService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userSprintsService.findOne(+id);
-  }
-
+  // Tương ứng với: pmApi.updateUserSprintStatus
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserSprintDto: UpdateUserSprintDto) {
-    return this.userSprintsService.update(+id, updateUserSprintDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userSprintsService.remove(+id);
+  async updateUserSprintStatus(
+    @Param('id') id: string, 
+    @Body('status') status: string
+  ) {
+    const data = await this.userSprintService.updateStatus(id, status as UserSprintStatus);
+    return { statusCode: 200, message: 'Cập nhật trạng thái thành công', data };
   }
 }

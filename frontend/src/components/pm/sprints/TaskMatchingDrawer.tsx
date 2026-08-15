@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Drawer, Table, Button, Progress, Tag, Avatar, message } from "antd";
+import { Drawer, Table, Button, Progress, Tag, Avatar, message, Space } from "antd";
 import type { TaskItem, TeamMember } from "../../../common/types/pm";
+import { CandidateCompareModal } from '../CandidateCompareModal';
 
 interface Props {
   open: boolean;
@@ -15,6 +16,9 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [candidates, setCandidates] = useState<any[]>([]);
+  // --- STATE MỚI CHO TÍNH NĂNG SO SÁNH ---
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
 
   // Giả lập gọi API tìm ứng viên mỗi khi Drawer mở ra
   useEffect(() => {
@@ -55,6 +59,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
   const handleAssign = (devId: string) => {
     message.success(`Đã gửi yêu cầu gán Dev ${devId} vào Task này!`);
     // Chỗ này sau sẽ gọi pmApi.assignUserToSprint / Task
+    setIsCompareOpen(false);
     onClose();
   };
 
@@ -120,23 +125,44 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     },
   ];
 
-  return (
-    <Drawer
-      title={
-        <div>
-          <h3 className="text-lg font-bold m-0">
-            Gợi ý Nhân sự (Rule-based Matching)
-          </h3>
-          <span className="text-sm text-gray-500 font-normal">
-            Cho Task: Tìm người code UI/UX
-          </span>
-        </div>
+  // --- CẤU HÌNH CHECKBOX CHO BẢNG ---
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      if (newSelectedRowKeys.length > 3) {
+        message.warning('Chỉ được so sánh tối đa 3 ứng viên cùng lúc!');
+        return;
       }
-      placement="right"
-      width={700}
-      onClose={onClose}
-      open={open}
-    >
+      setSelectedRowKeys(newSelectedRowKeys);
+    },
+  };
+
+  // Lấy data của các ứng viên được tick chọn
+  const selectedCandidatesData = candidates.filter(c => selectedRowKeys.includes(c.id));
+
+  return (
+    <>
+      <Drawer
+        title={
+          <div className="flex justify-between items-center pr-8">
+            <div>
+              <h3 className="text-lg font-bold m-0">Gợi ý Nhân sự</h3>
+              <span className="text-sm text-gray-500 font-normal">Cho Task: Tìm người code UI/UX</span>
+            </div>
+            <Button 
+              type="primary" 
+              disabled={selectedRowKeys.length < 2}
+              onClick={() => setIsCompareOpen(true)}
+            >
+              ⚖️ So sánh đã chọn ({selectedRowKeys.length})
+            </Button>
+          </div>
+        }
+        placement="right"
+        width={750}
+        onClose={onClose}
+        open={open}
+      >
       <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
         <div className="font-semibold text-blue-800 mb-1">
           Yêu cầu của Task này:
@@ -150,13 +176,22 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
         </div>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={candidates}
-        loading={loading}
-        rowKey="id"
-        pagination={false}
+        <Table
+          rowSelection={rowSelection}
+          columns={columns}
+          dataSource={candidates}
+          loading={loading}
+          rowKey="id"
+          pagination={false}
+        />
+      </Drawer>
+
+      <CandidateCompareModal
+        open={isCompareOpen}
+        candidates={selectedCandidatesData}
+        onClose={() => setIsCompareOpen(false)}
+        onAssign={handleAssign}
       />
-    </Drawer>
+    </>
   );
 };

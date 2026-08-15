@@ -21,6 +21,7 @@ import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.e
 
 import { UserSprintsModule } from './modules/user-sprints/user-sprints.module';
 import { TaskModule } from './modules/task/task.module';
+import { SprintsModule } from './modules/sprints/sprints.module';
 import { Sprint } from 'modules/sprints/entities/sprint.entity';
 import { Task } from 'modules/task/entities/task.entity';
 import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
@@ -49,7 +50,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
           Task,
           UserSprint
         ],
-        synchronize: true,
+        synchronize: true, // Không nên để true trong môi trường production
 
       }),
       inject: [ConfigService],
@@ -64,6 +65,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
     SkillEvidencesModule,
     UserSprintsModule,
     TaskModule,
+    SprintsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
