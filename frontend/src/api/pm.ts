@@ -39,4 +39,10 @@ export const pmApi = {
   createTask: (data: Partial<TaskItem>) => {
     return axios.post<IBackendRes<TaskItem>>("/tasks", data);
   },
+
+
+  // Giải phóng nhân sự kèm Đánh giá (Review)
+  releaseUserSprint: (id: string, reviewData: any) => {
+    return axios.patch<IBackendRes<any>>(`/user-sprint/${id}/release`, reviewData);
+  },
 };

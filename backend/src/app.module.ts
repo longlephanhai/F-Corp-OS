@@ -50,7 +50,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
           Task,
           UserSprint
         ],
-        synchronize: false, // Không nên để true trong môi trường production
+        synchronize: false, // Tắt auto-sync để không tạo lại các table đã có sẵn
 
       }),
       inject: [ConfigService],

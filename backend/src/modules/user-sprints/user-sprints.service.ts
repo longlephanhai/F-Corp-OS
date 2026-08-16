@@ -45,4 +45,20 @@ export class UserSprintService {
     record.status = status;
     return await this.userSprintRepo.save(record);
   }
+
+  // Hàm Giải phóng & Lưu đánh giá
+  async releaseUser(id: string, reviewData: any) {
+    const record = await this.userSprintRepo.findOne({ where: { id } });
+    if (!record) {
+      throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
+    }
+    
+    // Cập nhật trạng thái và thông tin đánh giá
+    record.status = 'released' as any; // Ép kiểu theo Enum của bạn
+    record.hardSkillRate = reviewData.hardSkillRate;
+    record.softSkillRate = reviewData.softSkillRate;
+    record.reviewComment = reviewData.reviewComment;
+
+    return await this.userSprintRepo.save(record);
+  }
 }
