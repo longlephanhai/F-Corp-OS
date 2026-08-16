@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Breadcrumb,
     Button,
@@ -18,8 +18,6 @@ import {
 import type { TableProps } from 'antd';
 import {
     PlusOutlined,
-    SearchOutlined,
-    ReloadOutlined,
     EditOutlined,
     DeleteOutlined,
     TeamOutlined,
@@ -27,13 +25,15 @@ import {
     KeyOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { callFetchRoles } from '../../api';
 
 const { Text } = Typography;
 const { TextArea } = Input;
 
-interface IMockRole {
+interface IRole {
     id: string;
     name: string;
+    description?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -45,12 +45,6 @@ interface IMockPermission {
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
     module: 'USERS' | 'ROLES' | 'PERMISSIONS';
 }
-
-const MOCK_ROLES: IMockRole[] = [
-    { id: '1', name: 'SUPER_ADMIN', createdAt: '29-09-2024 14:56:38', updatedAt: '02-07-2025 17:45:48' },
-    { id: '2', name: 'hr', createdAt: '02-07-2025 17:43:10', updatedAt: '02-07-2025 17:43:10' },
-    { id: '3', name: 'NORMAL_USER', createdAt: '29-09-2024 14:56:38', updatedAt: '02-07-2025 17:41:32' },
-];
 
 // Khớp đúng 12 permission thật trong init.ts
 const MOCK_PERMISSIONS: IMockPermission[] = [
@@ -219,13 +213,25 @@ const RoleFormModal = ({ open, onCancel, onSubmit }: IRoleModalProps) => {
 
 // ============ Trang chính Roles ============
 const RolesPage = () => {
-    const [nameFilter, setNameFilter] = useState('');
-    const [appliedFilter, setAppliedFilter] = useState('');
+    const [roles, setRoles] = useState<IRole[]>([]);
+    const [loading, setLoading] = useState(false);
+
     const [modalOpen, setModalOpen] = useState(false);
 
-    const filteredRoles = MOCK_ROLES.filter((r) =>
-        r.name.toLowerCase().includes(appliedFilter.toLowerCase())
-    );
+    const fetchRoles = async () => {
+        setLoading(true);
+        const res: any = await callFetchRoles();
+        if (res?.data) {
+            setRoles(res.data);
+        } else {
+            setRoles([]);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchRoles();
+    }, []);
 
     const handleSubmitRole = (values: { name: string; description: string; permissions: string[] }) => {
         console.log('Tạo role mới:', values);
@@ -233,24 +239,16 @@ const RolesPage = () => {
         setModalOpen(false);
     };
 
-    const columns: TableProps<IMockRole>['columns'] = [
+    const columns: TableProps<IRole>['columns'] = [
         {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
-            sorter: (a, b) => a.name.localeCompare(b.name),
         },
         {
-            title: 'CreatedAt',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
-            sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
-        },
-        {
-            title: 'UpdatedAt',
-            dataIndex: 'updatedAt',
-            key: 'updatedAt',
-            sorter: (a, b) => a.updatedAt.localeCompare(b.updatedAt),
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
         },
         {
             title: 'Actions',
@@ -274,32 +272,6 @@ const RolesPage = () => {
                 style={{ marginBottom: 8 }}
             />
 
-            <Card style={{ marginBottom: 16 }}>
-                <Flex gap={12} align="flex-end" wrap="wrap">
-                    <div>
-                        <Text strong>Name</Text>
-                        <Input
-                            placeholder="nhập dữ liệu"
-                            value={nameFilter}
-                            onChange={(e) => setNameFilter(e.target.value)}
-                            style={{ width: 240, marginTop: 4 }}
-                        />
-                    </div>
-                    <Button type="primary" icon={<SearchOutlined />} onClick={() => setAppliedFilter(nameFilter)}>
-                        Tìm kiếm
-                    </Button>
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={() => {
-                            setNameFilter('');
-                            setAppliedFilter('');
-                        }}
-                    >
-                        Làm mới
-                    </Button>
-                </Flex>
-            </Card>
-
             <Card
                 title="Danh sách Roles (Vai trò)"
                 extra={
@@ -310,9 +282,10 @@ const RolesPage = () => {
             >
                 <Table
                     rowKey="id"
+                    loading={loading}
                     columns={columns}
-                    dataSource={filteredRoles}
-                    pagination={{ pageSize: 10, showTotal: (total) => `1-${total} trên ${total} rows` }}
+                    dataSource={roles}
+                    pagination={false}
                 />
             </Card>
 

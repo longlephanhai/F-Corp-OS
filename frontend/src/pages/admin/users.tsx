@@ -21,6 +21,7 @@ import {
     DeleteOutlined,
     UndoOutlined,
     UserOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { callFetchUsers, callFetchRoles, callDeleteUser, callRestoreUser } from '../../api';
@@ -233,7 +234,16 @@ const UsersPage = () => {
                         onPressEnter={handleSearch}
                         allowClear
                         onClear={() => fetchUsers(1, meta.pageSize, '', roleFilter)}
+                        
                     />
+                     <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => {
+                            fetchUsers(1, meta.pageSize, "", "");
+                        }}
+                    >
+                        Làm mới
+                    </Button>
                     <Select
                         placeholder="Filter by Role"
                         style={{ minWidth: 180 }}
@@ -244,6 +254,7 @@ const UsersPage = () => {
                             ...roles.map((r) => ({ label: r.name, value: r.id })),
                         ]}
                     />
+                    
                 </Flex>
 
                 <Table
@@ -259,6 +270,7 @@ const UsersPage = () => {
                         onChange: (page, pageSize) => fetchUsers(page, pageSize, searchText, roleFilter),
                     }}
                 />
+                   
             </Card>
             <AddUserModal
                 open={addModalOpen}

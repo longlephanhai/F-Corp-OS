@@ -13,10 +13,6 @@ export const callFetchUsers = (query: string) => {
     return axios.get(`/users?${query}`);
 }
 
-export const callFetchRoles = () => {
-    return axios.get('/roles');
-}
-
 export const callCreateUser = (data: {
     email: string;
     password: string;
@@ -44,4 +40,9 @@ export const callUpdateUser = (id: string, data: {
     status: string;
 }) => {
     return axios.patch(`/users/${id}`, data);
+}
+
+//==================API Admin-Role====================
+export const callFetchRoles = () => {
+    return axios.get('/roles');
 }
