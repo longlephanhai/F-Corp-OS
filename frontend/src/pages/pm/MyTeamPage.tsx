@@ -36,9 +36,9 @@ const { Title, Text } = Typography;
 // ---- Cấu hình trạng thái: gom màu sắc + nhãn về một chỗ để dễ chỉnh sửa ----
 const STATUS_CONFIG: Record<EmployeeStatus, { label: string; color: string }> =
   {
-    available: { label: "Sẵn sàng", color: "#16a34a" },
-    bench: { label: "Bench", color: "#d97706" },
-    on_project: { label: "Đang dự án", color: "#2563eb" },
+    AVAILABLE: { label: "Sẵn sàng", color: "#16a34a" },
+    BENCH: { label: "Bench", color: "#d97706" },
+    IN_PROJECT: { label: "Đang dự án", color: "#2563eb" },
   };
 
 // ---- Sinh màu avatar ổn định theo tên, để mỗi người có một "chữ ký" màu riêng ----
@@ -51,19 +51,26 @@ const AVATAR_PALETTE = [
   "#059669",
 ];
 
-const getAvatarColor = (name: string) => {
-  const sum = name.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+const safeText = (value?: string | null) => (value ?? "").toString();
+
+const getAvatarColor = (name?: string) => {
+  const safeName = safeText(name);
+  if (!safeName) return AVATAR_PALETTE[0];
+  const sum = safeName.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   return AVATAR_PALETTE[sum % AVATAR_PALETTE.length];
 };
 
-const getInitials = (name: string) =>
-  name
-    .trim()
+const getInitials = (name?: string) => {
+  const safeName = safeText(name).trim();
+  if (!safeName) return "N";
+  return safeName
     .split(/\s+/)
+    .filter(Boolean)
     .slice(-2)
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+};
 
 export const MyTeamPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
@@ -82,6 +89,8 @@ export const MyTeamPage: React.FC = () => {
     try {
       // Giả sử bạn đã định nghĩa pmApi.getMyTeam() trong api/pm.ts gọi đến '/users/pm/my-team'
       const res = await pmApi.getMyTeam();
+
+      console.log("My Team data:", res?.data?.data || res?.data);
       setTeam(res?.data?.data || res?.data || []);
     } catch (error) {
       message.error("Lỗi khi lấy danh sách Team!");
@@ -122,13 +131,13 @@ export const MyTeamPage: React.FC = () => {
     ];
 
     const csvRows = team.map((member) => {
-      const pendingCount = countPendingEvidences(member.userSkills);
+      const pendingCount = countPendingEvidences(member.userSkills ?? []);
       const row = [
-        member.id,
-        `"${member.fullName}"`,
-        member.email,
-        `"${member.title}"`,
-        member.status.toUpperCase(),
+        member.id ?? "",
+        `"${safeText(member.fullName)}"`,
+        safeText(member.email),
+        `"${safeText(member.title)}"`,
+        safeText(member.status).toUpperCase(),
         pendingCount,
       ];
       return row.join(",");
@@ -155,12 +164,12 @@ export const MyTeamPage: React.FC = () => {
   const filteredTeam = useMemo(() => {
     if (!searchText.trim()) return team;
     const q = searchText.trim().toLowerCase();
-    return team.filter(
-      (m) =>
-        m.fullName.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        m.title.toLowerCase().includes(q),
-    );
+    return team.filter((m) => {
+      const fullName = safeText(m.fullName).toLowerCase();
+      const email = safeText(m.email).toLowerCase();
+      const title = safeText(m.title).toLowerCase();
+      return fullName.includes(q) || email.includes(q) || title.includes(q);
+    });
   }, [team, searchText]);
 
   const columns = [
@@ -174,8 +183,8 @@ export const MyTeamPage: React.FC = () => {
             {getInitials(text)}
           </Avatar>
           <div className="pmt-person-info">
-            <div className="pmt-person-name">{text}</div>
-            <div className="pmt-person-email">{record.email}</div>
+            <div className="pmt-person-name">{safeText(text)}</div>
+            <div className="pmt-person-email">{safeText(record.email)}</div>
           </div>
         </div>
       ),
@@ -191,16 +200,18 @@ export const MyTeamPage: React.FC = () => {
       dataIndex: "status",
       key: "status",
       render: (status: EmployeeStatus) => {
-        const cfg = STATUS_CONFIG[status];
+        const safeStatus = (status as string) ?? "available";
+        const cfg = STATUS_CONFIG[safeStatus as EmployeeStatus] ?? {
+          label: safeText(safeStatus) || "—",
+          color: "#94a3b8",
+        };
+        const color = cfg?.color ?? "#94a3b8";
         return (
           <span
             className="pmt-status-pill"
-            style={{ color: cfg.color, background: `${cfg.color}14` }}
+            style={{ color: color, background: `${color}14` }}
           >
-            <span
-              className="pmt-status-dot"
-              style={{ background: cfg.color }}
-            />
+            <span className="pmt-status-dot" style={{ background: color }} />
             {cfg.label}
           </span>
         );

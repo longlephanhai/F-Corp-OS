@@ -12,11 +12,10 @@ import aqp from 'api-query-params';
 
 @Injectable()
 export class UsersService {
-
   constructor(
     @InjectRepository(User) private usersRepository: Repository<User>,
-    @InjectRepository(Role) private rolesRepository: Repository<Role>
-  ) { }
+    @InjectRepository(Role) private rolesRepository: Repository<Role>,
+  ) {}
 
   findOneByEmail(email: string) {
     return this.usersRepository.findOne({
@@ -26,7 +25,7 @@ export class UsersService {
           permissions: true,
         },
       },
-    })
+    });
   }
 
   isValidPassword(password: string, hash: string) {
@@ -34,24 +33,26 @@ export class UsersService {
   }
 
   updateUserToken = async (refreshToken: string, id: string) => {
-    return this.usersRepository.update({
-      id: id
-    }, {
-      refreshToken: refreshToken
-    })
-  }
+    return this.usersRepository.update(
+      {
+        id: id,
+      },
+      {
+        refreshToken: refreshToken,
+      },
+    );
+  };
 
   findUserByToken = async (refreshToken: string) => {
     return await this.usersRepository.findOne({
       where: { refreshToken },
       relations: {
         role: {
-          permissions: true
+          permissions: true,
         },
       },
-    })
-  }
-
+    });
+  };
 
   async create(createUserDto: CreateUserDto, user: IUser) {
     const { email, password, fullName, role_id } = createUserDto;
@@ -67,7 +68,7 @@ export class UsersService {
     const hashedPassword = getHashPassword(password);
 
     const userRole = await this.rolesRepository.findOne({
-      where: { id: role_id }
+      where: { id: role_id },
     });
 
     if (!userRole) {
@@ -82,8 +83,8 @@ export class UsersService {
       role: userRole,
       createdBy: {
         id: user.id,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
 
     return newUser;
@@ -99,18 +100,18 @@ export class UsersService {
     const search = filter.search;
     delete filter.search;
 
-    let offset = (+currentPage - 1) * (+limit);
+    let offset = (+currentPage - 1) * +limit;
     let defaultLimit = +limit ? +limit : 10;
 
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
-      .leftJoinAndSelect('role.permissions', 'permission')
+      .leftJoinAndSelect('role.permissions', 'permission');
 
     if (search) {
       queryBuilder.andWhere(
         '(user.fullName LIKE :search OR user.email LIKE :search)',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -118,11 +119,13 @@ export class UsersService {
 
     Object.keys(filter).forEach((key) => {
       if (likeFields.includes(key)) {
-        queryBuilder.andWhere(`user.${key} LIKE :${key}`, { [key]: `%${filter[key]}%` });
+        queryBuilder.andWhere(`user.${key} LIKE :${key}`, {
+          [key]: `%${filter[key]}%`,
+        });
       } else {
         queryBuilder.andWhere(`user.${key} = :${key}`, { [key]: filter[key] });
       }
-    })
+    });
 
     if (filter.role_id) {
       queryBuilder.andWhere('role.id = :role_id', { role_id: filter.role_id });
@@ -136,8 +139,7 @@ export class UsersService {
     const [result, totalItems] = await queryBuilder
       .skip(offset)
       .take(defaultLimit)
-      .getManyAndCount()
-
+      .getManyAndCount();
 
     return {
       meta: {
@@ -146,14 +148,14 @@ export class UsersService {
         pages: Math.ceil(totalItems / defaultLimit),
         total: totalItems,
       },
-      result
-    }
+      result,
+    };
   }
 
- async countUser() {
+  async countUser() {
     const total = await this.usersRepository.count();
     return { total };
-}
+  }
 
   findOne(id: number) {
     return `This action returns a #${id} user`;
@@ -167,19 +169,16 @@ export class UsersService {
     return `This action removes a #${id} user`;
   }
 
-
-
   // Lấy danh sách lính do PM quản lý
   async getMyTeam(managerId: string) {
-    return await this.userRepo.find({
+    return await this.usersRepository.find({
       where: { managerId, isDeleted: false },
-      relations: [
-        'userSkills', 
-        'userSkills.skill', 
-        'userSkills.evidences' // Kéo toàn bộ bằng chứng lên để FE đếm số lượng Pending
-      ]
+      relations: {
+        userSkills: {
+          skill: true,
+          evidences: true,
+        },
+      },
     });
   }
-
-
 }

@@ -51,4 +51,14 @@ export class SkillEvidence {
 
     @Column({ default: false })
     isDeleted: boolean;
+
+    @Column({
+  type: 'enum',
+  enum: ['PENDING', 'APPROVED', 'REJECTED'],
+  default: 'PENDING',
+})
+status: 'PENDING' | 'APPROVED' | 'REJECTED';
+
+@Column({ type: 'text', nullable: true })
+rejectReason: string | null;
 }

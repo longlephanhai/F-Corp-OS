@@ -26,7 +26,6 @@ import { Sprint } from 'modules/sprints/entities/sprint.entity';
 import { Task } from 'modules/task/entities/task.entity';
 import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -48,10 +47,9 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
           SkillEvidence,
           Sprint,
           Task,
-          UserSprint
+          UserSprint,
         ],
         synchronize: false,
-
       }),
       inject: [ConfigService],
     }),
@@ -70,4 +68,4 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
