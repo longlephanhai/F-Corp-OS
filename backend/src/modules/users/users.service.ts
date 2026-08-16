@@ -9,7 +9,8 @@ import { compareSync } from 'bcryptjs';
 import { Role } from 'modules/roles/entities/role.entity';
 import { IUser } from 'common/types/user.interface';
 import aqp from 'api-query-params';
-
+import { TITLE_COST_RATE } from 'common/constants/cost-rate.constant';
+import { UserStatusType } from 'common/enum/user.enum';
 @Injectable()
 export class UsersService {
 
@@ -54,7 +55,7 @@ export class UsersService {
 
 
   async create(createUserDto: CreateUserDto, user: IUser) {
-    const { email, password, fullName, role_id } = createUserDto;
+    const { email, password, fullName, role_id, title, status } = createUserDto;
 
     const isExist = await this.usersRepository.findOne({
       where: { email },
@@ -74,12 +75,18 @@ export class UsersService {
       throw new BadRequestException(`Role with id "${role_id}" does not exist`);
     }
 
+    const costRate = TITLE_COST_RATE[title];
+    console.log(user.id, user.email);
+
     const newUser = await this.usersRepository.save({
       ...createUserDto,
       email,
       password: hashedPassword,
       fullName,
       role: userRole,
+      title,                                        
+      costRate,                                       
+      status: status || UserStatusType.AVAILABLE,   
       createdBy: {
         id: user.id,
         email: user.email
@@ -87,7 +94,7 @@ export class UsersService {
     });
 
     return newUser;
-  }
+}
 
   async findAll(currentPage: number, limit: number, qs: string) {
     const { filter, sort } = aqp(qs);
@@ -106,6 +113,7 @@ export class UsersService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('role.permissions', 'permission')
+       .withDeleted()
 
     if (search) {
       queryBuilder.andWhere(
@@ -159,13 +167,103 @@ export class UsersService {
     return `This action returns a #${id} user`;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(id: string, updateUserDto: UpdateUserDto, user: IUser) {
+    const existUser = await this.usersRepository.findOne({
+      where: { id },
+      relations: { role: true },
+    });
+    if (!existUser) {
+      throw new BadRequestException(`User with id "${id}" not found`);
+    }
+
+    const { email, fullName, role_id, title, status } = updateUserDto;
+
+    if (email && email !== existUser.email) {
+      const emailExists = await this.usersRepository.findOne({ where: { email } });
+      if (emailExists) {
+        throw new BadRequestException('Email already exists');
+      }
+      existUser.email = email;
+    }
+
+    if (fullName) existUser.fullName = fullName;
+
+    if (role_id) {
+      const role = await this.rolesRepository.findOne({ where: { id: role_id } });
+      if (!role) {
+        throw new BadRequestException(`Role with id "${role_id}" does not exist`);
+      }
+      existUser.role = role;
+    }
+
+    if (title) {
+      existUser.title = title;
+      existUser.costRate = TITLE_COST_RATE[title];
+    }
+
+    if (status) existUser.status = status;
+
+    existUser.updatedBy = { id: user.id, email: user.email };
+
+    await this.usersRepository.save(existUser);
+
+    return { message: 'Updated successfully' };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
-  }
+  async remove(id: string, user: IUser) {
+    const existUser = await this.usersRepository.findOne({
+      where: { id },
+    });
+    console.log(`User with id "${id}" `);
+    console.log(`User with id "${user.fullName}" `);
+    if (!existUser) {
+      
+      throw new BadRequestException(`User with id "${id}" not found`);
+    }
+
+    await this.usersRepository.update(
+      { id },
+      {
+        isDeleted: true,
+        deletedBy: {
+          id: user.id,
+          email: user.email,
+        },
+      },
+    );
+
+    await this.usersRepository.softDelete(id);
+
+    return {
+      message: `User "${id}" deleted successfully`,
+    };
+}
+
+async restore(id: string, user: IUser) {
+    const existUser = await this.usersRepository.findOne({
+        where: { id },
+        withDeleted: true,   // cần bật, vì user đã bị soft-delete nên find() mặc định sẽ không thấy
+    });
+
+    if (!existUser) {
+        throw new BadRequestException(`User with id "${id}" not found`);
+    }
+
+    await this.usersRepository.update(
+        { id },
+        {
+            isDeleted: false,
+            deletedBy: undefined,
+            updatedBy: { id: user.id, email: user.email }
+        }
+    );
+
+    await this.usersRepository.restore(id);
+
+    return {
+        message: `User "${id}" restored successfully`,
+    };
+}
 
 
 }

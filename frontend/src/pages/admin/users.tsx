@@ -19,10 +19,14 @@ import {
     SearchOutlined,
     EditOutlined,
     DeleteOutlined,
+    UndoOutlined,
     UserOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import { callFetchUsers, callFetchRoles } from '../../api';
+import { callFetchUsers, callFetchRoles, callDeleteUser, callRestoreUser } from '../../api';
+import AddUserModal from '../../components/admin/add-user-modal';
+import EditUserModal from '../../components/admin/edit-user-modal';
 
 const { Title } = Typography;
 
@@ -31,6 +35,8 @@ interface IUser {
     fullName: string;
     email: string;
     role: { id: string; name: string } | null;
+    title: string;
+    status: string;
     isDeleted: boolean;
 }
 
@@ -61,7 +67,11 @@ const UsersPage = () => {
 
     const [meta, setMeta] = useState({ current: 1, pageSize: 10, total: 0 });
 
-    // ← ĐỔI: tham số thứ 3 đổi tên fullName -> search, gửi lên đúng key `search`
+    const [addModalOpen, setAddModalOpen] = useState(false);
+
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<IUser | null>(null);
+
     const fetchUsers = async (current = 1, pageSize = 10, search = '', role_id?: string) => {
         setLoading(true);
         let query = `current=${current}&pageSize=${pageSize}`;
@@ -99,6 +109,29 @@ const UsersPage = () => {
     const handleRoleFilterChange = (value: string) => {
         setRoleFilter(value);
         fetchUsers(1, meta.pageSize, searchText, value);
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await callDeleteUser(id);
+            fetchUsers(meta.current, meta.pageSize, searchText, roleFilter);
+        } catch (error) {
+            console.error('Failed to delete user:', error);
+        }
+    };
+
+    const handleOpenEdit = (record: IUser) => {
+        setEditingUser(record);
+        setEditModalOpen(true);
+    };
+
+    const handleRestore = async (id: string) => {
+        try {
+            await callRestoreUser(id);
+            fetchUsers(meta.current, meta.pageSize, searchText, roleFilter);
+        } catch (error) {
+            console.error('Failed to restore user:', error);
+        }
     };
 
     const columns: TableProps<IUser>['columns'] = [
@@ -149,10 +182,26 @@ const UsersPage = () => {
             width: 100,
             render: (_, record) => (
                 <Space>
-                    <Button type="text" icon={<EditOutlined />} onClick={() => console.log('edit', record.id)} />
-                    <Popconfirm title="Xoá người dùng này?" okText="Xoá" cancelText="Huỷ">
-                        <Button type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
+                    <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEdit(record)} />
+                    {record.isDeleted ? (
+                        <Popconfirm
+                            title="Khôi phục người dùng này?"
+                            okText="Khôi phục"
+                            cancelText="Huỷ"
+                            onConfirm={() => handleRestore(record.id)}
+                        >
+                            <Button type="text" icon={<UndoOutlined />} style={{ color: '#52c41a' }} />
+                        </Popconfirm>
+                    ) : (
+                        <Popconfirm
+                            title="Xoá người dùng này?"
+                            okText="Xoá"
+                            cancelText="Huỷ"
+                            onConfirm={() => handleDelete(record.id)}
+                        >
+                            <Button type="text" danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         },
@@ -169,7 +218,7 @@ const UsersPage = () => {
                 <Title level={2} style={{ margin: 0 }}>
                     Users
                 </Title>
-                <Button type="primary" icon={<PlusOutlined />}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
                     Add User
                 </Button>
             </Flex>
@@ -185,7 +234,16 @@ const UsersPage = () => {
                         onPressEnter={handleSearch}
                         allowClear
                         onClear={() => fetchUsers(1, meta.pageSize, '', roleFilter)}
+                        
                     />
+                     <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => {
+                            fetchUsers(1, meta.pageSize, "", "");
+                        }}
+                    >
+                        Làm mới
+                    </Button>
                     <Select
                         placeholder="Filter by Role"
                         style={{ minWidth: 180 }}
@@ -196,6 +254,7 @@ const UsersPage = () => {
                             ...roles.map((r) => ({ label: r.name, value: r.id })),
                         ]}
                     />
+                    
                 </Flex>
 
                 <Table
@@ -211,7 +270,27 @@ const UsersPage = () => {
                         onChange: (page, pageSize) => fetchUsers(page, pageSize, searchText, roleFilter),
                     }}
                 />
+                   
             </Card>
+            <AddUserModal
+                open={addModalOpen}
+                roles={roles}
+                onCancel={() => setAddModalOpen(false)}
+                onSuccess={() => {
+                    setAddModalOpen(false);
+                    fetchUsers(meta.current, meta.pageSize, searchText, roleFilter);
+                }}
+            />
+            <EditUserModal
+                open={editModalOpen}
+                roles={roles}
+                user={editingUser}
+                onCancel={() => setEditModalOpen(false)}
+                onSuccess={() => {
+                    setEditModalOpen(false);
+                    fetchUsers(meta.current, meta.pageSize, searchText, roleFilter);
+                }}
+            />
         </>
     );
 };

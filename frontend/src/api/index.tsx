@@ -24,6 +24,36 @@ export const callFetchUsers = (query: string) => {
     return axios.get(`/users?${query}`);
 }
 
+export const callCreateUser = (data: {
+    email: string;
+    password: string;
+    fullName: string;
+    role_id: string;
+    title: string;
+    status?: string;
+}) => {
+    return axios.post('/users', data);
+}
+
+export const callDeleteUser = (id: String) => {
+    return axios.delete(`/users/${id}`);
+}
+
+export const callRestoreUser = (id: string) => {
+    return axios.patch(`/users/${id}/restore`);
+}
+
+export const callUpdateUser = (id: string, data: {
+    email: string;
+    fullName: string;
+    role_id: string;
+    title: string;
+    status: string;
+}) => {
+    return axios.patch(`/users/${id}`, data);
+}
+
+//==================API Admin-Role====================
 export const callFetchRoles = () => {
     return axios.get('/roles');
 }
