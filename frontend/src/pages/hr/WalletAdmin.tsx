@@ -111,7 +111,7 @@ const WalletAdmin: React.FC = () => (
         </Flex>
 
         {/* ── Statistics cards ──────────────────────────────────── */}
-        <Row gutter={[16,16]} style={{marginBottom:32}}>
+        <Row gutter={[16,16]} style={{marginBottom:24}}>
             <Col xs={24} sm={8}>
                 <StatCard label="Tổng Token đang lưu hành" value="125,000" trend="+5.2% so với tháng trước" trendUp accentColor="#0057c2" iconBg="#d9e2ff" icon={<span style={{fontSize:20,color:'#0057c2'}}>🪙</span>}/>
             </Col>

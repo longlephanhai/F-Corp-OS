@@ -1,10 +1,14 @@
 import React from 'react';
-import { Button, Row, Col, Card, Tag, Typography, Space } from 'antd';
+import { Button, Row, Col, Card, Tag, Typography, Space, Flex } from 'antd';
 import type { TableProps } from 'antd';
 import { SwapOutlined } from '@ant-design/icons';
 import ActionTable from '../../components/ui/ActionTable';
 
 const { Title, Text } = Typography;
+
+// ── Shared design tokens (đồng bộ với ReviewConsole & WalletAdmin) ──────────
+const CARD_STYLE = { borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', height: '100%' } as const;
+const CARD_BODY  = { padding: '16px 20px' } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -185,55 +189,52 @@ const columns: TableProps<BenchRecord>['columns'] = [
 
 const BenchForecast: React.FC = () => {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* 1. Page Header — KHÔNG THAY ĐỔI */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 16,
-                }}
-            >
+        <div style={{ fontFamily: 'Inter, sans-serif' }}>
+            {/* 1. Page Header */}
+            <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16} style={{ marginBottom: 24 }}>
                 <div>
-                    <Title level={2} style={{ margin: 0 }}>
+                    <Title level={3} style={{ margin: 0, letterSpacing: '-0.02em' }}>
                         Dự báo Bench & Điều phối nhân sự
                     </Title>
-                    <Text type="secondary">
+                    <Text type="secondary" style={{ fontSize: 14 }}>
                         Theo dõi và điều phối lập trình viên sắp trống việc.
                     </Text>
                 </div>
-                <Button type="primary" icon={<SwapOutlined />}>
+                <Button
+                    type="primary"
+                    icon={<SwapOutlined />}
+                    size="large"
+                    style={{ borderRadius: 8, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,87,194,0.25)' }}
+                >
                     Điều phối nhanh
                 </Button>
-            </div>
+            </Flex>
 
-            {/* 2. Overview Statistics — KHÔNG THAY ĐỔI */}
-            <Row gutter={[16, 16]}>
+            {/* 2. Overview Statistics */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={8}>
-                    <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <Text type="secondary">Tỷ lệ Bench hiện tại</Text>
-                        <div style={{ fontSize: 30, fontWeight: 700, color: '#cf1322', marginTop: 8 }}>
+                    <Card bordered={false} style={CARD_STYLE} styles={{ body: CARD_BODY }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>Tỷ lệ Bench hiện tại</Text>
+                        <div style={{ fontSize: 26, fontWeight: 700, color: '#cf1322', marginTop: 8, lineHeight: 1.2 }}>
                             12%
                         </div>
                     </Card>
                 </Col>
                 <Col xs={24} sm={8}>
-                    <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <Text type="secondary">Nhân sự đang Bench</Text>
+                    <Card bordered={false} style={CARD_STYLE} styles={{ body: CARD_BODY }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>Nhân sự đang Bench</Text>
                         <div style={{ marginTop: 8 }}>
-                            <span style={{ fontSize: 30, fontWeight: 700, color: '#cf1322' }}>8</span>
-                            <Text type="secondary" style={{ marginLeft: 6 }}>người</Text>
+                            <span style={{ fontSize: 26, fontWeight: 700, color: '#cf1322', lineHeight: 1.2 }}>8</span>
+                            <Text type="secondary" style={{ marginLeft: 6, fontSize: 13 }}>người</Text>
                         </div>
                     </Card>
                 </Col>
                 <Col xs={24} sm={8}>
-                    <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <Text type="secondary">Sắp rảnh việc</Text>
+                    <Card bordered={false} style={CARD_STYLE} styles={{ body: CARD_BODY }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>Sắp rảnh việc</Text>
                         <div style={{ marginTop: 8 }}>
-                            <span style={{ fontSize: 30, fontWeight: 700, color: '#d46b08' }}>15</span>
-                            <Text type="secondary" style={{ marginLeft: 6 }}>người</Text>
+                            <span style={{ fontSize: 26, fontWeight: 700, color: '#d46b08', lineHeight: 1.2 }}>15</span>
+                            <Text type="secondary" style={{ marginLeft: 6, fontSize: 13 }}>người</Text>
                         </div>
                     </Card>
                 </Col>
