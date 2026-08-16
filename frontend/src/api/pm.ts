@@ -1,5 +1,5 @@
 import axios from "../config/interceptor";
-import type { TaskItem, UserSprintItem } from "../common/types/pm";
+import type { TaskCandidate, TaskItem, UserSprintItem } from "../common/types/pm";
 
 export const pmApi = {
   // Lấy danh sách nhân sự tham gia Sprint

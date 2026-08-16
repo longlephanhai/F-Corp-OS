@@ -23,8 +23,6 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { callFetchUsers, callFetchRoles } from '../../api';
-import Access from '../../components/protected-route/access';
-import { ALL_PERMISSIONS } from '../../utils/permissions';
 
 const { Title } = Typography;
 
