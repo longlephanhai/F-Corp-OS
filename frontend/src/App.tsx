@@ -14,7 +14,6 @@ import LayoutHR from "./layout/hr";
 import HRDashboard from "./pages/hr/Dashboard";
 import WalletAdmin from "./pages/hr/WalletAdmin";
 import ReviewConsole from "./pages/hr/ReviewConsole";
-import BenchForecast from './pages/hr/BenchForecast';
 import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
@@ -60,7 +59,7 @@ function App() {
         { path: "dashboard", element: <HRDashboard /> },
         { path: "wallet", element: <WalletAdmin /> },
         { path: "review", element: <ReviewConsole /> },
-        { path: "bench", element: <BenchForecast /> },
+        { path: "bench", element: <PlaceholderPage title="Dự báo Bench" /> },
       ],
     },
 

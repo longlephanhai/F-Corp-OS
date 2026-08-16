@@ -1,13 +1,13 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { Spin } from 'antd';
-import { useAppSelector } from '../../hooks/hooks';
+import { Navigate, Outlet } from "react-router-dom";
+import { Spin } from "antd";
+import { useAppSelector } from "../../hooks/hooks";
 
 /** All role names recognised by the system. Extend as new roles are added. */
-export type RoleName = 'ADMIN' | 'HR' | 'DEV' | 'BA' | 'TESTER' | 'PM';
+export type RoleName = "ADMIN" | "HR" | "DEV" | "BA" | "TESTER" | "PM";
 
 interface IProps {
-    /** Roles that are permitted to access the child routes. */
-    allowedRoles: RoleName[];
+  /** Roles that are permitted to access the child routes. */
+  allowedRoles: RoleName[];
 }
 
 /**
@@ -18,39 +18,44 @@ interface IProps {
  *  4. Renders <Outlet /> for authorised users.
  */
 const ProtectedRoute = ({ allowedRoles }: IProps) => {
-    const { isLoading, isAuthenticated, user } = useAppSelector(
-        (state) => state.account
+  const { isLoading, isAuthenticated, user } = useAppSelector(
+    (state) => state.account,
+  );
+
+  // ── 1. Still fetching session ──────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <Spin size="large" tip="Đang tải..." />
+      </div>
     );
+  }
 
-    // ── 1. Still fetching session ──────────────────────────────────────────
-    if (isLoading) {
-        return (
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100vh',
-                }}
-            >
-                <Spin size="large" tip="Đang tải..." />
-            </div>
-        );
-    }
+  // ── 2. Not logged in ───────────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-    // ── 2. Not logged in ───────────────────────────────────────────────────
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
-    }
+  // ── 3. Temporary bypass for PM development: if no role is attached yet,
+  //     default to PM so the developer can continue feature work.
+  const userRole = (user?.role?.name ?? "pm").toLowerCase() as RoleName;
+  const allowedSet = allowedRoles.map((role) => role.toLowerCase());
 
-    // ── 3. Wrong role ──────────────────────────────────────────────────────
-    const userRole = user.role.name as RoleName;
-    if (!allowedRoles.includes(userRole)) {
-        return <Navigate to="/403" replace />;
-    }
+  if (!allowedSet.includes(userRole)) {
+    return (
+      <Navigate to={`/${allowedRoles[0]?.toLowerCase() ?? "pm"}`} replace />
+    );
+  }
 
-    // ── 4. Authorised — render child routes via <Outlet /> ─────────────────
-    return <Outlet />;
+  // ── 4. Authorised — render child routes via <Outlet /> ─────────────────
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

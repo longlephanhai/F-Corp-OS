@@ -34,22 +34,43 @@ import { EvidenceApprovalModal } from "../../components/pm/sprints/EvidenceAppro
 const { Title, Text } = Typography;
 
 // ---- Cấu hình trạng thái: gom màu sắc + nhãn về một chỗ để dễ chỉnh sửa ----
-const STATUS_CONFIG: Record<EmployeeStatus, { label: string; color: string }> = {
-  available: { label: "Sẵn sàng", color: "#16a34a" },
-  bench: { label: "Bench", color: "#d97706" },
-  on_project: { label: "Đang dự án", color: "#2563eb" },
-};
+const STATUS_CONFIG: Record<EmployeeStatus, { label: string; color: string }> =
+  {
+    AVAILABLE: { label: "Sẵn sàng", color: "#16a34a" },
+    BENCH: { label: "Bench", color: "#d97706" },
+    IN_PROJECT: { label: "Đang dự án", color: "#2563eb" },
+  };
 
 // ---- Sinh màu avatar ổn định theo tên, để mỗi người có một "chữ ký" màu riêng ----
-const AVATAR_PALETTE = ["#6366f1", "#0891b2", "#7c3aed", "#d97706", "#db2777", "#059669"];
+const AVATAR_PALETTE = [
+  "#6366f1",
+  "#0891b2",
+  "#7c3aed",
+  "#d97706",
+  "#db2777",
+  "#059669",
+];
 
-const getAvatarColor = (name: string) => {
-  const sum = name.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+const safeText = (value?: string | null) => (value ?? "").toString();
+
+const getAvatarColor = (name?: string) => {
+  const safeName = safeText(name);
+  if (!safeName) return AVATAR_PALETTE[0];
+  const sum = safeName.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   return AVATAR_PALETTE[sum % AVATAR_PALETTE.length];
 };
 
-const getInitials = (name: string) =>
-  name.trim().split(/\s+/).slice(-2).map((w) => w[0]).join("").toUpperCase();
+const getInitials = (name?: string) => {
+  const safeName = safeText(name).trim();
+  if (!safeName) return "N";
+  return safeName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(-2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+};
 
 export const MyTeamPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
@@ -64,41 +85,15 @@ export const MyTeamPage: React.FC = () => {
   }, []);
 
   const fetchTeam = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      // Giả sử bạn đã định nghĩa pmApi.getMyTeam() trong api/pm.ts gọi đến '/users/pm/my-team'
       const res = await pmApi.getMyTeam();
-      if (res && res.data) {
-        setTeam(res.data);
-      }
+
+      console.log("My Team data:", res?.data?.data || res?.data);
+      setTeam(res?.data?.data || res?.data || []);
     } catch (error) {
-      console.error("Lỗi khi lấy danh sách team:", error);
-      // Giả lập Data nếu BE chưa xong (để FE test UI)
-      setTeam([
-        {
-          id: "dev-1",
-          fullName: "Lê Văn Lính",
-          email: "linhlv@fpt.com",
-          title: "Senior React",
-          status: "available",
-          userSkills: [
-            {
-              id: "sk-1",
-              skill: { id: "s1", name: "ReactJS" },
-              level: 4,
-              years: 3,
-              confidenceScore: 30,
-              evidences: [
-                {
-                  id: "ev-1",
-                  evidenceType: "certification",
-                  evidenceUrl: "link-cert",
-                  status: "pending",
-                },
-              ],
-            },
-          ],
-        },
-      ]);
+      message.error("Lỗi khi lấy danh sách Team!");
     } finally {
       setLoading(false);
     }
@@ -136,13 +131,13 @@ export const MyTeamPage: React.FC = () => {
     ];
 
     const csvRows = team.map((member) => {
-      const pendingCount = countPendingEvidences(member.userSkills);
+      const pendingCount = countPendingEvidences(member.userSkills ?? []);
       const row = [
-        member.id,
-        `"${member.fullName}"`,
-        member.email,
-        `"${member.title}"`,
-        member.status.toUpperCase(),
+        member.id ?? "",
+        `"${safeText(member.fullName)}"`,
+        safeText(member.email),
+        `"${safeText(member.title)}"`,
+        safeText(member.status).toUpperCase(),
         pendingCount,
       ];
       return row.join(",");
@@ -169,12 +164,12 @@ export const MyTeamPage: React.FC = () => {
   const filteredTeam = useMemo(() => {
     if (!searchText.trim()) return team;
     const q = searchText.trim().toLowerCase();
-    return team.filter(
-      (m) =>
-        m.fullName.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        m.title.toLowerCase().includes(q),
-    );
+    return team.filter((m) => {
+      const fullName = safeText(m.fullName).toLowerCase();
+      const email = safeText(m.email).toLowerCase();
+      const title = safeText(m.title).toLowerCase();
+      return fullName.includes(q) || email.includes(q) || title.includes(q);
+    });
   }, [team, searchText]);
 
   const columns = [
@@ -188,8 +183,8 @@ export const MyTeamPage: React.FC = () => {
             {getInitials(text)}
           </Avatar>
           <div className="pmt-person-info">
-            <div className="pmt-person-name">{text}</div>
-            <div className="pmt-person-email">{record.email}</div>
+            <div className="pmt-person-name">{safeText(text)}</div>
+            <div className="pmt-person-email">{safeText(record.email)}</div>
           </div>
         </div>
       ),
@@ -205,13 +200,18 @@ export const MyTeamPage: React.FC = () => {
       dataIndex: "status",
       key: "status",
       render: (status: EmployeeStatus) => {
-        const cfg = STATUS_CONFIG[status];
+        const safeStatus = (status as string) ?? "available";
+        const cfg = STATUS_CONFIG[safeStatus as EmployeeStatus] ?? {
+          label: safeText(safeStatus) || "—",
+          color: "#94a3b8",
+        };
+        const color = cfg?.color ?? "#94a3b8";
         return (
           <span
             className="pmt-status-pill"
-            style={{ color: cfg.color, background: `${cfg.color}14` }}
+            style={{ color: color, background: `${color}14` }}
           >
-            <span className="pmt-status-dot" style={{ background: cfg.color }} />
+            <span className="pmt-status-dot" style={{ background: color }} />
             {cfg.label}
           </span>
         );
@@ -238,7 +238,11 @@ export const MyTeamPage: React.FC = () => {
       key: "action",
       align: "right" as const,
       render: (_: any, record: TeamMember) => (
-        <Button type="link" className="pmt-detail-btn" onClick={() => handleOpenModal(record)}>
+        <Button
+          type="link"
+          className="pmt-detail-btn"
+          onClick={() => handleOpenModal(record)}
+        >
           Xem chi tiết & Duyệt <ArrowRightOutlined />
         </Button>
       ),
@@ -262,7 +266,8 @@ export const MyTeamPage: React.FC = () => {
             My Team
           </Title>
           <Text className="pmt-subtitle">
-            Giám sát năng lực và trạng thái điều phối của nhân sự trong đội của bạn
+            Giám sát năng lực và trạng thái điều phối của nhân sự trong đội của
+            bạn
           </Text>
         </div>
 
@@ -288,7 +293,8 @@ export const MyTeamPage: React.FC = () => {
               <div>
                 <Text className="pmt-stat-label">Tổng quân số</Text>
                 <div className="pmt-stat-value">
-                  {totalMembers} <span className="pmt-stat-suffix">nhân sự</span>
+                  {totalMembers}{" "}
+                  <span className="pmt-stat-suffix">nhân sự</span>
                 </div>
               </div>
             </Flex>
@@ -314,13 +320,17 @@ export const MyTeamPage: React.FC = () => {
         <Col xs={24} md={8}>
           {longBenchMembers.length > 0 ? (
             <Alert
-              message={<span className="pmt-alert-title">Cảnh báo: Bench kéo dài</span>}
+              message={
+                <span className="pmt-alert-title">Cảnh báo: Bench kéo dài</span>
+              }
               description={
                 <ul className="pmt-alert-list">
                   {longBenchMembers.slice(0, 2).map((m) => (
                     <li key={m.id}>{m.fullName} — đang lãng phí tài nguyên</li>
                   ))}
-                  {longBenchMembers.length > 2 && <li>... và {longBenchMembers.length - 2} người khác</li>}
+                  {longBenchMembers.length > 2 && (
+                    <li>... và {longBenchMembers.length - 2} người khác</li>
+                  )}
                 </ul>
               }
               type="error"
@@ -343,9 +353,16 @@ export const MyTeamPage: React.FC = () => {
 
       {/* ---------- Table ---------- */}
       <div className="pmt-table-card">
-        <Flex align="center" justify="space-between" wrap="wrap" gap={12} className="pmt-table-toolbar">
+        <Flex
+          align="center"
+          justify="space-between"
+          wrap="wrap"
+          gap={12}
+          className="pmt-table-toolbar"
+        >
           <Text className="pmt-table-title">
-            Danh sách nhân sự <span className="pmt-table-count">({filteredTeam.length})</span>
+            Danh sách nhân sự{" "}
+            <span className="pmt-table-count">({filteredTeam.length})</span>
           </Text>
           <Input
             allowClear
@@ -372,7 +389,9 @@ export const MyTeamPage: React.FC = () => {
               emptyText: (
                 <Empty
                   description={
-                    searchText ? "Không tìm thấy nhân sự phù hợp" : "Chưa có nhân sự nào trong team"
+                    searchText
+                      ? "Không tìm thấy nhân sự phù hợp"
+                      : "Chưa có nhân sự nào trong team"
                   }
                 />
               ),

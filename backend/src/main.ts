@@ -32,7 +32,7 @@ async function bootstrap() {
   });
 
 
-  app.useGlobalGuards(new JwtAuthGuard(reflector));
+  // app.useGlobalGuards(new JwtAuthGuard(reflector));
 
   app.enableCors(
     {

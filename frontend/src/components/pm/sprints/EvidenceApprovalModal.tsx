@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { Modal, List, Tag, Button, Input, message, Divider, Avatar, Empty } from "antd";
+import {
+  Modal,
+  List,
+  Tag,
+  Button,
+  Input,
+  message,
+  Divider,
+  Avatar,
+  Empty,
+} from "antd";
 import {
   LinkOutlined,
   CheckCircleFilled,
@@ -67,13 +77,16 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
   const allEvidences = member.userSkills.flatMap((sk) =>
     sk.evidences.map((ev) => ({ ...ev, skillName: sk.skill.name })),
   );
-  const pendingCount = allEvidences.filter((e) => e.status === "pending").length;
+  const pendingCount = allEvidences.filter(
+    (e) => e.status === "pending",
+  ).length;
 
   const handleVerify = async (evidenceId: string) => {
     try {
-      await pmApi.verifyEvidence(evidenceId);
+      // Gọi API với status: 'verified'
+      await pmApi.verifyEvidence(evidenceId, { status: "verified" });
       message.success("Đã duyệt bằng chứng thành công! (Điểm tin cậy đã tăng)");
-      onRefresh(); // Cập nhật lại UI gốc
+      onRefresh(); // Load lại data
     } catch (error) {
       message.error("Lỗi khi duyệt bằng chứng");
     }
@@ -85,7 +98,11 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
       return;
     }
     try {
-      await pmApi.rejectEvidence(evidenceId, rejectReason);
+      // Gọi API với status: 'rejected' kèm lý do
+      await pmApi.verifyEvidence(evidenceId, {
+        status: "rejected",
+        rejectReason,
+      });
       message.success("Đã từ chối bằng chứng!");
       setRejectingId(null);
       setRejectReason("");
@@ -99,7 +116,10 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
     <Modal
       title={
         <div className="flex items-center gap-3 py-1">
-          <Avatar size={44} style={{ backgroundColor: "#4f46e5", fontWeight: 600 }}>
+          <Avatar
+            size={44}
+            style={{ backgroundColor: "#4f46e5", fontWeight: 600 }}
+          >
             {getInitials(member.fullName)}
           </Avatar>
           <div>
@@ -159,10 +179,15 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
                           {item.skillName}
                         </Tag>
                         <Tag
-                          color={item.evidenceType === "certification" ? "purple" : "cyan"}
+                          color={
+                            item.evidenceType === "certification"
+                              ? "purple"
+                              : "cyan"
+                          }
                           className="rounded-full border-0 m-0"
                         >
-                          {EVIDENCE_TYPE_LABEL[item.evidenceType] ?? item.evidenceType}
+                          {EVIDENCE_TYPE_LABEL[item.evidenceType] ??
+                            item.evidenceType}
                         </Tag>
                       </div>
                       <Tag

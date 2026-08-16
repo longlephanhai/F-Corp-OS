@@ -219,6 +219,7 @@ const UsersPage = () => {
                     Users
                 </Title>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+
                     Add User
                 </Button>
             </Flex>
@@ -234,9 +235,8 @@ const UsersPage = () => {
                         onPressEnter={handleSearch}
                         allowClear
                         onClear={() => fetchUsers(1, meta.pageSize, '', roleFilter)}
-                        
                     />
-                     <Button
+                    <Button
                         icon={<ReloadOutlined />}
                         onClick={() => {
                             fetchUsers(1, meta.pageSize, "", "");
@@ -244,6 +244,7 @@ const UsersPage = () => {
                     >
                         Làm mới
                     </Button>
+
                     <Select
                         placeholder="Filter by Role"
                         style={{ minWidth: 180 }}
@@ -254,8 +255,7 @@ const UsersPage = () => {
                             ...roles.map((r) => ({ label: r.name, value: r.id })),
                         ]}
                     />
-                    
-                </Flex>
+                </Flex >
 
                 <Table
                     rowKey="id"
@@ -270,8 +270,8 @@ const UsersPage = () => {
                         onChange: (page, pageSize) => fetchUsers(page, pageSize, searchText, roleFilter),
                     }}
                 />
-                   
-            </Card>
+
+            </Card >
             <AddUserModal
                 open={addModalOpen}
                 roles={roles}

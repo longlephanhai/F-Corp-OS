@@ -1,5 +1,6 @@
 import axios from "../config/interceptor";
-import type { TaskCandidate, TaskItem, UserSprintItem } from "../common/types/pm";
+import type { TaskCandidate, TaskItem, TeamMember, UserSprintItem } from "../common/types/pm";
+
 
 export const pmApi = {
   // Lấy danh sách nhân sự tham gia Sprint
@@ -38,5 +39,20 @@ export const pmApi = {
   // Tạo Task và gán kĩ năng yêu cầu (Required Skills JSON)
   createTask: (data: Partial<TaskItem>) => {
     return axios.post<IBackendRes<TaskItem>>("/tasks", data);
+  },
+
+  // Giải phóng nhân sự kèm Đánh giá (Review)
+  releaseUserSprint: (id: string, reviewData: any) => {
+    return axios.patch<IBackendRes<any>>(`/user-sprint/${id}/release`, reviewData);
+  },
+
+
+  getMyTeam: () => {
+    return axios.get<IBackendRes<TeamMember[]>>('/users/pm/my-team');
+  },
+
+  // 2. Duyệt hoặc Từ chối Bằng chứng kỹ năng (Thêm mới)
+  verifyEvidence: (id: string, data: { status: 'verified' | 'rejected'; rejectReason?: string }) => {
+    return axios.patch<IBackendRes<any>>(`/skill-evidences/${id}/verify`, data);
   },
 };

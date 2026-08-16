@@ -33,4 +33,13 @@ export class UserSprint {
   @ManyToOne(() => Sprint, (sprint) => sprint.userSprints)
   @JoinColumn({ name: 'sprint_id' })
   sprint: Sprint;
+
+  @Column({ name: 'hard_skill_rate', type: 'int', nullable: true })
+  hardSkillRate: number;
+
+  @Column({ name: 'soft_skill_rate', type: 'int', nullable: true })
+  softSkillRate: number;
+
+  @Column({ name: 'review_comment', type: 'text', nullable: true })
+  reviewComment: string;
 }

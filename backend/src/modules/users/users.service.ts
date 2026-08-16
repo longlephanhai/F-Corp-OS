@@ -13,10 +13,9 @@ import { TITLE_COST_RATE } from 'common/constants/cost-rate.constant';
 import { UserStatusType } from 'common/enum/user.enum';
 @Injectable()
 export class UsersService {
-
   constructor(
     @InjectRepository(User) private usersRepository: Repository<User>,
-    @InjectRepository(Role) private rolesRepository: Repository<Role>
+    @InjectRepository(Role) private rolesRepository: Repository<Role>,
   ) { }
 
   findOneByEmail(email: string) {
@@ -27,7 +26,7 @@ export class UsersService {
           permissions: true,
         },
       },
-    })
+    });
   }
 
   isValidPassword(password: string, hash: string) {
@@ -35,24 +34,26 @@ export class UsersService {
   }
 
   updateUserToken = async (refreshToken: string, id: string) => {
-    return this.usersRepository.update({
-      id: id
-    }, {
-      refreshToken: refreshToken
-    })
-  }
+    return this.usersRepository.update(
+      {
+        id: id,
+      },
+      {
+        refreshToken: refreshToken,
+      },
+    );
+  };
 
   findUserByToken = async (refreshToken: string) => {
     return await this.usersRepository.findOne({
       where: { refreshToken },
       relations: {
         role: {
-          permissions: true
+          permissions: true,
         },
       },
-    })
-  }
-
+    });
+  };
 
   async create(createUserDto: CreateUserDto, user: IUser) {
     const { email, password, fullName, role_id, title, status } = createUserDto;
@@ -68,7 +69,7 @@ export class UsersService {
     const hashedPassword = getHashPassword(password);
 
     const userRole = await this.rolesRepository.findOne({
-      where: { id: role_id }
+      where: { id: role_id },
     });
 
     if (!userRole) {
@@ -84,17 +85,17 @@ export class UsersService {
       password: hashedPassword,
       fullName,
       role: userRole,
-      title,                                        
-      costRate,                                       
-      status: status || UserStatusType.AVAILABLE,   
+      title,
+      costRate,
+      status: status || UserStatusType.AVAILABLE,
       createdBy: {
         id: user.id,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
 
     return newUser;
-}
+  }
 
   async findAll(currentPage: number, limit: number, qs: string) {
     const { filter, sort } = aqp(qs);
@@ -106,19 +107,19 @@ export class UsersService {
     const search = filter.search;
     delete filter.search;
 
-    let offset = (+currentPage - 1) * (+limit);
+    let offset = (+currentPage - 1) * +limit;
     let defaultLimit = +limit ? +limit : 10;
 
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('role.permissions', 'permission')
-       .withDeleted()
+      .withDeleted()
 
     if (search) {
       queryBuilder.andWhere(
         '(user.fullName LIKE :search OR user.email LIKE :search)',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -126,11 +127,13 @@ export class UsersService {
 
     Object.keys(filter).forEach((key) => {
       if (likeFields.includes(key)) {
-        queryBuilder.andWhere(`user.${key} LIKE :${key}`, { [key]: `%${filter[key]}%` });
+        queryBuilder.andWhere(`user.${key} LIKE :${key}`, {
+          [key]: `%${filter[key]}%`,
+        });
       } else {
         queryBuilder.andWhere(`user.${key} = :${key}`, { [key]: filter[key] });
       }
-    })
+    });
 
     if (filter.role_id) {
       queryBuilder.andWhere('role.id = :role_id', { role_id: filter.role_id });
@@ -144,8 +147,7 @@ export class UsersService {
     const [result, totalItems] = await queryBuilder
       .skip(offset)
       .take(defaultLimit)
-      .getManyAndCount()
-
+      .getManyAndCount();
 
     return {
       meta: {
@@ -154,14 +156,14 @@ export class UsersService {
         pages: Math.ceil(totalItems / defaultLimit),
         total: totalItems,
       },
-      result
-    }
+      result,
+    };
   }
 
- async countUser() {
+  async countUser() {
     const total = await this.usersRepository.count();
     return { total };
-}
+  }
 
   findOne(id: number) {
     return `This action returns a #${id} user`;
@@ -217,7 +219,7 @@ export class UsersService {
     console.log(`User with id "${id}" `);
     console.log(`User with id "${user.fullName}" `);
     if (!existUser) {
-      
+
       throw new BadRequestException(`User with id "${id}" not found`);
     }
 
@@ -237,33 +239,44 @@ export class UsersService {
     return {
       message: `User "${id}" deleted successfully`,
     };
-}
+  }
 
-async restore(id: string, user: IUser) {
+  async restore(id: string, user: IUser) {
     const existUser = await this.usersRepository.findOne({
-        where: { id },
-        withDeleted: true,   // cần bật, vì user đã bị soft-delete nên find() mặc định sẽ không thấy
+      where: { id },
+      withDeleted: true,   // cần bật, vì user đã bị soft-delete nên find() mặc định sẽ không thấy
     });
 
     if (!existUser) {
-        throw new BadRequestException(`User with id "${id}" not found`);
+      throw new BadRequestException(`User with id "${id}" not found`);
     }
 
     await this.usersRepository.update(
-        { id },
-        {
-            isDeleted: false,
-            deletedBy: undefined,
-            updatedBy: { id: user.id, email: user.email }
-        }
+      { id },
+      {
+        isDeleted: false,
+        deletedBy: undefined,
+        updatedBy: { id: user.id, email: user.email }
+      }
     );
 
     await this.usersRepository.restore(id);
 
     return {
-        message: `User "${id}" restored successfully`,
+      message: `User "${id}" restored successfully`,
     };
-}
+  }
 
-
+  // Lấy danh sách lính do PM quản lý
+  async getMyTeam(managerId: string) {
+    return await this.usersRepository.find({
+      where: { managerId, isDeleted: false },
+      relations: {
+        userSkills: {
+          skill: true,
+          evidences: true,
+        },
+      },
+    });
+  }
 }
