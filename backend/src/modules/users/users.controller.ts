@@ -12,6 +12,7 @@ export class UsersController {
   @Post()
   @ResponseMessage('User created successfully')
   create(@Body() createUserDto: CreateUserDto, @User() user: IUser) {
+    console.log(user);
     return this.usersService.create(createUserDto, user);
   }
 
@@ -31,12 +32,21 @@ export class UsersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
+  @ResponseMessage('User updated successfully')
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @User() user: IUser) {
+      return this.usersService.update(id, updateUserDto, user);
+  }
+  @Delete(':id')
+  remove(
+    @Param('id') id: string,
+    @User() user: IUser,
+  ) {
+    return this.usersService.remove(id, user);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @Patch(':id/restore')
+  @ResponseMessage('User restored successfully')
+  restore(@Param('id') id: string, @User() user: IUser) {
+      return this.usersService.restore(id, user);
   }
 }

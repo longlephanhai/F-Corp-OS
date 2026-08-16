@@ -16,3 +16,32 @@ export const callFetchUsers = (query: string) => {
 export const callFetchRoles = () => {
     return axios.get('/roles');
 }
+
+export const callCreateUser = (data: {
+    email: string;
+    password: string;
+    fullName: string;
+    role_id: string;
+    title: string;
+    status?: string;
+}) => {
+    return axios.post('/users', data);
+}
+
+export const callDeleteUser = (id: String) => {
+    return axios.delete(`/users/${id}`);
+}
+
+export const callRestoreUser = (id: string) => {
+    return axios.patch(`/users/${id}/restore`);
+}
+
+export const callUpdateUser = (id: string, data: {
+    email: string;
+    fullName: string;
+    role_id: string;
+    title: string;
+    status: string;
+}) => {
+    return axios.patch(`/users/${id}`, data);
+}

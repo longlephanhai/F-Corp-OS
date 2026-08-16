@@ -31,7 +31,7 @@ import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.e
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         entities: [Skill, UserSkill, User, Role, Permission, SkillEvidence],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),

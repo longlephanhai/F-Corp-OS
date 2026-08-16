@@ -3,8 +3,9 @@ import {
     IsNotEmpty,
     IsString,
     IsOptional,
-    IsNumber
+    IsEnum,
 } from "class-validator";
+import { TitleType, UserStatusType } from "common/enum/user.enum";
 
 export class CreateUserDto {
     @IsNotEmpty({ message: 'Email is required' })
@@ -23,13 +24,12 @@ export class CreateUserDto {
     role_id: string;
 
     @IsNotEmpty({ message: 'Title is required' })
-    @IsString({ message: 'Title must be a string' })
-    title: string;
+    @IsEnum(TitleType, { message: 'Title không hợp lệ' })
+    title: TitleType;
 
-    @IsNotEmpty({ message: 'Cost rate is required' })
-    @IsNumber({}, { message: 'Cost rate must be a number' })
-    costRate: number;
-
+    @IsOptional()
+    @IsEnum(UserStatusType, { message: 'Status không hợp lệ' })
+    status?: UserStatusType;
 
     @IsOptional()
     @IsString({ message: 'Manager ID must be a string' })
