@@ -1,26 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { CreateSkillEvidenceDto } from './dto/create-skill-evidence.dto';
-import { UpdateSkillEvidenceDto } from './dto/update-skill-evidence.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { SkillEvidence } from './entities/skill-evidence.entity';
+import { UserSkill } from '../user-skills/entities/user-skill.entity';
 
 @Injectable()
 export class SkillEvidencesService {
-  create(createSkillEvidenceDto: CreateSkillEvidenceDto) {
-    return 'This action adds a new skillEvidence';
-  }
+  constructor(
+    @InjectRepository(SkillEvidence)
+    private evidenceRepo: Repository<SkillEvidence>,
+    @InjectRepository(UserSkill)
+    private userSkillRepo: Repository<UserSkill>,
+  ) {}
 
-  findAll() {
-    return `This action returns all skillEvidences`;
-  }
+  // Hàm Duyệt hoặc Từ chối Bằng chứng
+  async verifyEvidence(id: string, updateData: { status: string; rejectReason?: string }) {
+    const evidence = await this.evidenceRepo.findOne({ 
+      where: { id },
+      relations: ['userSkill'] // Móc nối với bảng UserSkill để tí nữa tăng điểm
+    });
 
-  findOne(id: number) {
-    return `This action returns a #${id} skillEvidence`;
-  }
+    if (!evidence) throw new NotFoundException('Không tìm thấy Bằng chứng này');
 
-  update(id: number, updateSkillEvidenceDto: UpdateSkillEvidenceDto) {
-    return `This action updates a #${id} skillEvidence`;
-  }
+    // Cập nhật trạng thái bằng chứng (verified hoặc rejected)
+    evidence.status = updateData.status as any;
+    if (updateData.rejectReason) {
+      evidence.rejectReason = updateData.rejectReason; // Nếu có cột này trong DB
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} skillEvidence`;
+    await this.evidenceRepo.save(evidence);
+
+    if (updateData.status === 'verified' && evidence.userSkill) {
+      evidence.userSkill.confidenceScore = 100;
+      await this.userSkillRepo.save(evidence.userSkill);
+    }
+
+    return evidence;
   }
 }

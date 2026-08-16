@@ -50,7 +50,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
           Task,
           UserSprint
         ],
-        synchronize: true, 
+        synchronize: false,
 
       }),
       inject: [ConfigService],

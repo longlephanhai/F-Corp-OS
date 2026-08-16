@@ -20,13 +20,10 @@ export const ReleaseReviewModal: React.FC<Props> = ({ open, userSprintId, devNam
     try {
       setLoading(true);
       
-      // 1. Gửi API đổi trạng thái của user_sprint thành 'released'
-      await pmApi.updateUserSprintStatus(userSprintId, 'released');
+      // Gọi 1 API duy nhất: Vừa nhả người, vừa lưu điểm đánh giá
+      await pmApi.releaseUserSprint(userSprintId, values);
       
-      // 2. Tương lai: Gọi thêm API lưu đánh giá (Rating & Review) vào DB
-      console.log('Dữ liệu đánh giá gửi đi:', values);
-      
-      message.success(`Đã giải phóng ${devName} thành công! Nhân sự đã về trạng thái Rảnh.`);
+      message.success(`Đã giải phóng ${devName} thành công! Nhận xét đã được lưu.`);
       form.resetFields();
       onRefresh();
       onClose();

@@ -168,4 +168,18 @@ export class UsersService {
   }
 
 
+
+  // Lấy danh sách lính do PM quản lý
+  async getMyTeam(managerId: string) {
+    return await this.userRepo.find({
+      where: { managerId, isDeleted: false },
+      relations: [
+        'userSkills', 
+        'userSkills.skill', 
+        'userSkills.evidences' // Kéo toàn bộ bằng chứng lên để FE đếm số lượng Pending
+      ]
+    });
+  }
+
+
 }

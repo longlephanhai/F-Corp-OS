@@ -29,4 +29,15 @@ export class UserSprintController {
     const data = await this.userSprintService.updateStatus(id, status as UserSprintStatus);
     return { statusCode: 200, message: 'Cập nhật trạng thái thành công', data };
   }
+
+
+
+  @Patch(':id/release')
+  async releaseUser(
+    @Param('id') id: string, 
+    @Body() body: any
+  ) {
+    const data = await this.userSprintService.releaseUser(id, body);
+    return { statusCode: 200, message: 'Giải phóng và đánh giá nhân sự thành công', data };
+  }
 }

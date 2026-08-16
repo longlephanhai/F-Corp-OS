@@ -45,4 +45,14 @@ export class UsersController {
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
   }
+
+
+  @Get('pm/my-team')
+  async getMyTeam() {
+    // Tạm thời hardcode ID của PM (ví dụ ID: '2ff0de6e-2759-4d11-aab7-42ca161f2933')
+    // Thực tế sẽ dùng: const managerId = req.user.id;
+    const managerId = '2ff0de6e-2759-4d11-aab7-42ca161f2933'; 
+    const data = await this.usersService.getMyTeam(managerId);
+    return { statusCode: 200, message: 'Lấy My Team thành công', data };
+  }
 }
