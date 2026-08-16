@@ -19,8 +19,8 @@ import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
-import LayoutApp from "./components/protected-route/layout.app";
-import ProtectedRoute from "./components/protected-route";
+// import LayoutApp from "./components/protected-route/layout.app";
+// import ProtectedRoute from "./components/protected-route";
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: 48, textAlign: "center", color: "#8c8c8c" }}>
@@ -43,30 +43,30 @@ function App() {
     },
     {
       path: "/admin",
-      element: <LayoutApp><LayoutAdmin /></LayoutApp>,
+      element: <LayoutAdmin />,
       errorElement: <ErrorPage />,
       children: [
-        { index: true, element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
-        { path: "users", element: <ProtectedRoute><UsersPage /></ProtectedRoute> },
-        { path: "roles", element: <ProtectedRoute><RolesPage /></ProtectedRoute> },
-        { path: "permissions", element: <ProtectedRoute><PermissionsPage /></ProtectedRoute> },
+        { index: true, element: <DashboardPage /> },
+        { path: "users", element: <UsersPage /> },
+        { path: "roles", element: <RolesPage /> },
+        { path: "permissions", element: <PermissionsPage /> },
       ],
     },
     {
       path: "/hr",
-      element: <LayoutApp><LayoutHR /></LayoutApp>,
+      element: <LayoutHR />,
       errorElement: <ErrorPage />,
       children: [
-        { path: "dashboard", element: <ProtectedRoute><HRDashboard /></ProtectedRoute> },
-        { path: "wallet", element: <ProtectedRoute><WalletAdmin /></ProtectedRoute> },
-        { path: "review", element: <ProtectedRoute><ReviewConsole /></ProtectedRoute> },
-        { path: "bench", element: <ProtectedRoute><BenchForecast /></ProtectedRoute> },
+        { path: "dashboard", element: <HRDashboard /> },
+        { path: "wallet", element: <WalletAdmin /> },
+        { path: "review", element: <ReviewConsole /> },
+        { path: "bench", element: <BenchForecast /> },
       ],
     },
 
     {
       path: "/pm",
-      element: <LayoutApp><LayoutPM /></LayoutApp>,
+      element: <LayoutPM />,
       errorElement: <ErrorPage />,
       children: [
         {
@@ -75,11 +75,11 @@ function App() {
         },
         {
           path: "my-team",
-          element: <ProtectedRoute><MyTeamPage /></ProtectedRoute>,
+          element: <MyTeamPage />,
         },
         {
           path: "sprints/:sprintId",
-          element: <ProtectedRoute><SprintManagementPage /></ProtectedRoute>,
+          element: <SprintManagementPage />,
         },
       ],
     },
