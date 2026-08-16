@@ -162,60 +162,58 @@ const UsersPage = () => {
 
     return (
         <>
-            <Access hideChildren permission={ALL_PERMISSIONS.USERS.READ}>
-                <Breadcrumb
-                    items={[{ title: <Link to="/admin">Home</Link> }, { title: 'Users' }]}
-                    style={{ marginBottom: 8 }}
-                />
+            <Breadcrumb
+                items={[{ title: <Link to="/admin">Home</Link> }, { title: 'Users' }]}
+                style={{ marginBottom: 8 }}
+            />
 
-                <Flex justify="space-between" align="center" style={{ marginBottom: 24 }}>
-                    <Title level={2} style={{ margin: 0 }}>
-                        Users
-                    </Title>
-                    <Button type="primary" icon={<PlusOutlined />}>
-                        Add User
-                    </Button>
+            <Flex justify="space-between" align="center" style={{ marginBottom: 24 }}>
+                <Title level={2} style={{ margin: 0 }}>
+                    Users
+                </Title>
+                <Button type="primary" icon={<PlusOutlined />}>
+                    Add User
+                </Button>
+            </Flex>
+
+            <Card>
+                <Flex justify="space-between" style={{ marginBottom: 16 }} wrap="wrap" gap={12}>
+                    <Input
+                        placeholder="Search by name or email..."
+                        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                        style={{ maxWidth: 320 }}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        onPressEnter={handleSearch}
+                        allowClear
+                        onClear={() => fetchUsers(1, meta.pageSize, '', roleFilter)}
+                    />
+                    <Select
+                        placeholder="Filter by Role"
+                        style={{ minWidth: 180 }}
+                        value={roleFilter}
+                        onChange={handleRoleFilterChange}
+                        options={[
+                            { label: 'All', value: ALL_ROLES_VALUE },
+                            ...roles.map((r) => ({ label: r.name, value: r.id })),
+                        ]}
+                    />
                 </Flex>
 
-                <Card>
-                    <Flex justify="space-between" style={{ marginBottom: 16 }} wrap="wrap" gap={12}>
-                        <Input
-                            placeholder="Search by name or email..."
-                            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                            style={{ maxWidth: 320 }}
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            onPressEnter={handleSearch}
-                            allowClear
-                            onClear={() => fetchUsers(1, meta.pageSize, '', roleFilter)}
-                        />
-                        <Select
-                            placeholder="Filter by Role"
-                            style={{ minWidth: 180 }}
-                            value={roleFilter}
-                            onChange={handleRoleFilterChange}
-                            options={[
-                                { label: 'All', value: ALL_ROLES_VALUE },
-                                ...roles.map((r) => ({ label: r.name, value: r.id })),
-                            ]}
-                        />
-                    </Flex>
-
-                    <Table
-                        rowKey="id"
-                        loading={loading}
-                        columns={columns}
-                        dataSource={data}
-                        pagination={{
-                            current: meta.current,
-                            pageSize: meta.pageSize,
-                            total: meta.total,
-                            showTotal: (total) => `Tổng ${total} người dùng`,
-                            onChange: (page, pageSize) => fetchUsers(page, pageSize, searchText, roleFilter),
-                        }}
-                    />
-                </Card>
-            </Access>
+                <Table
+                    rowKey="id"
+                    loading={loading}
+                    columns={columns}
+                    dataSource={data}
+                    pagination={{
+                        current: meta.current,
+                        pageSize: meta.pageSize,
+                        total: meta.total,
+                        showTotal: (total) => `Tổng ${total} người dùng`,
+                        onChange: (page, pageSize) => fetchUsers(page, pageSize, searchText, roleFilter),
+                    }}
+                />
+            </Card>
         </>
     );
 };
