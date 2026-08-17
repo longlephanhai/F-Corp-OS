@@ -1,5 +1,5 @@
 import axios from "../config/interceptor";
-import type { TaskCandidate, TaskItem, TeamMember, UserSprintItem } from "../common/types/pm";
+import type { ProjectItem, TaskCandidate, TaskItem, TeamMember, UserSprintItem } from "../common/types/pm";
 
 
 export const pmApi = {
@@ -54,5 +54,15 @@ export const pmApi = {
   // 2. Duyệt hoặc Từ chối Bằng chứng kỹ năng (Thêm mới)
   verifyEvidence: (id: string, data: { status: 'verified' | 'rejected'; rejectReason?: string }) => {
     return axios.patch<IBackendRes<any>>(`/skill-evidences/${id}/verify`, data);
+  },
+
+
+  getProjects: () => {
+    return axios.get<IBackendRes<ProjectItem[]>>('/projects');
+  },
+
+  // Tạo Dự án mới
+  createProject: (data: Partial<ProjectItem>) => {
+    return axios.post<IBackendRes<ProjectItem>>('/projects', data);
   },
 };

@@ -1,0 +1,110 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  // Trỏ đúng vào các file chứa class Tailwind của bạn
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "surface-container-highest": "#e0e3e5",
+        "on-primary-fixed-variant": "#003ea8",
+        "secondary-fixed-dim": "#b8c7e2",
+        "inverse-surface": "#2d3133",
+        "on-secondary-container": "#56657c",
+        "surface-bright": "#f7f9fb",
+        "on-secondary-fixed": "#0c1c30",
+        "secondary-fixed": "#d4e3ff",
+        "error": "#ba1a1a",
+        "critical": "#ba1a1a",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f2f4f6",
+        "on-background": "#191c1e",
+        "border-subtle": "#e6e8ea",
+        "on-error": "#ffffff",
+        "on-primary-fixed": "#00174b",
+        "error-container": "#ffdad6",
+        "inverse-on-surface": "#eff1f3",
+        "primary": "#003594",
+        "surface-variant": "#e0e3e5",
+        "success": "#16a34a",
+        "on-tertiary": "#ffffff",
+        "on-surface": "#191c1e",
+        "surface-white": "#ffffff",
+        "outline": "#737685",
+        "secondary": "#505f76",
+        "on-tertiary-fixed-variant": "#3e465c",
+        "primary-container": "#004ac6",
+        "surface-tint": "#1b55d0",
+        "on-secondary-fixed-variant": "#39485e",
+        "surface": "#f7f9fb",
+        "on-tertiary-fixed": "#131b2e",
+        "on-error-container": "#93000a",
+        "surface-container-high": "#e6e8ea",
+        "tertiary-fixed-dim": "#bec6e0",
+        "on-primary-container": "#b8c8ff",
+        "on-primary": "#ffffff",
+        "tertiary-container": "#4c546a",
+        "background": "#f7f9fb",
+        "tertiary-fixed": "#dae2fd",
+        "secondary-container": "#d4e3ff",
+        "on-tertiary-container": "#c1c8e3",
+        "on-surface-variant": "#434654",
+        "tertiary": "#353d52",
+        "surface-container": "#eceef0",
+        "inverse-primary": "#b4c5ff",
+        "primary-fixed-dim": "#b4c5ff",
+        "outline-variant": "#c3c6d6",
+        "warning": "#ea580c",
+        "primary-fixed": "#dbe1ff",
+        "on-secondary": "#ffffff",
+        "surface-dim": "#d8dadc"
+      },
+      borderRadius: {
+        "DEFAULT": "0.125rem",
+        "lg": "0.25rem",
+        "xl": "0.5rem",
+        "full": "0.75rem"
+      },
+      spacing: {
+        "stack-lg": "24px",
+        "sidebar-width": "260px",
+        "margin-page": "24px",
+        "gutter": "16px",
+        "stack-sm": "8px",
+        "stack-xs": "4px",
+        "stack-md": "16px",
+        "unit": "4px"
+      },
+      fontFamily: {
+        "body-lg": ["Inter", "sans-serif"],
+        "body-sm": ["Inter", "sans-serif"],
+        "headline-lg": ["Inter", "sans-serif"],
+        "headline-md": ["Inter", "sans-serif"],
+        "title-lg": ["Inter", "sans-serif"],
+        "label-md": ["Inter", "sans-serif"],
+        "display-lg": ["Inter", "sans-serif"],
+        "body-md": ["Inter", "sans-serif"],
+        "label-sm": ["Inter", "sans-serif"]
+      },
+      fontSize: {
+        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+        "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600" }],
+        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+        "title-lg": ["18px", { lineHeight: "24px", fontWeight: "600" }],
+        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+        "display-lg": ["36px", { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "700" }],
+        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+        "label-sm": ["11px", { lineHeight: "14px", fontWeight: "500" }]
+      }
+    },
+  },
+  plugins: [
+    // Nếu bạn muốn dùng 2 plugin giống hệt file HTML của Stick, hãy cài npm và gọi ở đây:
+    // require('@tailwindcss/forms'),
+    // require('@tailwindcss/container-queries')
+  ],
+}

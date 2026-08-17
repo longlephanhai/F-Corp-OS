@@ -35,11 +35,7 @@ export class Sprint {
   @Column({ type: 'json', nullable: true })
   attendant: string[];
 
-  // =========================================================================
-  // CÁC MỐI QUAN HỆ (RELATIONS)
-  // =========================================================================
 
- 
 
   // =========================================================================
   // AUDIT LOG
@@ -67,7 +63,9 @@ export class Sprint {
 
 
 
-
+  // =========================================================================
+  // CÁC MỐI QUAN HỆ (RELATIONS)
+  // =========================================================================
    // 1 Sprint có nhiều bản ghi phân bổ nhân sự (UserSprint)
   @OneToMany(() => UserSprint, (userSprint) => userSprint.sprint)
   userSprints: UserSprint[];

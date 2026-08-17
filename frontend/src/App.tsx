@@ -18,6 +18,7 @@ import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
+import { ProjectsPage } from "./pages/pm/ProjectsPage";
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
 
@@ -75,6 +76,10 @@ function App() {
         {
           path: "my-team",
           element: <MyTeamPage />,
+        },
+         {
+          path: "project",
+          element: <ProjectsPage />,
         },
         {
           path: "sprints/:sprintId",

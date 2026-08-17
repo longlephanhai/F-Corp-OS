@@ -52,7 +52,7 @@ import { Project } from 'modules/projects/entities/project.entity';
           Task,
           UserSprint,
         ],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),

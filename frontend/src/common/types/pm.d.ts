@@ -76,3 +76,12 @@ export interface TeamMember {
   status: EmployeeStatus;
   userSkills: UserSkill[];
 }
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
