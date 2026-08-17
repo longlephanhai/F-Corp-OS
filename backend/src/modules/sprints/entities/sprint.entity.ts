@@ -9,9 +9,9 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
 } from 'typeorm';
-import { UserSprint } from '../../user-sprints/entities/user-sprint.entity'; // Đường dẫn tới entity UserSprint
-import { Task } from 'modules/task/entities/task.entity'; // Đường dẫn tới entity Task
-// import { Project } from '../../projects/entities/project.entity'; // Mở comment khi bạn đã tạo bảng Project
+import { UserSprint } from '../../user-sprints/entities/user-sprint.entity';
+import { Task } from 'modules/task/entities/task.entity';
+import { Project } from '../../projects/entities/project.entity';
 
 @Entity('sprints')
 export class Sprint {
@@ -39,32 +39,19 @@ export class Sprint {
   // CÁC MỐI QUAN HỆ (RELATIONS)
   // =========================================================================
 
-  // 1 Sprint có nhiều bản ghi phân bổ nhân sự (UserSprint)
-  @OneToMany(() => UserSprint, (userSprint) => userSprint.sprint)
-  userSprints: UserSprint[];
-
-  // 1 Sprint có nhiều Task
-  @OneToMany(() => Task, (task) => task.sprint)
-  tasks: Task[];
-
-  // Nhiều Sprint thuộc về 1 Project (Tạm comment phần liên kết thực thể nếu chưa có Entity Project)
-  /*
-  @ManyToOne(() => Project, (project) => project.sprints, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
-  project: Project;
-  */
+ 
 
   // =========================================================================
   // AUDIT LOG
   // =========================================================================
   @Column({ type: 'json', nullable: true })
-  createdBy: { id: string; email: string; };
+  createdBy: { id: string; email: string };
 
   @Column({ type: 'json', nullable: true })
-  updatedBy: { id: string; email: string; };
+  updatedBy: { id: string; email: string };
 
   @Column({ type: 'json', nullable: true })
-  deletedBy: { id: string; email: string; };
+  deletedBy: { id: string; email: string };
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
@@ -77,4 +64,22 @@ export class Sprint {
 
   @Column({ default: false })
   isDeleted: boolean;
+
+
+
+
+   // 1 Sprint có nhiều bản ghi phân bổ nhân sự (UserSprint)
+  @OneToMany(() => UserSprint, (userSprint) => userSprint.sprint)
+  userSprints: UserSprint[];
+
+  // 1 Sprint có nhiều Task
+  @OneToMany(() => Task, (task) => task.sprint)
+  tasks: Task[];
+
+  // Nhiều Sprint thuộc về 1 Project
+  @ManyToOne(() => Project, (project) => project.sprints, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'project_id' })
+  project: Project;
 }
