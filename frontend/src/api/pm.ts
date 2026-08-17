@@ -1,6 +1,11 @@
 import axios from "../config/interceptor";
-import type { ProjectItem, TaskCandidate, TaskItem, TeamMember, UserSprintItem } from "../common/types/pm";
-
+import type {
+  ProjectItem,
+  TaskCandidate,
+  TaskItem,
+  TeamMember,
+  UserSprintItem,
+} from "../common/types/pm";
 
 export const pmApi = {
   // Lấy danh sách nhân sự tham gia Sprint
@@ -33,7 +38,9 @@ export const pmApi = {
   },
 
   getTaskCandidates: (taskId: string) => {
-    return axios.get<IBackendRes<TaskCandidate[]>>(`/tasks/${taskId}/candidates`);
+    return axios.get<IBackendRes<TaskCandidate[]>>(
+      `/tasks/${taskId}/candidates`,
+    );
   },
 
   // Tạo Task và gán kĩ năng yêu cầu (Required Skills JSON)
@@ -43,26 +50,48 @@ export const pmApi = {
 
   // Giải phóng nhân sự kèm Đánh giá (Review)
   releaseUserSprint: (id: string, reviewData: any) => {
-    return axios.patch<IBackendRes<any>>(`/user-sprint/${id}/release`, reviewData);
+    return axios.patch<IBackendRes<any>>(
+      `/user-sprint/${id}/release`,
+      reviewData,
+    );
   },
 
-
   getMyTeam: () => {
-    return axios.get<IBackendRes<TeamMember[]>>('/users/pm/my-team');
+    return axios.get<IBackendRes<TeamMember[]>>("/users/pm/my-team");
   },
 
   // 2. Duyệt hoặc Từ chối Bằng chứng kỹ năng (Thêm mới)
-  verifyEvidence: (id: string, data: { status: 'verified' | 'rejected'; rejectReason?: string }) => {
+  verifyEvidence: (
+    id: string,
+    data: { status: "verified" | "rejected"; rejectReason?: string },
+  ) => {
     return axios.patch<IBackendRes<any>>(`/skill-evidences/${id}/verify`, data);
   },
 
-
   getProjects: () => {
-    return axios.get<IBackendRes<ProjectItem[]>>('/projects');
+    return axios.get<IBackendRes<ProjectItem[]>>("/projects");
   },
 
   // Tạo Dự án mới
   createProject: (data: Partial<ProjectItem>) => {
-    return axios.post<IBackendRes<ProjectItem>>('/projects', data);
+    return axios.post<IBackendRes<ProjectItem>>("/projects", data);
+  },
+
+  getProjectById: (id: string) => {
+    return axios.get<IBackendRes<any>>(`/projects/${id}`);
+  },
+
+  // Lấy toàn bộ Sprint của 1 Dự án
+  getSprintsByProject: (projectId: string) => {
+    return axios.get<IBackendRes<any[]>>(`/sprints/project/${projectId}`);
+  },
+
+  // Khởi tạo Sprint mới (Có truyền mảng attendant)
+  createSprint: (data: any) => {
+    return axios.post<IBackendRes<any>>("/sprints", data);
+  },
+
+  getMyProjects: () => {
+    return axios.get<IBackendRes<ProjectItem[]>>("/projects/my-projects");
   },
 };

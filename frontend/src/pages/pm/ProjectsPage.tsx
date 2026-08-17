@@ -1,218 +1,233 @@
-import React, { useState } from 'react';
-import { 
-    Button, Table, Tag, Progress, Avatar, Modal, Form, 
-    Input, DatePicker, Space, Typography, Card, Divider, Flex, Tooltip 
-} from 'antd';
-import { 
-    PlusOutlined, UserOutlined, CalendarOutlined, 
-    DollarOutlined, SettingOutlined 
-} from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import {
+  Table,
+  Button,
+  Tag,
+  Modal,
+  Form,
+  Input,
+  DatePicker,
+  message,
+  Card,
+  Space,
+  Typography,
+} from "antd";
+import { PlusOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
+import type { ProjectItem } from "../../common/types/pm";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 export const ProjectsPage: React.FC = () => {
-    const navigate = useNavigate();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [form] = Form.useForm();
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form] = Form.useForm();
+  const navigate = useNavigate();
 
-    // Dữ liệu giả lập cho Bảng
-    const sprints = [
-        {
-            id: 'SP-1012',
-            name: 'Sprint 12 - API Layer',
-            timeline: 'Oct 1 - Oct 14',
-            status: 'completed',
-            progress: 100,
-            members: 4
-        },
-        {
-            id: 'SP-1013',
-            name: 'Sprint 13 - Database Auth',
-            timeline: 'Oct 15 - Oct 28',
-            status: 'active',
-            progress: 45,
-            members: 3
-        }
-    ];
+  // Gọi API lấy danh sách dự án
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+ 
+      const res = await pmApi.getMyProjects();
+      setProjects(res?.data?.data ?? res?.data ?? []);
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách dự án", error);
+      message.error("Không thể tải danh sách dự án từ Server!");
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Cấu hình Cột cho Ant Design Table
-    const columns = [
-        {
-            title: 'CHI TIẾT SPRINT',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string, record: any) => (
-                <Space direction="vertical" size={0}>
-                    <Text strong style={{ fontSize: '15px' }}>{text}</Text>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>ID: {record.id}</Text>
-                </Space>
-            ),
-        },
-        {
-            title: 'THỜI GIAN',
-            dataIndex: 'timeline',
-            key: 'timeline',
-            render: (text: string) => <Text type="secondary">{text}</Text>,
-        },
-        {
-            title: 'TRẠNG THÁI',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string) => {
-                const color = status === 'completed' ? 'default' : 'processing';
-                const label = status === 'completed' ? 'Đã hoàn thành' : 'Đang chạy';
-                return <Tag color={color}>{label.toUpperCase()}</Tag>;
-            },
-        },
-        {
-            title: 'TIẾN ĐỘ',
-            dataIndex: 'progress',
-            key: 'progress',
-            width: 200,
-            render: (percent: number) => (
-                <Progress percent={percent} size="small" status={percent === 100 ? 'success' : 'active'} />
-            ),
-        },
-        {
-            title: 'NHÂN SỰ',
-            key: 'team',
-            render: (_: any, record: any) => (
-                <Avatar.Group maxCount={3} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>
-                    <Avatar src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" />
-                    <Avatar src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" />
-                    {record.members > 2 && <Avatar style={{ backgroundColor: '#1677ff' }}>+{record.members - 2}</Avatar>}
-                </Avatar.Group>
-            ),
-        },
-        {
-            title: 'THAO TÁC',
-            key: 'action',
-            align: 'right' as const,
-            render: (_: any, record: any) => (
-                <Button 
-                    type="default" 
-                    icon={<SettingOutlined />}
-                    onClick={() => navigate(`/pm/sprints/${record.id}`)}
-                >
-                    Quản lý Task
-                </Button>
-            ),
-        },
-    ];
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
-            {/* --- SECTION 1: HEADER (COMMAND CENTER) --- */}
-            <Card bordered={false} style={{ boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}>
-                <Flex justify="space-between" align="flex-start">
-                    <Space direction="vertical" size="small">
-                        <Space align="center" size="middle">
-                            <Title level={2} style={{ margin: 0, color: '#1f2937' }}>Alpha Cloud Migration</Title>
-                            <Tag color="success" style={{ fontWeight: 'bold' }}>ACTIVE</Tag>
-                        </Space>
-                        
-                        <Space size="large" style={{ color: '#6b7280', marginTop: '8px' }}>
-                            <Space><UserOutlined /> <Text type="secondary">PM: Khanh Nguyễn</Text></Space>
-                            <Space><CalendarOutlined /> <Text type="secondary">Oct 1 - Dec 31, 2026</Text></Space>
-                            <Space><DollarOutlined /> <Text type="secondary">Ngân sách: $250k</Text></Space>
-                        </Space>
-                    </Space>
-                    
-                    <Button 
-                        type="primary" 
-                        size="large" 
-                        icon={<PlusOutlined />} 
-                        onClick={() => setIsModalOpen(true)}
-                    >
-                        Tạo Sprint Mới
-                    </Button>
-                </Flex>
+  // Xử lý submit form tạo dự án mới
+  const handleCreateProject = async (values: any) => {
+    try {
+      setLoading(true);
+      const payload = {
+        name: values.name,
+        description: values.description,
+        startDate: values.dateRange[0].format("YYYY-MM-DD"),
+        endDate: values.dateRange[1].format("YYYY-MM-DD"),
+        // Tạm thời hardcode ID của PM (Lấy từ bảng users trong DB của bác)
+        pmId: "2ff0de6e-2759-4d11-aab7-42ca161f2933",
+      };
 
-                <Divider style={{ margin: '20px 0' }} />
+      // Gọi API tạo dự án
+      await pmApi.createProject(payload);
+      message.success("Đã tạo Dự án mới thành công!");
 
-                <div>
-                    <Flex justify="space-between" align="center" style={{ marginBottom: '8px' }}>
-                        <Text strong type="secondary" style={{ textTransform: 'uppercase', fontSize: '12px' }}>
-                            Tiến độ tổng thể dự án
-                        </Text>
-                        <Title level={4} style={{ margin: 0, color: '#1677ff' }}>65%</Title>
-                    </Flex>
-                    <Progress percent={65} showInfo={false} size={['100%', 12]} strokeColor="#1677ff" />
-                </div>
-            </Card>
+      setIsModalOpen(false);
+      form.resetFields();
+      fetchProjects(); // Load lại bảng
+    } catch (error) {
+      message.error("Lỗi khi khởi tạo dự án!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            {/* --- SECTION 2: BẢNG DANH SÁCH SPRINT --- */}
-            <Card 
-                title={<Title level={4} style={{ margin: 0 }}>Lộ trình Sprint (Roadmap)</Title>} 
-                bordered={false} 
-                style={{ boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}
-                bodyStyle={{ padding: 0 }} // Bỏ padding để bảng full viền
-            >
-                <Table 
-                    columns={columns} 
-                    dataSource={sprints} 
-                    rowKey="id" 
-                    pagination={false}
-                />
-            </Card>
+  const columns = [
+    {
+      title: "TÊN DỰ ÁN",
+      dataIndex: "name",
+      key: "name",
+      render: (text: string, record: ProjectItem) => (
+        <Space direction="vertical" size={0}>
+          <Text strong style={{ fontSize: "15px", color: "#1677ff" }}>
+            {text}
+          </Text>
+          <Text type="secondary" style={{ fontSize: "12px" }}>
+            {record.description}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: "THỜI GIAN",
+      key: "time",
+      render: (_: any, record: ProjectItem) => (
+        <Text type="secondary">
+          {record.startDate} <span style={{ margin: "0 4px" }}>→</span>{" "}
+          {record.endDate}
+        </Text>
+      ),
+    },
+    {
+      title: "TRẠNG THÁI",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string) => {
+        const colors: Record<string, string> = {
+          active: "green",
+          completed: "default",
+          delayed: "red",
+        };
+        const labels: Record<string, string> = {
+          active: "ĐANG CHẠY",
+          completed: "HOÀN THÀNH",
+          delayed: "CHẬM TRỄ",
+        };
+        return (
+          <Tag color={colors[status] || "blue"}>
+            {labels[status] || status.toUpperCase()}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "THAO TÁC",
+      key: "action",
+      align: "right" as const,
+      render: (_: any, record: ProjectItem) => (
+        <Button
+          type="primary"
+          ghost
+          icon={<FolderOpenOutlined />}
+          // BÙM! Khi bấm nút này, nó sẽ nhảy vào cái Command Center bạn làm hôm trước
+          onClick={() => navigate(`/pm/projects/${record.id}`)}
+        >
+          Vào Command Center
+        </Button>
+      ),
+    },
+  ];
 
-            {/* --- SECTION 3: MODAL TẠO SPRINT MỚI --- */}
-            <Modal
-                title={<Title level={3} style={{ margin: 0 }}>Khởi tạo Sprint Mới</Title>}
-                open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                width={700}
-                footer={[
-                    <Button key="back" onClick={() => setIsModalOpen(false)}>
-                        Hủy bỏ
-                    </Button>,
-                    <Button key="submit" type="primary" onClick={() => form.submit()}>
-                        Chốt Tạo Sprint
-                    </Button>,
-                ]}
-                destroyOnClose
-            >
-                <div style={{ marginBottom: '24px', color: '#6b7280' }}>
-                    Xác định phạm vi, thời gian và phân bổ tài nguyên cho chặng tiếp theo.
-                </div>
-                
-                <Form form={form} layout="vertical" onFinish={(values) => console.log(values)}>
-                    <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
-                        <Flex gap="middle">
-                            <Form.Item 
-                                name="name" 
-                                label="Tên Sprint" 
-                                style={{ flex: 2 }}
-                                rules={[{ required: true, message: 'Vui lòng nhập tên Sprint!' }]}
-                            >
-                                <Input placeholder="Ví dụ: Frontend Refactor Phase 1" size="large" />
-                            </Form.Item>
-                            
-                            <Form.Item label="Mã Sprint ID" style={{ flex: 1 }}>
-                                <Input value="SP-1015" disabled size="large" />
-                            </Form.Item>
-                        </Flex>
-
-                        <Form.Item 
-                            name="dateRange" 
-                            label="Thời gian diễn ra" 
-                            rules={[{ required: true, message: 'Vui lòng chọn thời gian!' }]}
-                        >
-                            <RangePicker size="large" style={{ width: '100%' }} />
-                        </Form.Item>
-
-                        <Form.Item name="goal" label="Mục tiêu Sprint (Sprint Goal)">
-                            <Input.TextArea 
-                                rows={4} 
-                                placeholder="Nhập mục tiêu và kết quả kỳ vọng của Sprint này..." 
-                            />
-                        </Form.Item>
-                    </Space>
-                </Form>
-            </Modal>
+  return (
+    <Card
+      bordered={false}
+      style={{
+        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+        minHeight: "100%",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <Title level={3} style={{ margin: 0 }}>
+            Danh mục Dự án
+          </Title>
+          <Text type="secondary">
+            Quản lý tổng thể các dự án và phân bổ Sprint
+          </Text>
         </div>
-    );
+        <Button
+          type="primary"
+          size="large"
+          icon={<PlusOutlined />}
+          onClick={() => setIsModalOpen(true)}
+        >
+          Khởi tạo Dự án
+        </Button>
+      </div>
+
+      <Table
+        columns={columns}
+        dataSource={projects}
+        rowKey="id"
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+      />
+
+      <Modal
+        title={
+          <Title level={4} style={{ margin: 0 }}>
+            Khởi tạo Dự án Mới
+          </Title>
+        }
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+        confirmLoading={loading}
+        okText="Tạo Dự án"
+        cancelText="Hủy bỏ"
+        destroyOnClose
+      >
+        <div style={{ marginBottom: 24, marginTop: 8 }}>
+          <Text type="secondary">
+            Thiết lập thông tin cơ bản cho dự án mới để bắt đầu lên kế hoạch
+            Sprint.
+          </Text>
+        </div>
+
+        <Form form={form} layout="vertical" onFinish={handleCreateProject}>
+          <Form.Item
+            name="name"
+            label="Tên Dự án"
+            rules={[{ required: true, message: "Vui lòng nhập tên dự án!" }]}
+          >
+            <Input placeholder="Ví dụ: Hệ thống F-Corp OS" size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="dateRange"
+            label="Thời gian thực hiện"
+            rules={[{ required: true, message: "Vui lòng chọn thời gian!" }]}
+          >
+            <RangePicker size="large" style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item name="description" label="Mô tả tóm tắt">
+            <Input.TextArea
+              rows={4}
+              placeholder="Nhập mục tiêu và phạm vi của dự án này..."
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Card>
+  );
 };

@@ -35,8 +35,6 @@ export class Sprint {
   @Column({ type: 'json', nullable: true })
   attendant: string[];
 
-
-
   // =========================================================================
   // AUDIT LOG
   // =========================================================================
@@ -60,13 +58,17 @@ export class Sprint {
 
   @Column({ default: false })
   isDeleted: boolean;
-
-
+  @Column({
+    type: 'enum',
+    enum: ['upcoming', 'active', 'completed', 'cancelled'],
+    default: 'upcoming',
+  })
+  status: string;
 
   // =========================================================================
   // CÁC MỐI QUAN HỆ (RELATIONS)
   // =========================================================================
-   // 1 Sprint có nhiều bản ghi phân bổ nhân sự (UserSprint)
+  // 1 Sprint có nhiều bản ghi phân bổ nhân sự (UserSprint)
   @OneToMany(() => UserSprint, (userSprint) => userSprint.sprint)
   userSprints: UserSprint[];
 
