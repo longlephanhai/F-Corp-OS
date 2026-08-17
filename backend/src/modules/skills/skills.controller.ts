@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { SkillsService } from './skills.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
@@ -10,14 +10,20 @@ export class SkillsController {
   constructor(private readonly skillsService: SkillsService) { }
 
   @Post()
+  @SkipCheckPermission()
   @ResponseMessage('Skill created successfully')
   create(@Body() createSkillDto: CreateSkillDto, @User() user: IUser) {
     return this.skillsService.create(createSkillDto, user);
   }
 
   @Get()
-  findAll() {
-    return this.skillsService.findAll();
+  @SkipCheckPermission()
+  findAll(
+    @Query("current") currentPage: string,
+    @Query("pageSize") limit: string,
+    @Query() qs: string
+  ) {
+    return this.skillsService.findAll(+currentPage, +limit, qs);
   }
 
   @Get(':id')

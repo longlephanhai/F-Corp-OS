@@ -51,7 +51,7 @@ const LoginPage = () => {
 
       if (response?.data) {
         const userInfo = response.data.user;
-        const roleName = userInfo?.role?.name ?? "pm";
+        const roleName = userInfo?.role?.name;
 
         localStorage.setItem("access_token", response.data.access_token);
         dispatch(
@@ -65,7 +65,7 @@ const LoginPage = () => {
         );
         message.success(`${response.message}`);
 
-        const route = roleName.toLowerCase();
+        const route = roleName?.toLowerCase();
         navigate(`/${route}`);
       } else {
         setErrorMessage(

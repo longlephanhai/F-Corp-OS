@@ -18,6 +18,8 @@ import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
+import DeveloperLayout from "./layout/dev";
+import DashBoardDev from "./pages/dev/dashboard";
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
 
@@ -81,6 +83,18 @@ function App() {
           element: <SprintManagementPage />,
         },
       ],
+    },
+
+    {
+      path: "/developer",
+      element: <DeveloperLayout />,
+      errorElement: <ErrorPage />,
+      children: [
+        {
+          index: true,
+          element: <DashBoardDev />
+        }
+      ]
     },
 
     {

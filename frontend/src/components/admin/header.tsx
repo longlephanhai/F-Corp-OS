@@ -11,13 +11,14 @@ const { Header } = Layout;
 const { Text } = Typography;
 
 interface IProps {
+  title?: string;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   colorBgContainer: string;
 }
 
 const HeaderLayout = (props: IProps) => {
-  const { collapsed, setCollapsed, colorBgContainer } = props;
+  const { collapsed, setCollapsed, colorBgContainer, title } = props;
 
   return (
     <Header style={{ padding: 0, background: colorBgContainer }}>
@@ -36,7 +37,7 @@ const HeaderLayout = (props: IProps) => {
           />
           {/* ↑↑↑ HẾT PHẦN GIỮ NGUYÊN ↑↑↑ */}
           <Text strong style={{ fontSize: 18, color: '#1677ff' }}>
-            Admin Console
+            {title}
           </Text>
         </Flex>
 
