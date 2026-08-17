@@ -1,10 +1,8 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
+import { CreateSkillEvidenceDto } from "modules/skill-evidences/dto/create-skill-evidence.dto";
 
 export class CreateUserSkillDto {
-    @IsNotEmpty({ message: 'User ID is required' })
-    @IsString({ message: 'User ID must be a string' })
-    userId: string;
-
     @IsNotEmpty({ message: 'Skill ID is required' })
     @IsString({ message: 'Skill ID must be a string' })
     skillId: string;
@@ -14,10 +12,12 @@ export class CreateUserSkillDto {
     description: string;
 
     @IsOptional()
-    @IsString({ message: 'Evidence Note must be a string' })
-    level?: number;
-
-    @IsOptional()
-    @IsString({ message: 'Years must be a string' })
+    @IsNumber({}, { message: 'Years must be a number' })
     years?: number;
+
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateSkillEvidenceDto)
+    @IsOptional()
+    evidences?: CreateSkillEvidenceDto[];
 }

@@ -21,9 +21,10 @@ export class SkillsController {
   findAll(
     @Query("current") currentPage: string,
     @Query("pageSize") limit: string,
-    @Query() qs: string
+    @Query() qs: string,
+    @User() user: IUser
   ) {
-    return this.skillsService.findAll(+currentPage, +limit, qs);
+    return this.skillsService.findAll(+currentPage, +limit, qs, user);
   }
 
   @Get(':id')

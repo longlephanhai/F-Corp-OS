@@ -29,6 +29,7 @@ import {
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { callFetchSkills } from "../../api";
+import ModalCreateSkill from "../../components/dev/modal.skill";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -94,6 +95,8 @@ const SkillPage = () => {
     const [pageSize, setPageSize] = useState(5);
     const [total, setTotal] = useState(0);
     const [sortQuery, setSortQuery] = useState("sort=name");
+
+    const [skillModalOpen, setSkillModalOpen] = useState(false);
 
     const fetchSkills = async (page = current, size = pageSize, search = searchText, sort = sortQuery) => {
         setLoading(true);
@@ -283,6 +286,9 @@ const SkillPage = () => {
                         <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
                             Làm mới
                         </Button>
+                        <Button type="primary" onClick={() => setSkillModalOpen(true)}>
+                            + Tạo mới
+                        </Button>
                     </Space>
                 </Flex>
             </Card>
@@ -342,6 +348,16 @@ const SkillPage = () => {
                     }}
                 />
             </Card>
+
+            <ModalCreateSkill
+                open={skillModalOpen}
+                onCancel={() => setSkillModalOpen(false)}
+                onSuccess={(skill) => {
+                    console.log('Skill mới:', skill);
+                    setSkillModalOpen(false);
+                    handleRefresh();
+                }}
+            />
         </div>
     );
 };

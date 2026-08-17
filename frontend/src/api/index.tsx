@@ -62,3 +62,7 @@ export const callFetchRoles = () => {
 export const callFetchSkills = async (query: string): Promise<IBackendRes<IModelPaginate<ISkills>>> => {
     return await axios.get(`/skills?${query}`);
 }
+
+export const callCreateSkill = async (data: { name: string; description: string }): Promise<IBackendRes<ISkills>> => {
+    return await axios.post('/skills', data);
+}

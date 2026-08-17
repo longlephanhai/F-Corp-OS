@@ -15,4 +15,4 @@ import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
   controllers: [SkillEvidencesController],
   providers: [SkillEvidencesService],
 })
-export class SkillEvidencesModule {}
+export class SkillEvidencesModule { }

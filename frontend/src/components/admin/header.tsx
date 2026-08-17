@@ -11,6 +11,7 @@ const { Header } = Layout;
 const { Text } = Typography;
 
 interface IProps {
+  name?: string;
   title?: string;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
@@ -18,7 +19,7 @@ interface IProps {
 }
 
 const HeaderLayout = (props: IProps) => {
-  const { collapsed, setCollapsed, colorBgContainer, title } = props;
+  const { collapsed, setCollapsed, colorBgContainer, title, name } = props;
 
   return (
     <Header style={{ padding: 0, background: colorBgContainer }}>
@@ -46,7 +47,7 @@ const HeaderLayout = (props: IProps) => {
             <BellOutlined style={{ fontSize: 18, cursor: 'pointer', color: '#595959' }} />
           </Badge>
           <SettingOutlined style={{ fontSize: 18, cursor: 'pointer', color: '#595959' }} />
-          <Text strong>Admin User</Text>
+          <Text strong>{name}</Text>
           <Avatar size={32} icon={<UserOutlined />} />
           <Dropdown
             menu={{

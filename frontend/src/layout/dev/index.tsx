@@ -4,6 +4,8 @@ import { Outlet, useLocation } from 'react-router';
 import HeaderLayout from '../../components/admin/header';
 import FooterLayout from '../../components/admin/footer';
 import SiderDev from '../../components/dev/sider';
+import { useAppSelector } from '../../hooks/hooks';
+
 const { Content } = Layout;
 
 const DeveloperLayout = () => {
@@ -29,6 +31,7 @@ const DeveloperLayout = () => {
             />
             <Layout>
                 <HeaderLayout
+                    name={useAppSelector((state) => state.account.user?.fullName)}
                     title="Developer Console"
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}

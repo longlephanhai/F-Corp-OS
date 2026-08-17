@@ -14,7 +14,7 @@ export class UserSkill {
   @Column({ name: 'skill_id' })
   skillId: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   description: string;
 
   @Column({ type: 'int', default: 1 })
@@ -23,7 +23,7 @@ export class UserSkill {
   @Column({ type: 'float', nullable: true })
   years: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   evidenceNote: string;
 
   @Column({ type: 'float', nullable: true })

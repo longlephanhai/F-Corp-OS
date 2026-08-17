@@ -15,9 +15,11 @@ export class SkillsService {
   ) { }
 
   async create(createSkillDto: CreateSkillDto, user: IUser) {
-    const isExist = await this.skillsRepository.findOne({
-      where: { name: createSkillDto.name }
-    });
+    const isExist = await this.skillsRepository
+      .createQueryBuilder('skills')
+      .where('skills.name = :name', { name: createSkillDto.name })
+      .andWhere("skills.createdBy->>'$.id' = :userId", { userId: user.id })
+      .getOne();
 
     if (isExist) {
       throw new BadRequestException('Skill name already exists');
@@ -32,7 +34,7 @@ export class SkillsService {
     return this.skillsRepository.save(skills);
   }
 
-  async findAll(currentPage: number, limit: number, qs: string) {
+  async findAll(currentPage: number, limit: number, qs: string, user: IUser) {
     const { filter, sort } = aqp(qs);
     delete filter.current;
     delete filter.pageSize;
@@ -42,6 +44,7 @@ export class SkillsService {
 
     const queryBuilder = this.skillsRepository
       .createQueryBuilder('skills')
+      .where("skills.createdBy->>'$.id' = :userId", { userId: user.id });
 
     const likeFields = ['name', 'description'];
     Object.keys(filter).forEach((key) => {
@@ -61,7 +64,7 @@ export class SkillsService {
       .skip(offset)
       .take(defaultLimit)
       .getManyAndCount()
-      
+
     return {
       meta: {
         currentPage: +currentPage,
@@ -71,7 +74,6 @@ export class SkillsService {
       },
       result
     }
-
   }
 
   findOne(id: number) {
