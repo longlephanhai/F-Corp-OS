@@ -18,6 +18,7 @@ import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
+import BenchForecast from "./pages/hr/BenchForecast";
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
 
@@ -59,7 +60,7 @@ function App() {
         { path: "dashboard", element: <HRDashboard /> },
         { path: "wallet", element: <WalletAdmin /> },
         { path: "review", element: <ReviewConsole /> },
-        { path: "bench", element: <PlaceholderPage title="Dự báo Bench" /> },
+        { path: "bench", element: <BenchForecast /> },
       ],
     },
 
