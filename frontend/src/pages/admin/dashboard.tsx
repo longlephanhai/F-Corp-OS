@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { callCountUsers, callCountRoles, callCountPermissions } from '../../api';
+import { callCountUsers, callCountRoles, callCountPermissions, callCountDisableAccount } from '../../api';
 
 const { Title } = Typography;
 
@@ -36,6 +36,7 @@ const DashboardPage = () => {
     const [totalUsers, setTotalUsers] = useState<number>(0);
     const [totalRoles, setTotalRoles] = useState<number>(0);
     const [totalPermissions, setTotalPermissions] = useState<number>(0);
+    const [totalDisableAccount, setDisableAccount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
@@ -43,11 +44,13 @@ const DashboardPage = () => {
             callCountUsers(),
             callCountRoles(),
             callCountPermissions(),
+            callCountDisableAccount(),
         ])
-            .then(([resUsers, resRoles, resPermissions]: any[]) => {
+            .then(([resUsers, resRoles, resPermissions, resDisableAccount]: any[]) => {
                 if (resUsers?.data?.total !== undefined) setTotalUsers(resUsers.data.total);
                 if (resRoles?.data?.total !== undefined) setTotalRoles(resRoles.data.total);
                 if (resPermissions?.data?.total !== undefined) setTotalPermissions(resPermissions.data.total);
+                if (resDisableAccount?.data?.total !== undefined) setDisableAccount(resDisableAccount.data.total);
             })
             .finally(() => setLoading(false));
     }, []);
@@ -143,26 +146,28 @@ const DashboardPage = () => {
                 </Col>
 
                 <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                       <Card>
                         <Flex justify="space-between" align="flex-start">
                             <div
                                 style={{
                                     width: 40, height: 40, borderRadius: 8,
-                                    background: '#fff1f0', display: 'flex',
+                                    background: '#e6f4ff', display: 'flex',
                                     alignItems: 'center', justifyContent: 'center',
                                 }}
                             >
-                                <LockOutlined style={{ color: '#ff4d4f', fontSize: 18 }} />
+                                <LockOutlined style={{ color: '#ff1616', fontSize: 18 }} />
                             </div>
-                            <Tag color="error" bordered={false}></Tag>
                         </Flex>
-                        {/* ⚠️ Mock — chưa có API/field "disabled accounts" ở backend */}
-                        <Statistic
-                            title={<span style={{ letterSpacing: 0.5 }}>DISABLED ACCOUNTS</span>}
-                            value={3}
-                            valueStyle={{ fontWeight: 600 }}
-                            style={{ marginTop: 16 }}
-                        />
+                        {loading ? (
+                            <Spin size="small" style={{ marginTop: 16, display: 'block' }} />
+                        ) : (
+                            <Statistic
+                                title={<span style={{ letterSpacing: 0.5 }}>TOTAL DISABLE ACCOUNT</span>}
+                                value={totalDisableAccount}
+                                valueStyle={{ fontWeight: 600 }}
+                                style={{ marginTop: 16 }}
+                            />
+                        )}
                     </Card>
                 </Col>
             </Row>

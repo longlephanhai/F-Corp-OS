@@ -42,19 +42,50 @@ export class PermissionsService {
     return { total };
   }
 
-  findAll() {
-    return `This action returns all permissions`;
-  }
+  async findAll() {
+    return this.permissionRepository.find({
+        select: { id: true, description: true, api_path: true, method: true, module: true },
+        order: { module: 'ASC', method: 'ASC' }
+    });
+}
 
   findOne(id: number) {
     return `This action returns a #${id} permission`;
   }
 
-  update(id: number, updatePermissionDto: UpdatePermissionDto) {
-    return `This action updates a #${id} permission`;
-  }
+  async update(id: string, updatePermissionDto: UpdatePermissionDto, user: IUser) {
+    const existPermission = await this.permissionRepository.findOne({ where: { id } });
+    if (!existPermission) {
+        throw new BadRequestException(`Permission with id "${id}" not found`);
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} permission`;
-  }
+    await this.permissionRepository.update(
+        { id },
+        {
+            ...updatePermissionDto,
+            updatedBy: { id: user.id, email: user.email }
+        }
+    );
+
+    return { message: 'Updated successfully' };
+}
+
+  async remove(id: string, user: IUser) {
+    const existPermission = await this.permissionRepository.findOne({ where: { id } });
+    if (!existPermission) {
+        throw new BadRequestException(`Permission with id "${id}" not found`);
+    }
+
+    await this.permissionRepository.update(
+        { id },
+        {
+            isDeleted: true,
+            deletedBy: { id: user.id, email: user.email }
+        }
+    );
+
+    await this.permissionRepository.softDelete(id);
+
+    return { message: `Permission "${id}" deleted successfully` };
+}
 }

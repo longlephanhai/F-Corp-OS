@@ -32,6 +32,12 @@ export class UsersController {
       return this.usersService.countUser();
   }
 
+   @Get('count-disable-account')
+  @ResponseMessage('Count users successfully')
+  countDisableAccount() {
+      return this.usersService.countDisableAccount();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(+id);
