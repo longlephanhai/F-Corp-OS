@@ -57,3 +57,8 @@ export const callUpdateUser = (id: string, data: {
 export const callFetchRoles = () => {
     return axios.get('/roles');
 }
+
+// API SKILLS
+export const callFetchSkills = async (query: string): Promise<IBackendRes<IModelPaginate<ISkills>>> => {
+    return await axios.get(`/skills?${query}`);
+}

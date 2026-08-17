@@ -42,7 +42,15 @@ export class SkillsService {
 
     const queryBuilder = this.skillsRepository
       .createQueryBuilder('skills')
-      .where(filter)
+
+    const likeFields = ['name', 'description'];
+    Object.keys(filter).forEach((key) => {
+      if (likeFields.includes(key)) {
+        queryBuilder.andWhere(`skills.${key} LIKE :${key}`, { [key]: `%${filter[key]}%` });
+      } else {
+        queryBuilder.andWhere(`skills.${key} = :${key}`, { [key]: filter[key] });
+      }
+    })
 
     if (sort && typeof sort === 'object') {
       Object.entries(sort).forEach(([key, value]) => {
@@ -53,7 +61,7 @@ export class SkillsService {
       .skip(offset)
       .take(defaultLimit)
       .getManyAndCount()
-
+      
     return {
       meta: {
         currentPage: +currentPage,

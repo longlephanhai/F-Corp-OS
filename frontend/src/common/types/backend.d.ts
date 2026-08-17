@@ -15,6 +15,16 @@ declare global {
         data?: T;
     }
 
+    export interface IModelPaginate<T> {
+        meta: {
+            current: number;
+            pageSize: number;
+            pages: number;
+            total: number;
+        },
+        result: T[]
+    }
+
     interface IAccount {
         access_token: string;
         user: {
@@ -50,6 +60,14 @@ declare global {
             description?: string;
             permissions?: string[];
         } | string;
+    }
+
+    interface ISkills {
+        id: string;
+        name: string;
+        description: string;
+        createdBy: string;
+        isDeleted: boolean;
     }
 
 }

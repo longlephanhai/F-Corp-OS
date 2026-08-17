@@ -8,10 +8,7 @@ import {
     Space,
     Tag,
     Timeline,
-    Empty,
     Button,
-    Tooltip,
-    Badge,
 } from 'antd';
 import {
     CodeOutlined,
@@ -19,10 +16,9 @@ import {
     CheckCircleOutlined,
     ClockCircleOutlined,
     ArrowUpOutlined,
-    ArrowDownOutlined,
     GithubOutlined,
 } from '@ant-design/icons';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import type { ColumnsType } from 'antd/es/table';
 
 interface TaskItem {
