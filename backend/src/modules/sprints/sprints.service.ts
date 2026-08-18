@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -50,6 +50,8 @@ export class SprintsService {
   }
 
   async createSprint(data: any) {
+    Logger.debug('tao la khanh', data);
+
     const newSprint = this.sprintRepo.create({
       name: data.name,
       project: {

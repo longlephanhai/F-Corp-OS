@@ -19,7 +19,7 @@ export class SprintsController {
 
   @Post()
   create(@Body() createSprintDto: CreateSprintDto) {
-    return this.sprintsService.create(createSprintDto);
+    return this.sprintsService.createSprint(createSprintDto);
   }
 
   @Get()

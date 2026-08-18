@@ -7,6 +7,7 @@ import {
   Tag,
   Avatar,
   message,
+  Tooltip, // <-- Đã thêm Tooltip vào đây
 } from "antd";
 import type { TaskCandidate, TaskItem } from "../../../common/types/pm";
 import { CandidateCompareModal } from "../CandidateCompareModal";
@@ -25,6 +26,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [candidates, setCandidates] = useState<TaskCandidate[]>([]);
+
   // --- STATE MỚI CHO TÍNH NĂNG SO SÁNH ---
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -43,7 +45,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     }
   }, []);
 
-  // Giả lập gọi API tìm ứng viên mỗi khi Drawer mở ra.
+  // Gọi API tìm ứng viên mỗi khi Drawer mở ra.
   useEffect(() => {
     if (!open || !task) {
       return;
@@ -52,6 +54,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     const requestTimer = window.setTimeout(() => {
       void fetchMatchingCandidates(task.id);
     }, 0);
+
     const resetSelectionTimer = window.setTimeout(
       () => setSelectedRowKeys([]),
       0,
@@ -120,14 +123,30 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
       title: "Hành động",
       key: "action",
       render: (_: unknown, record: TaskCandidate) => (
-        <Button
-          type="primary"
-          size="small"
-          disabled={record.status === "on_project"}
-          onClick={() => handleAssign(record.id)}
+        // --- ĐÃ CẬP NHẬT TOOLTIP VÀ UI CHO NÚT ASSIGN THEO YÊU CẦU ---
+        <Tooltip
+          title={
+            record.status === "on_project"
+              ? "Dev này đang vướng dự án khác chưa xong 100%. Không thể điều động!"
+              : ""
+          }
+          color="red"
+          placement="top"
         >
-          Chọn (Assign)
-        </Button>
+          <Button
+            type="primary"
+            size="small"
+            disabled={record.status === "on_project"} // Khóa nút nếu đang bận
+            className={
+              record.status === "on_project"
+                ? "bg-gray-300 text-gray-500"
+                : "bg-green-600 hover:bg-green-700 border-none"
+            }
+            onClick={() => handleAssign(record.id)}
+          >
+            {record.status === "on_project" ? "Đang kẹt dự án" : "Gán Nhân Sự"}
+          </Button>
+        </Tooltip>
       ),
     },
   ];
@@ -185,7 +204,8 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
                   skill?: string;
                   level?: number;
                 };
-                const skillName = legacySkill.skill_id ?? legacySkill.skill ?? "Chưa xác định";
+                const skillName =
+                  legacySkill.skill_id ?? legacySkill.skill ?? "Chưa xác định";
                 const level = legacySkill.min_level ?? legacySkill.level;
 
                 return (
