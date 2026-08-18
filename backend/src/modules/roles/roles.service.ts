@@ -73,11 +73,41 @@ export class RolesService {
     return role;
   }
 
-  update(id: number, updateRoleDto: UpdateRoleDto) {
-    return `This action updates a #${id} role`;
+  async update(id: string, updateRoleDto: UpdateRoleDto) {
+    const role = await this.roleRepository.findOne({ where: { id } });
+    if (!role) {
+      throw new BadRequestException(`Role with id "${id}" not found`);
+    }
+
+    const { name, description, permissions: permissionIds } = updateRoleDto;
+
+    if (name && name !== role.name) {
+      const isExist = await this.roleRepository.findOne({ where: { name } });
+      if (isExist) {
+        throw new BadRequestException(`Role with name "${name}" already exists`);
+      }
+      role.name = name;
+    }
+
+    if (description !== undefined) {
+      role.description = description;
+    }
+
+    if (permissionIds) {
+      role.permissions = await this.permissionRepository.findBy({
+        id: In(permissionIds),
+      });
+    }
+
+    return await this.roleRepository.save(role);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} role`;
-  }
+  async remove(id: string) {
+    const role = await this.roleRepository.findOne({ where: { id } });
+      if (!role) {
+        throw new BadRequestException(`Role with id "${id}" not found`);
+      }
+
+      return await this.roleRepository.remove(role);
+    }
 }

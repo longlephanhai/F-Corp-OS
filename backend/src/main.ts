@@ -32,6 +32,7 @@ async function bootstrap() {
 
   app.useGlobalGuards(new JwtAuthGuard(reflector));
 
+
   app.enableCors(
     {
       "origin": true,

@@ -7,13 +7,17 @@ export const callApiLogin = async (data: { email: string, password: string }): P
 export const callFetchAccount = async (): Promise<IBackendRes<IGetAccount>> => {
     return await axios.get('/auth/account');
 }
-//=============================== Users ==========================================
+//=============================== ADMIN-DASHBOARD ==========================================
 export const callCountUsers = () => {
     return axios.get('/users/count');
 }
 
 export const callCountRoles = () => {
     return axios.get('/roles/count');
+}
+
+export const callCountDisableAccount = () => {
+    return axios.get('/users/count-disable-account');
 }
 
 export const callCountPermissions = () => {
@@ -58,6 +62,7 @@ export const callFetchRoles = () => {
     return axios.get('/roles');
 }
 
+
 // API SKILLS
 export const callFetchSkills = async (query: string): Promise<IBackendRes<IModelPaginate<ISkills>>> => {
     return await axios.get(`/skills?${query}`);
@@ -79,5 +84,56 @@ export const callCreateUserSkill = async (skillId: string, description: string, 
         years,
         evidences
     });
+}
+
+export const callCreateRole = (data: {
+    name: string;
+    description: string;
+    permissions: string[];
+}) => {
+    return axios.post('/roles', data);
+}
+
+export const callFetchRoleById = (id: string) => {
+    return axios.get(`/roles/${id}`);
+}
+
+export const callUpdateRole = (id: string, data: {
+    name: string;
+    description: string;
+    permissions: string[];
+}) => {
+    return axios.patch(`/roles/${id}`, data);
+}
+
+export const callDeleteRole = (id: string) => {
+    return axios.delete(`/roles/${id}`);
+}
+
+//==================API Admin-Permission====================
+export const callFetchPermissions = () => {
+    return axios.get('/permissions');
+}
+
+export const callCreatePermission = (data: {
+    description: string;
+    api_path: string;
+    method: string;
+    module: string;
+}) => {
+    return axios.post('/permissions', data);
+}
+
+export const callUpdatePermission = (id: string, data: {
+    description?: string;
+    api_path?: string;
+    method?: string;
+    module?: string;
+}) => {
+    return axios.patch(`/permissions/${id}`, data);
+}
+
+export const callDeletePermission = (id: string) => {
+    return axios.delete(`/permissions/${id}`);
 }
 

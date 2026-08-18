@@ -164,7 +164,16 @@ export class UsersService {
     const total = await this.usersRepository.count();
     return { total };
   }
+  
+  async countDisableAccount() {
+    const total = await this.usersRepository
+        .createQueryBuilder('user')
+        .withDeleted()
+        .where('user.isDeleted = :isDeleted', { isDeleted: true })
+        .getCount();
 
+    return { total };
+}
   findOne(id: number) {
     return `This action returns a #${id} user`;
   }
