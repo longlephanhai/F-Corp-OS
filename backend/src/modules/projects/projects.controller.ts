@@ -15,7 +15,9 @@ import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
-
+  
+  @UseGuards(JwtAuthGuard)
+  @SkipCheckPermission()
   @Post()
   async createProject(@Body() body: any) {
     const data = await this.projectsService.createProject(body);

@@ -3,26 +3,23 @@ import {
   Button,
   Table,
   Tag,
-  Avatar,
+  Space,
   Modal,
   Form,
   Input,
   DatePicker,
-  Space,
   Typography,
   Card,
-  Divider,
   Flex,
   message,
   Select,
   Statistic,
+  Progress,
 } from "antd";
-
 import {
   PlusOutlined,
   UserOutlined,
   CalendarOutlined,
-  DollarOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
@@ -31,6 +28,10 @@ import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+
+// Formatter cho Statistic (hiển thị số có dấu phẩy)
+const formatter = (value: number | string) => 
+  Number(value).toLocaleString("en-US");
 
 export const ProjectDetail: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>(); // Lấy ID từ URL
@@ -48,7 +49,6 @@ export const ProjectDetail: React.FC = () => {
     if (!projectId) return;
     setLoading(true);
     try {
-      // Gọi song song 2 API: Chi tiết dự án và Danh sách Sprint
       const [resProject, resSprints] = await Promise.all([
         pmApi.getProjectById(projectId),
         pmApi.getSprintsByProject(projectId),
@@ -68,23 +68,37 @@ export const ProjectDetail: React.FC = () => {
     fetchProjectDetails();
   }, [projectId]);
 
-  // 2. HÀM TẠO SPRINT MỚI BẮN XUỐNG DB
+  // 2. HÀM TÍNH % TIẾN ĐỘ DỰ ÁN DỰA TRÊN SPRINT
+  const calculateProgress = () => {
+    if (!sprints || sprints.length === 0) return 0;
+    
+    // Đếm số Sprint đã hoàn thành (status = completed hoặc ngày endDate nhỏ hơn hôm nay)
+    const completedSprints = sprints.filter((s) => {
+      const isCompletedByDate = dayjs().isAfter(dayjs(s.end_date || s.endDate));
+      return s.status === "completed" || isCompletedByDate;
+    }).length;
+
+    // Tính % (Làm tròn số)
+    return Math.round((completedSprints / sprints.length) * 100);
+  };
+
+  // 3. HÀM TẠO SPRINT MỚI BẮN XUỐNG DB
   const handleCreateSprint = async (values: any) => {
     try {
       setLoading(true);
       const payload = {
         name: values.name,
-        projectId: projectId, // Truyền đúng projectId hiện tại
+        projectId: projectId,
         startDate: values.dateRange[0].format("YYYY-MM-DD 00:00:00"),
         endDate: values.dateRange[1].format("YYYY-MM-DD 23:59:59"),
-        attendant: JSON.stringify(values.attendant), // Ép mảng thành chuỗi JSON để lưu DB
+        attendant: JSON.stringify(values.attendant),
       };
 
       await pmApi.createSprint(payload);
       message.success("Đã tạo Sprint thành công!");
       setIsModalOpen(false);
       form.resetFields();
-      fetchProjectDetails(); // Load lại bảng Sprint
+      fetchProjectDetails(); 
     } catch (error) {
       message.error("Lỗi khi tạo Sprint!");
     } finally {
@@ -92,7 +106,7 @@ export const ProjectDetail: React.FC = () => {
     }
   };
 
-  // Hàm tự động tính toán Status của Sprint dựa vào ngày tháng (Vì DB chưa có cột status)
+  // Hàm tự động tính toán Status của Sprint
   const getSprintStatus = (start: string, end: string) => {
     const today = dayjs();
     const startDate = dayjs(start);
@@ -104,7 +118,7 @@ export const ProjectDetail: React.FC = () => {
     return { text: "ĐANG CHẠY", color: "processing" };
   };
 
-  // 3. CẤU HÌNH CỘT CHO BẢNG SPRINT
+  // 4. CẤU HÌNH CỘT CHO BẢNG SPRINT
   const columns = [
     {
       title: "CHI TIẾT SPRINT",
@@ -147,7 +161,6 @@ export const ProjectDetail: React.FC = () => {
       dataIndex: "attendant",
       key: "attendant",
       render: (attendant: any) => {
-        // Xử lý parse JSON an toàn vì dữ liệu dưới DB đang lưu kiểu chuỗi JSON
         let roles = [];
         try {
           roles =
@@ -185,13 +198,16 @@ export const ProjectDetail: React.FC = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      {/* --- THÔNG TIN DỰ ÁN --- */}
+      
+      {/* --- THÔNG TIN DỰ ÁN & TIẾN ĐỘ --- */}
       <Card
         bordered={false}
         style={{ boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)" }}
         loading={loading}
       >
-        <Flex justify="space-between" align="flex-start">
+        <Flex justify="space-between" align="center" wrap="wrap" gap="large">
+          
+          {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
           <Space direction="vertical" size="small">
             <Space align="center" size="middle">
               <Title level={2} style={{ margin: 0, color: "#1f2937" }}>
@@ -199,7 +215,7 @@ export const ProjectDetail: React.FC = () => {
               </Title>
               <Tag
                 color={project?.status === "active" ? "success" : "default"}
-                style={{ fontWeight: "bold" }}
+                style={{ fontWeight: "bold", m: 0 }}
               >
                 {project?.status?.toUpperCase() || "N/A"}
               </Tag>
@@ -218,32 +234,51 @@ export const ProjectDetail: React.FC = () => {
                   {project?.start_date} → {project?.end_date}
                 </Text>
               </Space>
-              <Space>
-                <DollarOutlined />
-                <div
-                  style={{
-                    color: "#16a34a",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                  }}
-                >
-                  {Number(project?.totalBudget || 0).toLocaleString("en-US")}
-                </div>
-              </Space>
+              {/* Đã gỡ bỏ cục Ngân sách text thường ở đây */}
             </Space>
+            
             <Text type="secondary" style={{ marginTop: "8px" }}>
               {project?.description}
             </Text>
           </Space>
 
-          <Button
-            type="primary"
-            size="large"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Tạo Sprint Mới
-          </Button>
+          {/* CỘT PHẢI: THỐNG KÊ (NGÂN SÁCH + TIẾN ĐỘ) & NÚT TẠO SPRINT */}
+          <div className="flex gap-6 items-center">
+            
+            {/* Cục ngân sách nhảy số VIP */}
+            <Card bordered={false} className="bg-green-50 shadow-sm" styles={{ body: { padding: '16px 24px' } }}>
+              <Statistic 
+                title={<span className="text-gray-500 font-semibold text-xs uppercase tracking-wider">Tổng Ngân Sách</span>}
+                value={project?.totalBudget || 0} 
+                formatter={formatter}
+                prefix="$"
+                valueStyle={{ color: '#16a34a', fontWeight: 'bold', fontSize: '24px' }} 
+              />
+            </Card>
+
+            {/* Vòng tròn % Tiến độ VIP */}
+            <Card bordered={false} className="bg-blue-50 shadow-sm" styles={{ body: { padding: '12px 24px' } }}>
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-gray-500 font-semibold mb-1 text-xs uppercase tracking-wider">Tiến độ Dự án</span>
+                <Progress 
+                  type="circle" 
+                  percent={calculateProgress()} 
+                  size={65} 
+                  strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }} // Chuyển màu từ xanh dương sang xanh lá
+                />
+              </div>
+            </Card>
+
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlusOutlined />}
+              onClick={() => setIsModalOpen(true)}
+              style={{ height: 'auto', padding: '16px 24px', fontWeight: 600 }}
+            >
+              Tạo Sprint<br/>Mới
+            </Button>
+          </div>
         </Flex>
       </Card>
 
