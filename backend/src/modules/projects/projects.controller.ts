@@ -40,8 +40,14 @@ export class ProjectsController {
   @SkipCheckPermission()
   @Get(':id')
   async getProjectById(@Param('id') id: string) {
-    const data = await this.projectsService.getProjectById(id);
-    return { statusCode: 200, message: 'Lấy chi tiết dự án thành công', data };
+    // BÙM! Sửa tên hàm gọi xuống Service ở dòng này:
+    const data = await this.projectsService.getProjectDetailWithBudget(id);
+
+    return {
+      statusCode: 200,
+      message: 'Lấy chi tiết dự án kèm ngân sách thành công',
+      data,
+    };
   }
 
   @Get()

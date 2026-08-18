@@ -64,4 +64,39 @@ export class ProjectsService {
       order: { startDate: 'DESC' },
     });
   }
+
+  async getProjectDetailWithBudget(projectId: string) {
+    // 1. Kéo Dự án lên, kèm theo toàn bộ Sprints và Tasks bên trong
+    const project = await this.projectRepo.findOne({
+      where: { id: projectId, isDeleted: false },
+      relations: {
+        sprints: {
+          tasks: true,
+        },
+      },
+    });
+
+    if (!project) throw new NotFoundException('Không tìm thấy dự án!');
+
+    // 2. Thuật toán Roll-up: Cộng dồn ngân sách từ tất cả các Tasks
+    let totalBudget = 0;
+
+    if (project.sprints && project.sprints.length > 0) {
+      project.sprints.forEach((sprint) => {
+        if (sprint.tasks && sprint.tasks.length > 0) {
+          sprint.tasks.forEach((task) => {
+            // Ép kiểu về Number để đề phòng DB trả về dạng chuỗi
+            // Lưu ý: Sửa 'budget_rate' thành 'budgetRate' nếu Entity của bạn đặt là camelCase
+            totalBudget += Number(task.budgetRate || 0);
+          });
+        }
+      });
+    }
+
+    // 3. Trả về data dự án kèm theo con số tổng ngân sách vừa tính được
+    return {
+      ...project,
+      totalBudget,
+    };
+  }
 }
