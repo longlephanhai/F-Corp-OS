@@ -63,6 +63,21 @@ export const callFetchSkills = async (query: string): Promise<IBackendRes<IModel
     return await axios.get(`/skills?${query}`);
 }
 
+export const callFetchSkillsWithoutPaginate = async (): Promise<IBackendRes<IModelPaginate<ISkills>>> => {
+    return await axios.get(`/skills/all`);
+}
+
 export const callCreateSkill = async (data: { name: string; description: string }): Promise<IBackendRes<ISkills>> => {
     return await axios.post('/skills', data);
 }
+
+//API USER-SKILL
+export const callCreateUserSkill = async (skillId: string, description: string, years: number, evidences: IEviencesDTO[]): Promise<IBackendRes<IUserSkill>> => {
+    return await axios.post('/user-skill', {
+        skillId,
+        description,
+        years,
+        evidences
+    });
+}
+

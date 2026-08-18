@@ -76,8 +76,8 @@ export class SkillsService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} skill`;
+  async findOne(id: string, user: IUser) {
+    return "This action returns a #${id} skill";
   }
 
   update(id: number, updateSkillDto: UpdateSkillDto) {

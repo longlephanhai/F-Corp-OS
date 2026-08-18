@@ -12,6 +12,10 @@ export class CreateUserSkillDto {
     description: string;
 
     @IsOptional()
+    @IsString({ message: 'Evidence Notes must be a string' })
+    evidenceNotes?: string;
+
+    @IsOptional()
     @IsNumber({}, { message: 'Years must be a number' })
     years?: number;
 

@@ -3,6 +3,7 @@ import Sider from "antd/es/layout/Sider";
 import { useLocation, useNavigate } from "react-router";
 import { DashboardOutlined } from '@ant-design/icons';
 import { GiSkills } from "react-icons/gi";
+import { RiCertificate2Fill } from "react-icons/ri";
 
 interface IProps {
     collapsed: boolean;
@@ -61,6 +62,12 @@ const SiderDev = (props: IProps) => {
                         icon: <GiSkills />,
                         label: 'Skills',
                         onClick: () => navigate('skills'),
+                    },
+                    {
+                        key: 'user-skill',
+                        icon: <RiCertificate2Fill />,
+                        label: 'Evidence',
+                        onClick: () => navigate('user-skill')
                     }
                 ]}
             />

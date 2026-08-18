@@ -71,6 +71,18 @@ export class UserSkillService {
   }
 
   async create(createUserSkillDto: CreateUserSkillDto, user: IUser) {
+
+    const isExist = await this.userSkillsRepository.findOne({
+      where: {
+        userId: user.id,
+        skillId: createUserSkillDto.skillId,
+      }
+    })
+
+    if (isExist) {
+      throw new BadRequestException('User skill already exists');
+    }
+
     const userSikll = this.userSkillsRepository.create({
       userId: user.id,
       skillId: createUserSkillDto.skillId,

@@ -21,6 +21,7 @@ import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trướ
 import DeveloperLayout from "./layout/dev";
 import DashBoardDev from "./pages/dev/dashboard";
 import SkillPage from "./pages/dev/skill";
+import UserSkillPage from "./pages/dev/user-skill";
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
 
@@ -98,6 +99,10 @@ function App() {
         {
           path: "skills",
           element: <SkillPage />
+        },
+        {
+          path: 'user-skill',
+          element: <UserSkillPage />
         }
       ]
     },

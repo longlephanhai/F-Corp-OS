@@ -1,4 +1,4 @@
-import type { UserStatusType } from "../enum";
+import type { EvidenceType, StatusEvidenceType, UserStatusType } from "../enum";
 
 export { };
 
@@ -67,6 +67,46 @@ declare global {
         name: string;
         description: string;
         createdBy: string;
+        isDeleted: boolean;
+    }
+
+    interface IEviencesDTO {
+        type: EvidenceType;
+        title: string;
+        url: string;
+        description: string;
+    }
+
+    interface IEvidences {
+        id: string;
+        userSkillId: string;
+        type: EvidenceType;
+        title: string;
+        url: string;
+        description: string;
+        createdBy: {
+            id: string;
+            email: string;
+        },
+        isDeleted: boolean;
+        status: StatusEvidenceType;
+        rejectReason: string;
+    }
+
+    interface IUserSkill {
+        id: string;
+        userId: string;
+        skillId: string;
+        description: string;
+        level: number;
+        years: number;
+        evidenceNote: string;
+        confidenceScore: string;
+        evidences: IEvidences[];
+        createdBy: {
+            id: string;
+            email: string;
+        },
         isDeleted: boolean;
     }
 

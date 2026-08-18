@@ -16,6 +16,12 @@ export class SkillsController {
     return this.skillsService.create(createSkillDto, user);
   }
 
+  @Get('all')
+  @SkipCheckPermission()
+  findAllWithoutPagination(@User() user: IUser) {
+    return this.skillsService.findAll(1, 0, '', user);
+  }
+
   @Get()
   @SkipCheckPermission()
   findAll(
@@ -27,9 +33,10 @@ export class SkillsController {
     return this.skillsService.findAll(+currentPage, +limit, qs, user);
   }
 
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.skillsService.findOne(+id);
+  findOne(@Param('id') id: string, @User() user: IUser) {
+    return this.skillsService.findOne(id, user);
   }
 
   @Patch(':id')
