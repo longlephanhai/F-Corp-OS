@@ -28,6 +28,10 @@ import { Task } from 'modules/task/entities/task.entity';
 import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
 import { Project } from 'modules/projects/entities/project.entity';
 
+import { HrReviewsModule } from './modules/hr-reviews/hr-reviews.module';
+import { ReviewCycle } from 'modules/hr-reviews/entities/review-cycle.entity';
+import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -51,6 +55,8 @@ import { Project } from 'modules/projects/entities/project.entity';
           Sprint,
           Task,
           UserSprint,
+          ReviewCycle,
+          ReviewRecord,
         ],
         synchronize: true,
       }),
@@ -68,8 +74,9 @@ import { Project } from 'modules/projects/entities/project.entity';
     TaskModule,
     SprintsModule,
     ProjectsModule,
+    HrReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

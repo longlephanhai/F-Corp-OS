@@ -18,6 +18,7 @@ import LayoutPM from "./layout/pm";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
+
 import DeveloperLayout from "./layout/dev";
 import DashBoardDev from "./pages/dev/dashboard";
 import SkillPage from "./pages/dev/skill";
@@ -25,6 +26,9 @@ import UserSkillPage from "./pages/dev/user-skill";
 
 import { ProjectsPage } from "./pages/pm/ProjectsPage";
 import { ProjectDetail } from "./pages/pm/ProjectDetail";
+
+
+import BenchForecast from "./pages/hr/BenchForecast";
 
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
@@ -67,7 +71,7 @@ function App() {
         { path: "dashboard", element: <HRDashboard /> },
         { path: "wallet", element: <WalletAdmin /> },
         { path: "review", element: <ReviewConsole /> },
-        { path: "bench", element: <PlaceholderPage title="Dự báo Bench" /> },
+        { path: "bench", element: <BenchForecast /> },
       ],
     },
 

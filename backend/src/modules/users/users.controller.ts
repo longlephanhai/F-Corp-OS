@@ -21,7 +21,7 @@ import type { IUser } from 'common/types/user.interface';
 @SkipCheckPermission()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   @ResponseMessage('User created successfully')
@@ -31,6 +31,7 @@ export class UsersController {
   }
 
   @Get()
+  @SkipCheckPermission()
   @ResponseMessage('Get Users with Pagination')
   findAll(
     @Query('current') currentPage: string,
@@ -46,10 +47,10 @@ export class UsersController {
     return this.usersService.countUser();
   }
 
-   @Get('count-disable-account')
+  @Get('count-disable-account')
   @ResponseMessage('Count users successfully')
   countDisableAccount() {
-      return this.usersService.countDisableAccount();
+    return this.usersService.countDisableAccount();
   }
 
   @Get(':id')
