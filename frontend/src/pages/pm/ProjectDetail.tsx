@@ -1,0 +1,378 @@
+import React, { useState, useEffect } from "react";
+import {
+  Button,
+  Table,
+  Tag,
+  Space,
+  Modal,
+  Form,
+  Input,
+  DatePicker,
+  Typography,
+  Card,
+  Flex,
+  message,
+  Select,
+  Statistic,
+  Progress,
+} from "antd";
+import {
+  PlusOutlined,
+  UserOutlined,
+  CalendarOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
+import { useNavigate, useParams } from "react-router-dom";
+import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
+import dayjs from "dayjs";
+
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+
+// Formatter cho Statistic (hiển thị số có dấu phẩy)
+const formatter = (value: number | string) => 
+  Number(value).toLocaleString("en-US");
+
+export const ProjectDetail: React.FC = () => {
+  const { projectId } = useParams<{ projectId: string }>(); // Lấy ID từ URL
+  const navigate = useNavigate();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [project, setProject] = useState<any>(null);
+  const [sprints, setSprints] = useState<any[]>([]);
+
+  const [form] = Form.useForm();
+
+  // 1. KÉO DỮ LIỆU TỪ DB LÊN KHI VÀO TRANG
+  const fetchProjectDetails = async () => {
+    if (!projectId) return;
+    setLoading(true);
+    try {
+      const [resProject, resSprints] = await Promise.all([
+        pmApi.getProjectById(projectId),
+        pmApi.getSprintsByProject(projectId),
+      ]);
+
+      if (resProject?.data?.data) setProject(resProject.data.data);
+      if (resSprints?.data?.data) setSprints(resSprints.data.data);
+    } catch (error) {
+      console.error(error);
+      message.error("Lỗi khi tải dữ liệu Dự án!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjectDetails();
+  }, [projectId]);
+
+  // 2. HÀM TÍNH % TIẾN ĐỘ DỰ ÁN DỰA TRÊN SPRINT
+  const calculateProgress = () => {
+    if (!sprints || sprints.length === 0) return 0;
+    
+    // Đếm số Sprint đã hoàn thành (status = completed hoặc ngày endDate nhỏ hơn hôm nay)
+    const completedSprints = sprints.filter((s) => {
+      const isCompletedByDate = dayjs().isAfter(dayjs(s.end_date || s.endDate));
+      return s.status === "completed" || isCompletedByDate;
+    }).length;
+
+    // Tính % (Làm tròn số)
+    return Math.round((completedSprints / sprints.length) * 100);
+  };
+
+  // 3. HÀM TẠO SPRINT MỚI BẮN XUỐNG DB
+  const handleCreateSprint = async (values: any) => {
+    try {
+      setLoading(true);
+      const payload = {
+        name: values.name,
+        projectId: projectId,
+        startDate: values.dateRange[0].format("YYYY-MM-DD 00:00:00"),
+        endDate: values.dateRange[1].format("YYYY-MM-DD 23:59:59"),
+        attendant: JSON.stringify(values.attendant),
+      };
+
+      await pmApi.createSprint(payload);
+      message.success("Đã tạo Sprint thành công!");
+      setIsModalOpen(false);
+      form.resetFields();
+      fetchProjectDetails(); 
+    } catch (error) {
+      message.error("Lỗi khi tạo Sprint!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hàm tự động tính toán Status của Sprint
+  const getSprintStatus = (start: string, end: string) => {
+    const today = dayjs();
+    const startDate = dayjs(start);
+    const endDate = dayjs(end);
+
+    if (today.isBefore(startDate)) return { text: "SẮP TỚI", color: "default" };
+    if (today.isAfter(endDate))
+      return { text: "ĐÃ HOÀN THÀNH", color: "green" };
+    return { text: "ĐANG CHẠY", color: "processing" };
+  };
+
+  // 4. CẤU HÌNH CỘT CHO BẢNG SPRINT
+  const columns = [
+    {
+      title: "CHI TIẾT SPRINT",
+      dataIndex: "name",
+      key: "name",
+      render: (text: string, record: any) => (
+        <Space direction="vertical" size={0}>
+          <Text strong style={{ fontSize: "15px" }}>
+            {text || "Sprint Chưa đặt tên"}
+          </Text>
+          <Text type="secondary" style={{ fontSize: "12px" }}>
+            ID: {record.id.substring(0, 8)}...
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: "THỜI GIAN",
+      key: "timeline",
+      render: (_: any, record: any) => (
+        <Text type="secondary">
+          {dayjs(record.start_date || record.startDate).format("DD/MM/YYYY")} -{" "}
+          {dayjs(record.end_date || record.endDate).format("DD/MM/YYYY")}
+        </Text>
+      ),
+    },
+    {
+      title: "TRẠNG THÁI",
+      key: "status",
+      render: (_: any, record: any) => {
+        const status = getSprintStatus(
+          record.start_date || record.startDate,
+          record.end_date || record.endDate,
+        );
+        return <Tag color={status.color}>{status.text}</Tag>;
+      },
+    },
+    {
+      title: "VỊ TRÍ CẦN THIẾT (ATTENDANT)",
+      dataIndex: "attendant",
+      key: "attendant",
+      render: (attendant: any) => {
+        let roles = [];
+        try {
+          roles =
+            typeof attendant === "string" ? JSON.parse(attendant) : attendant;
+        } catch (e) {
+          roles = [];
+        }
+
+        return (
+          <Space size={[0, 4]} wrap>
+            {roles?.map((role: string, idx: number) => (
+              <Tag color="cyan" key={idx}>
+                {role}
+              </Tag>
+            )) || <Text type="secondary">Chưa định nghĩa</Text>}
+          </Space>
+        );
+      },
+    },
+    {
+      title: "THAO TÁC",
+      key: "action",
+      align: "right" as const,
+      render: (_: any, record: any) => (
+        <Button
+          type="default"
+          icon={<SettingOutlined />}
+          onClick={() => navigate(`/pm/sprints/${record.id}`)}
+        >
+          Quản lý Task
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      
+      {/* --- THÔNG TIN DỰ ÁN & TIẾN ĐỘ --- */}
+      <Card
+        bordered={false}
+        style={{ boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)" }}
+        loading={loading}
+      >
+        <Flex justify="space-between" align="center" wrap="wrap" gap="large">
+          
+          {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
+          <Space direction="vertical" size="small">
+            <Space align="center" size="middle">
+              <Title level={2} style={{ margin: 0, color: "#1f2937" }}>
+                {project?.name || "Đang tải..."}
+              </Title>
+              <Tag
+                color={project?.status === "active" ? "success" : "default"}
+                style={{ fontWeight: "bold", m: 0 }}
+              >
+                {project?.status?.toUpperCase() || "N/A"}
+              </Tag>
+            </Space>
+
+            <Space size="large" style={{ color: "#6b7280", marginTop: "8px" }}>
+              <Space>
+                <UserOutlined />{" "}
+                <Text type="secondary">
+                  PM: {project?.pm?.fullName || "Chưa gán"}
+                </Text>
+              </Space>
+              <Space>
+                <CalendarOutlined />{" "}
+                <Text type="secondary">
+                  {project?.start_date} → {project?.end_date}
+                </Text>
+              </Space>
+              {/* Đã gỡ bỏ cục Ngân sách text thường ở đây */}
+            </Space>
+            
+            <Text type="secondary" style={{ marginTop: "8px" }}>
+              {project?.description}
+            </Text>
+          </Space>
+
+          {/* CỘT PHẢI: THỐNG KÊ (NGÂN SÁCH + TIẾN ĐỘ) & NÚT TẠO SPRINT */}
+          <div className="flex gap-6 items-center">
+            
+            {/* Cục ngân sách nhảy số VIP */}
+            <Card bordered={false} className="bg-green-50 shadow-sm" styles={{ body: { padding: '16px 24px' } }}>
+              <Statistic 
+                title={<span className="text-gray-500 font-semibold text-xs uppercase tracking-wider">Tổng Ngân Sách</span>}
+                value={project?.totalBudget || 0} 
+                formatter={formatter}
+                prefix="$"
+                valueStyle={{ color: '#16a34a', fontWeight: 'bold', fontSize: '24px' }} 
+              />
+            </Card>
+
+            {/* Vòng tròn % Tiến độ VIP */}
+            <Card bordered={false} className="bg-blue-50 shadow-sm" styles={{ body: { padding: '12px 24px' } }}>
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-gray-500 font-semibold mb-1 text-xs uppercase tracking-wider">Tiến độ Dự án</span>
+                <Progress 
+                  type="circle" 
+                  percent={calculateProgress()} 
+                  size={65} 
+                  strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }} // Chuyển màu từ xanh dương sang xanh lá
+                />
+              </div>
+            </Card>
+
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlusOutlined />}
+              onClick={() => setIsModalOpen(true)}
+              style={{ height: 'auto', padding: '16px 24px', fontWeight: 600 }}
+            >
+              Tạo Sprint<br/>Mới
+            </Button>
+          </div>
+        </Flex>
+      </Card>
+
+      {/* --- BẢNG DANH SÁCH SPRINT --- */}
+      <Card
+        title={
+          <Title level={4} style={{ margin: 0 }}>
+            Lộ trình Sprint (Roadmap)
+          </Title>
+        }
+        bordered={false}
+        style={{ boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)" }}
+        bodyStyle={{ padding: 0 }}
+      >
+        <Table
+          columns={columns}
+          dataSource={sprints}
+          rowKey="id"
+          pagination={false}
+          loading={loading}
+        />
+      </Card>
+
+      {/* --- MODAL TẠO SPRINT MỚI --- */}
+      <Modal
+        title={
+          <Title level={3} style={{ margin: 0 }}>
+            Khởi tạo Sprint Mới
+          </Title>
+        }
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        width={700}
+        footer={[
+          <Button key="back" onClick={() => setIsModalOpen(false)}>
+            Hủy bỏ
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={loading}
+            onClick={() => form.submit()}
+          >
+            Chốt Tạo Sprint
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        <div style={{ marginBottom: "24px", color: "#6b7280" }}>
+          Xác định phạm vi, thời gian và các vị trí cần thiết cho chặng tiếp
+          theo.
+        </div>
+
+        <Form form={form} layout="vertical" onFinish={handleCreateSprint}>
+          <Form.Item
+            name="name"
+            label="Tên Sprint"
+            rules={[{ required: true, message: "Vui lòng nhập tên Sprint!" }]}
+          >
+            <Input
+              placeholder="Ví dụ: Sprint 3 - Tính năng giỏ hàng"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="dateRange"
+            label="Thời gian diễn ra"
+            rules={[{ required: true, message: "Vui lòng chọn thời gian!" }]}
+          >
+            <RangePicker size="large" style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            name="attendant"
+            label="Các vị trí cần thiết (Attendant Roles)"
+            rules={[
+              { required: true, message: "Vui lòng chọn ít nhất 1 role!" },
+            ]}
+          >
+            <Select
+              mode="tags"
+              size="large"
+              placeholder="Chọn hoặc gõ tên Role (Backend, Frontend...)"
+              options={[
+                { value: "Frontend", label: "Frontend" },
+                { value: "Backend", label: "Backend" },
+                { value: "Tester", label: "Tester" },
+                { value: "BA", label: "Business Analyst" },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};

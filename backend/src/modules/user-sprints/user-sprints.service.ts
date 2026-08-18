@@ -20,8 +20,8 @@ export class UserSprintService {
           id: true,
           fullName: true,
           email: true,
-        }
-      }
+        },
+      },
     });
     return records;
   }
@@ -40,13 +40,12 @@ export class UserSprintService {
   // 3. Cập nhật trạng thái (assigned / released)
   async updateStatus(id: string, status: UserSprintStatus) {
     const record = await this.userSprintRepo.findOne({ where: { id } });
-    if (!record) throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
-    
+    if (!record)
+      throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
+
     record.status = status;
     return await this.userSprintRepo.save(record);
   }
-
-
 
   // Hàm Giải phóng & Lưu đánh giá
   async releaseUser(id: string, reviewData: any) {
@@ -54,7 +53,7 @@ export class UserSprintService {
     if (!record) {
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
     }
-    
+
     // Cập nhật trạng thái và thông tin đánh giá
     record.status = 'released' as any; // Ép kiểu theo Enum của bạn
     record.hardSkillRate = reviewData.hardSkillRate;
@@ -63,4 +62,6 @@ export class UserSprintService {
 
     return await this.userSprintRepo.save(record);
   }
+
+  
 }

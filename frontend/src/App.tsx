@@ -22,6 +22,10 @@ import DeveloperLayout from "./layout/dev";
 import DashBoardDev from "./pages/dev/dashboard";
 import SkillPage from "./pages/dev/skill";
 import UserSkillPage from "./pages/dev/user-skill";
+
+import { ProjectsPage } from "./pages/pm/ProjectsPage";
+import { ProjectDetail } from "./pages/pm/ProjectDetail";
+
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
 
@@ -36,8 +40,8 @@ function App() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchAccount())
-  }, [])
+    dispatch(fetchAccount());
+  }, []);
 
   const router = createBrowserRouter([
     {
@@ -70,19 +74,26 @@ function App() {
     {
       path: "/pm",
       element: <LayoutPM />,
-      errorElement: <ErrorPage />,
       children: [
         {
           index: true,
-          element: <MyTeamPage />,
+          element: <ProjectsPage />, // Mặc định vào /pm sẽ văng ra Danh sách Dự án
+        },
+        {
+          path: "projects",
+          element: <ProjectsPage />, // Màn hình Danh sách Dự án
+        },
+        {
+          path: "projects/:projectId",
+          element: <ProjectDetail />, // Bấm vào 1 dự án thì văng ra Command Center tuyệt đẹp
+        },
+        {
+          path: "sprints/:sprintId",
+          element: <SprintManagementPage />, // Bấm vào "Manage Tasks" trong Command Center thì văng ra đây
         },
         {
           path: "my-team",
           element: <MyTeamPage />,
-        },
-        {
-          path: "sprints/:sprintId",
-          element: <SprintManagementPage />,
         },
       ],
     },
@@ -125,7 +136,7 @@ function App() {
     <>
       <RouterProvider router={router} />
     </>
-  )
+  );
 }
 
 export default App;

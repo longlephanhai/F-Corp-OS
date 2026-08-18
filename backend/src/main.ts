@@ -24,13 +24,11 @@ async function bootstrap() {
     }),
   );
 
-
   app.setGlobalPrefix('api');
   app.enableVersioning({
     type: VersioningType.URI,
-    defaultVersion: ['1']
+    defaultVersion: ['1'],
   });
-
 
   app.useGlobalGuards(new JwtAuthGuard(reflector));
 
@@ -43,26 +41,28 @@ async function bootstrap() {
     }
   );
 
+
   const config = new DocumentBuilder()
     .setTitle('APIs Documentation')
     .setDescription('All Modules APIs Documentation')
     .setVersion('1.0')
-    .addBearerAuth({
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      in: 'header',
-    }, 'token')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        in: 'header',
+      },
+      'token',
+    )
     .addSecurityRequirements('token')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory, {
     swaggerOptions: {
-      persistAuthorization: true
-    }
+      persistAuthorization: true,
+    },
   });
-
-
 
   await app.listen(process.env.PORT ?? 8080);
 }

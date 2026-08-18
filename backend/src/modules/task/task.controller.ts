@@ -1,6 +1,8 @@
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { SkipCheckPermission } from 'decorator/customize';
 import { TasksService } from './task.service';
 
+@SkipCheckPermission()
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
@@ -18,7 +20,11 @@ export class TasksController {
   @Get(':taskId/candidates')
   async getMatchingCandidates(@Param('taskId') taskId: string) {
     const data = await this.tasksService.getMatchingCandidates(taskId);
-    return { statusCode: 200, message: 'Lấy danh sách ứng viên thành công', data };
+    return {
+      statusCode: 200,
+      message: 'Lấy danh sách ứng viên thành công',
+      data,
+    };
   }
 
   // Tương ứng với: pmApi.createTask

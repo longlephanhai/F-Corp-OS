@@ -22,9 +22,11 @@ import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.e
 import { UserSprintsModule } from './modules/user-sprints/user-sprints.module';
 import { TaskModule } from './modules/task/task.module';
 import { SprintsModule } from './modules/sprints/sprints.module';
+import { ProjectsModule } from './modules/projects/projects.module';
 import { Sprint } from 'modules/sprints/entities/sprint.entity';
 import { Task } from 'modules/task/entities/task.entity';
 import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
+import { Project } from 'modules/projects/entities/project.entity';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
           Role,
           Permission,
           SkillEvidence,
+          Project,
           Sprint,
           Task,
           UserSprint,
@@ -64,6 +67,7 @@ import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
     UserSprintsModule,
     TaskModule,
     SprintsModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
