@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import type { IUser } from 'common/types/user.interface';
-import { ResponseMessage, User } from 'decorator/customize';
+import { Public, ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
 import { HrReviewsService } from './hr-reviews.service';
@@ -14,10 +15,51 @@ export class HrReviewsController {
   constructor(private readonly hrReviewsService: HrReviewsService) {}
 
   /**
+   * POST /api/v1/hr-reviews/cycles
+   * Tạo mới một Review Cycle. Lưu thông tin người tạo qua @User() decorator.
+   */
+  @Post('cycles')
+  @SkipCheckPermission()
+  @ResponseMessage('Tạo kỳ đánh giá thành công')
+  createCycle(
+    @Body() createDto: CreateReviewCycleDto,
+    @User() user: IUser,
+  ) {
+    return this.hrReviewsService.createCycle(createDto, user);
+  }
+
+  /**
+   * POST /api/v1/hr-reviews/seed
+   * [DEV ONLY] Tạo dữ liệu mẫu vào database để test UI frontend.
+   * Dùng @Public() và @SkipCheckPermission() để bỏ qua JWT và phân quyền trong giai đoạn test.
+   * Xóa route này trước khi deploy lên production.
+   */
+  @Post('seed')
+  @Public()
+  @SkipCheckPermission()
+  @ResponseMessage('Seed dữ liệu thành công')
+  seedData() {
+    return this.hrReviewsService.seedData();
+  }
+
+  /**
+   * GET /api/v1/hr-reviews/records/stats
+   * Trả về số liệu tổng hợp (aggregate) theo từng trạng thái từ toàn bộ database.
+   * PHẢI khai báo TRƯỚC route /records để NestJS không hiểu nhầm 'stats' là :id param.
+   */
+  @Get('records/stats')
+  @SkipCheckPermission()
+  @ResponseMessage('Get review stats successfully')
+  getRecordStats() {
+    return this.hrReviewsService.getRecordStats();
+  }
+
+  /**
    * GET /api/v1/hr-reviews/records
    * Lấy danh sách bản ghi đánh giá với phân trang và bộ lọc tùy chọn.
    */
   @Get('records')
+  @SkipCheckPermission()
   @ResponseMessage('Get review records successfully')
   findAllRecords(@Query() query: GetReviewRecordsDto) {
     return this.hrReviewsService.findAllRecords(query);
@@ -28,6 +70,7 @@ export class HrReviewsController {
    * Cập nhật trạng thái (và điểm số) của một bản ghi đánh giá cụ thể.
    */
   @Patch('records/:id/status')
+  @SkipCheckPermission()
   @ResponseMessage('Update review status successfully')
   updateRecordStatus(
     @Param('id') id: string,
@@ -35,5 +78,17 @@ export class HrReviewsController {
     @User() user: IUser,
   ) {
     return this.hrReviewsService.updateRecordStatus(id, updateDto, user);
+  }
+
+  /**
+   * GET /api/v1/hr-reviews/records/:id
+   * Lấy chi tiết một bản ghi đánh giá theo ID, bao gồm đầy đủ relations.
+   * PHẢI khai báo SAU /records/stats để tránh NestJS khớp 'stats' như một :id UUID.
+   */
+  @Get('records/:id')
+  @SkipCheckPermission()
+  @ResponseMessage('Get review record detail successfully')
+  getRecordById(@Param('id') id: string) {
+    return this.hrReviewsService.getRecordById(id);
   }
 }

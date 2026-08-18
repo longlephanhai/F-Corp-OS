@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ResponseMessage, User } from 'decorator/customize';
+import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
 import type { IUser } from 'common/types/user.interface';
 
 @Controller('users')
@@ -17,6 +17,7 @@ export class UsersController {
   }
 
   @Get()
+  @SkipCheckPermission()
   @ResponseMessage('Get Users with Pagination')
   findAll(
     @Query("current") currentPage: string,
