@@ -88,6 +88,7 @@ export const pmApi = {
 
   // Khởi tạo Sprint mới (Có truyền mảng attendant)
   createSprint: (data: any) => {
+    console.log("tao la khanh o pmts", data);
     return axios.post<IBackendRes<any>>("/sprints", data);
   },
 
