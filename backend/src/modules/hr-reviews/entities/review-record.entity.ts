@@ -35,9 +35,24 @@ export class ReviewRecord {
   /**
    * Điểm số tổng kết cuối cùng (ví dụ: thang điểm 1-5 hoặc 0-100).
    * Nullable vì chỉ có giá trị khi đánh giá hoàn thành.
+   * Chỉ HR mới được phép ghi field này (thông qua endpoint /score).
    */
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   finalScore: number;
+
+  /**
+   * Điểm sơ bộ do PM chấm trước khi HR xác nhận (thang 0–100).
+   * Nullable vì PM có thể chưa chấm điểm.
+   */
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  tempScore: number;
+
+  /**
+   * Ghi chú / nhận xét của PM khi đánh giá nhân viên.
+   * Nullable — không bắt buộc.
+   */
+  @Column({ type: 'text', nullable: true })
+  reviewerNote: string;
 
   // --- Relations ---
 

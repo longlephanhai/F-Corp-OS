@@ -3,6 +3,7 @@ import type { IUser } from 'common/types/user.interface';
 import { Public, ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
+import { UpdateReviewScoreDto } from './dto/update-review-score.dto';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
 import { HrReviewsService } from './hr-reviews.service';
 
@@ -78,6 +79,22 @@ export class HrReviewsController {
     @User() user: IUser,
   ) {
     return this.hrReviewsService.updateRecordStatus(id, updateDto, user);
+  }
+
+  /**
+   * PATCH /api/v1/hr-reviews/records/:id/score
+   * Cập nhật điểm số của một bản ghi đánh giá (tách biệt với cập nhật trạng thái).
+   * PM gửi tempScore + reviewerNote; HR gửi finalScore.
+   */
+  @Patch('records/:id/score')
+  @SkipCheckPermission()
+  @ResponseMessage('Update review score successfully')
+  updateRecordScore(
+    @Param('id') id: string,
+    @Body() dto: UpdateReviewScoreDto,
+    @User() user: IUser,
+  ) {
+    return this.hrReviewsService.updateRecordScore(id, dto, user);
   }
 
   /**

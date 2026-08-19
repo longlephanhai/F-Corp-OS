@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Flex, Form, Input, message,
+    Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Dropdown, Drawer, Flex, Form, Input, InputNumber, message,
     Modal, Progress, Row, Select, Skeleton, Space, Spin, Statistic, Tag,
     Tooltip, Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
     CheckCircleOutlined, ClockCircleOutlined,
-    ExclamationCircleOutlined, EyeOutlined, FilterOutlined, PlusOutlined,
-    TeamOutlined, TrophyOutlined,
+    ExclamationCircleOutlined, EyeOutlined, FilterOutlined, MoreOutlined, PlusOutlined,
+    StarOutlined, TeamOutlined, TrophyOutlined,
 } from '@ant-design/icons';
 import ActionTable from '../../components/ui/ActionTable';
 import { callFetchUsers } from '../../api/index';
@@ -102,6 +102,12 @@ const ReviewConsole: React.FC = () => {
     });
     // Tăng key này để force re-fetch sau khi approve/reject thành công
     const [refreshKey, setRefreshKey] = useState(0);
+
+    // ── State cho Modal chấm điểm (HR Scoring Modal) ─────────────────────────
+    const [isScoringModalVisible, setIsScoringModalVisible] = useState(false);
+    const [isSubmittingScore, setIsSubmittingScore] = useState(false);
+    const [scoringRecord, setScoringRecord] = useState<ReviewRecordItem | null>(null);
+    const [scoringForm] = Form.useForm<{ tempScore?: number; reviewerNote?: string; finalScore?: number }>();
 
     // ── Fetch danh sách records (phân trang) ─────────────────────────────────
     const fetchRecords = useCallback(async () => {
@@ -235,6 +241,11 @@ const ReviewConsole: React.FC = () => {
 
     /** Nút 'Hoàn tất': chuyển từ IN_REVIEW → COMPLETED */
     const handleComplete = async (record: ReviewRecordItem) => {
+        // ── Frontend guard: yêu cầu finalScore trước khi COMPLETED ──
+        if (record.finalScore === null || record.finalScore === undefined) {
+            message.warning('Vui lòng nhập điểm chốt cuối cùng trước khi Hoàn tất đánh giá!');
+            return;
+        }
         setApprovingId(record.id);
         try {
             await hrReviewsApi.updateRecordStatus(record.id, { status: 'COMPLETED' });
@@ -244,6 +255,38 @@ const ReviewConsole: React.FC = () => {
             message.error(err?.message ?? 'Thao tác thất bại, vui lòng thử lại');
         } finally {
             setApprovingId(null);
+        }
+    };
+
+    /** Mở Modal chấm điểm cho HR — prefill bằng giá trị hiện tại của record */
+    const handleOpenScoreModal = (record: ReviewRecordItem) => {
+        setScoringRecord(record);
+        scoringForm.setFieldsValue({
+            tempScore:    record.tempScore    ?? undefined,
+            reviewerNote: record.reviewerNote ?? undefined,
+            finalScore:   record.finalScore   ?? undefined,
+        });
+        setIsScoringModalVisible(true);
+    };
+
+    /** Submit Modal chấm điểm — chỉ gửi finalScore (HR role) */
+    const handleSubmitScore = async () => {
+        if (!scoringRecord) return;
+        try {
+            const values = await scoringForm.validateFields();
+            setIsSubmittingScore(true);
+            await hrReviewsApi.updateScore(scoringRecord.id, {
+                finalScore: values.finalScore,
+            });
+            message.success(`Đã lưu điểm chốt cho: ${scoringRecord.employee?.fullName ?? 'nhân viên'}`);
+            setIsScoringModalVisible(false);
+            scoringForm.resetFields();
+            setScoringRecord(null);
+            setRefreshKey(k => k + 1);
+        } catch (err: any) {
+            if (err?.message) message.error(err.message);
+        } finally {
+            setIsSubmittingScore(false);
         }
     };
 
@@ -303,56 +346,76 @@ const ReviewConsole: React.FC = () => {
             },
         },
         {
-            title: 'Hành động', key: 'actions', width: 190, align: 'right', fixed: 'right',
-            render: (_, r) => (
-                <Space size={6}>
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            type="link"
-                            size="small"
-                            icon={<EyeOutlined />}
-                            style={{ padding: 0 }}
-                            onClick={() => handleOpenDetail(r)}
-                        >
-                            Chi tiết
-                        </Button>
-                    </Tooltip>
+            title: 'Hành động', key: 'actions', width: 120, align: 'center', fixed: 'right',
+            render: (_, r) => {
+                // Khi COMPLETED: chỉ giữ nút "Chi tiết", ẩn toàn bộ thao tác còn lại
+                const isCompleted = r.status === 'COMPLETED';
 
-                    {/* Nút 'Xét duyệt': chỉ hiển thị khi status === PENDING */}
-                    {r.status === 'PENDING' && (
-                        <Tooltip title="Chuyển sang giai đoạn xét duyệt">
-                            <Button
-                                type="primary"
-                                size="small"
-                                icon={<ExclamationCircleOutlined />}
-                                loading={approvingId === r.id}
-                                onClick={() => handleMoveToReview(r)}
-                                style={{ borderRadius: 6, fontSize: 12 }}
-                            >
-                                Xét duyệt
-                            </Button>
-                        </Tooltip>
-                    )}
+                // Xây dựng danh sách menu động theo trạng thái hiện tại của record
+                const menuItems: NonNullable<React.ComponentProps<typeof Dropdown>['menu']>['items'] = [];
 
-                    {/* Nút 'Hoàn tất': chỉ hiển thị khi status === IN_REVIEW */}
-                    {r.status === 'IN_REVIEW' && (
-                        <Tooltip title="Xác nhận hoàn tất đánh giá">
+                if (r.status === 'PENDING') {
+                    menuItems.push({
+                        key: 'move-to-review',
+                        icon: <ExclamationCircleOutlined style={{ color: '#0057c2' }} />,
+                        label: 'Xét duyệt',
+                        onClick: () => handleMoveToReview(r),
+                    });
+                }
+
+                if (r.status === 'IN_REVIEW') {
+                    menuItems.push(
+                        {
+                            key: 'score',
+                            icon: <StarOutlined style={{ color: '#722ed1' }} />,
+                            label: 'Chấm điểm',
+                            onClick: () => handleOpenScoreModal(r),
+                        },
+                        { type: 'divider' },
+                        {
+                            key: 'complete',
+                            icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+                            label: 'Hoàn tất',
+                            // Guard frontend: bắt buộc phải có finalScore trước khi COMPLETED
+                            onClick: () => handleComplete(r),
+                        },
+                    );
+                }
+
+                return (
+                    <Space size={4}>
+                        {/* Nút "Chi tiết" luôn hiển thị dạng link */}
+                        <Tooltip title="Xem chi tiết">
                             <Button
+                                type="link"
                                 size="small"
-                                icon={<CheckCircleOutlined />}
-                                loading={approvingId === r.id}
-                                onClick={() => handleComplete(r)}
-                                style={{
-                                    borderRadius: 6, fontSize: 12,
-                                    background: '#52c41a', borderColor: '#52c41a', color: '#fff',
-                                }}
-                            >
-                                Hoàn tất
-                            </Button>
+                                icon={<EyeOutlined />}
+                                style={{ padding: '0 4px' }}
+                                onClick={() => handleOpenDetail(r)}
+                            />
                         </Tooltip>
-                    )}
-                </Space>
-            ),
+
+                        {/* Dropdown thao tác — ẩn hoàn toàn khi COMPLETED */}
+                        {!isCompleted && menuItems.length > 0 && (
+                            <Dropdown
+                                menu={{ items: menuItems }}
+                                trigger={['click']}
+                                placement="bottomRight"
+                            >
+                                <Tooltip title="Thao tác">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<MoreOutlined style={{ fontSize: 16 }} />}
+                                        loading={approvingId === r.id}
+                                        style={{ padding: '0 4px' }}
+                                    />
+                                </Tooltip>
+                            </Dropdown>
+                        )}
+                    </Space>
+                );
+            },
         },
     ];
 
@@ -558,7 +621,125 @@ const ReviewConsole: React.FC = () => {
             </Form>
         </Modal>
 
-        {/* ── Drawer: Xem chi tiết bản ghi đánh giá ────────────────────────── */}
+        {/* ── Modal: Chấm điểm (HR Scoring) ───────────────────────────────── */}
+        <Modal
+            title={
+                <Flex align="center" gap={8}>
+                    <StarOutlined style={{ color: '#722ed1' }} />
+                    <span style={{ fontWeight: 600, fontSize: 16 }}>Chấm điểm đánh giá (HR)</span>
+                </Flex>
+            }
+            open={isScoringModalVisible}
+            onCancel={() => {
+                setIsScoringModalVisible(false);
+                scoringForm.resetFields();
+                setScoringRecord(null);
+            }}
+            onOk={handleSubmitScore}
+            okText="Lưu điểm"
+            cancelText="Hủy"
+            confirmLoading={isSubmittingScore}
+            okButtonProps={{
+                style: { borderRadius: 6, background: '#722ed1', borderColor: '#722ed1' },
+                // Vô hiệu hoá nút Lưu nếu PM chưa chấm điểm
+                disabled: scoringRecord?.tempScore === null || scoringRecord?.tempScore === undefined,
+            }}
+            cancelButtonProps={{ style: { borderRadius: 6 } }}
+            width={480}
+            destroyOnClose
+        >
+            {/* ── Thẻ thông tin nhân viên ── */}
+            {scoringRecord && (
+                <Flex
+                    align="center" gap={10}
+                    style={{ marginBottom: 16, padding: '10px 14px', background: '#f9f0ff', borderRadius: 8, border: '1px solid #d3adf7' }}
+                >
+                    <Avatar style={{ background: getAvatarColor(scoringRecord.employee?.id ?? '0'), flexShrink: 0 }}>
+                        {scoringRecord.employee ? getInitials(scoringRecord.employee.fullName) : '?'}
+                    </Avatar>
+                    <Flex vertical gap={0}>
+                        <Text strong>{scoringRecord.employee?.fullName ?? '—'}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{scoringRecord.employee?.email ?? ''}</Text>
+                    </Flex>
+                </Flex>
+            )}
+
+            {/* ── Cảnh báo khi PM chưa chấm điểm — khóa toàn bộ form finalScore ── */}
+            {scoringRecord && (scoringRecord.tempScore === null || scoringRecord.tempScore === undefined) && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="PM chưa chấm điểm đánh giá"
+                    description="Vui lòng yêu cầu PM chấm điểm đánh giá năng lực trước khi HR chốt điểm!"
+                    style={{ marginBottom: 16, borderRadius: 8 }}
+                />
+            )}
+
+            <Form
+                form={scoringForm}
+                layout="vertical"
+                style={{ marginTop: 4 }}
+                requiredMark={false}
+            >
+                {/* Điểm PM (read-only — chỉ HR xem, không sửa) */}
+                <Form.Item
+                    name="tempScore"
+                    label={
+                        <Flex gap={6} align="center">
+                            <Text strong>Điểm sơ bộ (PM)</Text>
+                            <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Chỉ đọc</Tag>
+                        </Flex>
+                    }
+                >
+                    <InputNumber
+                        min={0}
+                        max={100}
+                        disabled={true}
+                        style={{ width: '100%', borderRadius: 8 }}
+                        placeholder="PM chưa chấm điểm"
+                        addonAfter="/ 100"
+                    />
+                </Form.Item>
+
+                {/* Ghi chú PM (read-only) */}
+                <Form.Item
+                    name="reviewerNote"
+                    label={
+                        <Flex gap={6} align="center">
+                            <Text strong>Nhận xét của PM</Text>
+                            <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Chỉ đọc</Tag>
+                        </Flex>
+                    }
+                >
+                    <Input.TextArea
+                        disabled={true}
+                        rows={3}
+                        style={{ borderRadius: 8 }}
+                        placeholder="PM chưa có nhận xét"
+                    />
+                </Form.Item>
+
+                {/* Điểm chốt HR — bị khóa nếu PM chưa chấm */}
+                <Form.Item
+                    name="finalScore"
+                    label={<Text strong style={{ color: '#722ed1' }}>Điểm chốt cuối cùng (HR) <Text type="danger">*</Text></Text>}
+                    rules={[
+                        { required: true, message: 'Vui lòng nhập điểm chốt trước khi lưu' },
+                    ]}
+                    extra={<Text type="secondary" style={{ fontSize: 12 }}>Điểm này sẽ được dùng để Hoàn tất đánh giá.</Text>}
+                >
+                    <InputNumber
+                        min={0}
+                        max={100}
+                        disabled={scoringRecord?.tempScore === null || scoringRecord?.tempScore === undefined}
+                        style={{ width: '100%', borderRadius: 8 }}
+                        placeholder={scoringRecord?.tempScore != null ? 'Nhập điểm từ 0 đến 100' : 'Chờ PM chấm điểm trước'}
+                        addonAfter="/ 100"
+                        size="large"
+                    />
+                </Form.Item>
+            </Form>
+        </Modal>
         <Drawer
             title={
                 <Flex align="center" gap={8}>

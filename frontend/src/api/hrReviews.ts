@@ -10,6 +10,10 @@ export interface ReviewRecordItem {
   id: string;
   status: ReviewRecordStatus;
   finalScore: number | null;
+  /** Điểm sơ bộ do PM chấm (trước khi HR xác nhận) */
+  tempScore: number | null;
+  /** Ghi chú / nhận xét của PM */
+  reviewerNote: string | null;
   createdAt: string;
   updatedAt: string;
   /** Nhân viên được đánh giá */
@@ -123,10 +127,16 @@ export const hrReviewsApi = {
   },
 
   /**
+   * PATCH /hr-reviews/records/:id/score
+   * Cập nhật điểm số của một bản ghi. PM gửi tempScore + reviewerNote; HR gửi finalScore.
+   */
+  updateScore: (id: string, data: { tempScore?: number; finalScore?: number; reviewerNote?: string }) =>
+    axios.patch<IBackendRes<ReviewRecordItem>>(`/hr-reviews/records/${id}/score`, data),
+
+  /**
    * GET /hr-reviews/records/:id
    * Lấy chi tiết một bản ghi đánh giá theo ID, bao gồm đầy đủ relations.
    */
-  getRecordDetail: (id: string) => {
-    return axios.get<IBackendRes<ReviewRecordItem>>(`/hr-reviews/records/${id}`);
-  },
+  getRecordDetail: (id: string) =>
+    axios.get<IBackendRes<ReviewRecordItem>>(`/hr-reviews/records/${id}`),
 };

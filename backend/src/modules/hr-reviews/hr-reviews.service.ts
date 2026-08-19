@@ -6,6 +6,7 @@ import { User } from 'modules/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
+import { UpdateReviewScoreDto } from './dto/update-review-score.dto';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
 import { ReviewCycle } from './entities/review-cycle.entity';
 import { ReviewRecord } from './entities/review-record.entity';
@@ -187,6 +188,15 @@ export class HrReviewsService {
       throw new NotFoundException(`Review record with id "${id}" not found`);
     }
 
+    // ── Business rule: không thể COMPLETED nếu chưa có điểm chốt ──────────
+    if (updateDto.status === ReviewRecordStatus.COMPLETED) {
+      if (record.finalScore === null || record.finalScore === undefined) {
+        throw new BadRequestException(
+          'Không thể hoàn tất đánh giá khi chưa có điểm chốt cuối cùng.',
+        );
+      }
+    }
+
     // Cập nhật các field nghiệp vụ
     record.status = updateDto.status;
     if (updateDto.finalScore !== undefined) {
@@ -196,6 +206,54 @@ export class HrReviewsService {
     // Cập nhật audit field `updatedBy` với thông tin người dùng hiện tại
     // Optional chaining đảm bảo không crash ngay cả khi user bị undefined
     // (bảo vệ phòng ngừa — sau khi fix @SkipCheckPermission(), user luôn có giá trị)
+    record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
+
+    return this.reviewRecordRepository.save(record);
+  }
+
+  /**
+   * Cập nhật điểm số của một Review Record (tách biệt với cập nhật trạng thái).
+   * PM có thể nhập tempScore và reviewerNote; HR nhập finalScore.
+   * Throw NotFoundException nếu không tìm thấy record.
+   */
+  async updateRecordScore(
+    id: string,
+    dto: UpdateReviewScoreDto,
+    user: IUser,
+  ): Promise<ReviewRecord> {
+    const record = await this.reviewRecordRepository.findOne({
+      where: { id, isDeleted: false },
+    });
+
+    if (!record) {
+      throw new NotFoundException(`Review record with id "${id}" not found`);
+    }
+
+    // ── Business rule: HR không được chốt điểm khi PM chưa đánh giá ──────────
+    // finalScore chỉ được ghi khi đã có tempScore (từ DB hoặc từ request hiện tại)
+    const incomingTempScore = dto.tempScore;
+    const existingTempScore = record.tempScore;
+    if (
+      dto.finalScore !== undefined &&
+      (existingTempScore === null || existingTempScore === undefined) &&
+      (incomingTempScore === null || incomingTempScore === undefined)
+    ) {
+      throw new BadRequestException(
+        'PM chưa đánh giá chuyên môn, hệ thống không cho phép HR chốt điểm cuối cùng.',
+      );
+    }
+
+    // Chỉ cập nhật các field được gửi lên (partial update)
+    if (dto.tempScore !== undefined) {
+      record.tempScore = dto.tempScore;
+    }
+    if (dto.finalScore !== undefined) {
+      record.finalScore = dto.finalScore;
+    }
+    if (dto.reviewerNote !== undefined) {
+      record.reviewerNote = dto.reviewerNote;
+    }
+
     record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
 
     return this.reviewRecordRepository.save(record);

@@ -58,7 +58,7 @@ import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
           ReviewCycle,
           ReviewRecord,
         ],
-        synchronize: true,
+        synchronize: false, // Set to true only in development, false in production
       }),
       inject: [ConfigService],
     }),
