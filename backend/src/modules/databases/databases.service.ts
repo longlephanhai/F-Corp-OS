@@ -44,6 +44,21 @@ export class DatabasesService implements OnModuleInit {
                     description: "Có toàn bộ quyền của hệ thống",
                     permissions: permissions.map(permission => ({ id: permission.id })),
                 })
+                await this.roleRepository.save({
+                    name: "HR",
+                    description: "Có toàn bộ quyền của hệ thống",
+                    permissions: permissions.map(permission => ({ id: permission.id })),
+                })
+                await this.roleRepository.save({
+                    name: "PM",
+                    description: "Có toàn bộ quyền của hệ thống",
+                    permissions: permissions.map(permission => ({ id: permission.id })),
+                })
+                await this.roleRepository.save({
+                    name: "DEVELOPER",
+                    description: "Có toàn bộ quyền của hệ thống",
+                    permissions: permissions.map(permission => ({ id: permission.id })),
+                })
             }
 
             if (countUser === 0) {
