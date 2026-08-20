@@ -1,6 +1,11 @@
 import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Public, ResponseMessage, User } from 'decorator/customize';
+import {
+  Public,
+  ResponseMessage,
+  SkipCheckPermission,
+  User,
+} from 'decorator/customize';
 import { LocalAuthGuard } from './guard/local-auth.guard';
 import type { Request as REQ, Request, Response as RES } from 'express';
 import type { IUser } from 'common/types/user.interface';
@@ -20,6 +25,7 @@ export class AuthController {
   @ResponseMessage('Login Success')
   @ApiBody({ type: UserLoginDto })
   @Public()
+  @SkipCheckPermission()
   @UseGuards(LocalAuthGuard)
   login(
     @Req() req: REQ & { user: IUser },

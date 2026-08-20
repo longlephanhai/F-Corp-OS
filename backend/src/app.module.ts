@@ -31,6 +31,12 @@ import { Project } from 'modules/projects/entities/project.entity';
 import { HrReviewsModule } from './modules/hr-reviews/hr-reviews.module';
 import { ReviewCycle } from 'modules/hr-reviews/entities/review-cycle.entity';
 import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
+import { Notification } from 'modules/notifications/entities/notification.entity';
+
+// BÙM 💥 BƯỚC 1: IMPORT GATEWAY VÀO ĐÂY
+// (Lưu ý: Bác chỉnh lại đường dẫn './notifications.gateway' sao cho khớp với thư mục bác lưu file nhé)
+import { NotificationsGateway } from './modules/projects/notifications.gateway';
+import { NotificationsModule } from 'modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -57,8 +63,9 @@ import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
           UserSprint,
           ReviewCycle,
           ReviewRecord,
+          Notification,
         ],
-        synchronize: true,
+        synchronize: false, // Chỉ nên bật synchronize: true trong môi trường phát triển, không nên dùng trong production
       }),
       inject: [ConfigService],
     }),
@@ -75,8 +82,11 @@ import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
     SprintsModule,
     ProjectsModule,
     HrReviewsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+
+  //  thêm vào (dependencies injection) để các Service khác có thể gọi vào khi muốn phát thông báo
+  providers: [AppService, NotificationsGateway],
 })
-export class AppModule { }
+export class AppModule {}
