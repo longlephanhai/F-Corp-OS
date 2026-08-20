@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ReviewCycleStatus, ReviewRecordStatus } from 'common/enum/hr-review.enum';
 import type { IUser } from 'common/types/user.interface';
 import { User } from 'modules/users/entities/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { RewardRuleService } from './reward-rule.service';
+import { HrWalletsService } from '../hr-wallets/hr-wallets.service';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
 import { UpdateReviewScoreDto } from './dto/update-review-score.dto';
@@ -26,7 +28,11 @@ export class HrReviewsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+
+    private readonly dataSource: DataSource,
+    private readonly rewardRuleService: RewardRuleService,
+    private readonly hrWalletsService: HrWalletsService,
+  ) { }
 
   /**
    * Lấy danh sách Review Records với phân trang và bộ lọc tùy chọn.
@@ -80,7 +86,7 @@ export class HrReviewsService {
    */
   async createCycle(dto: CreateReviewCycleDto, user: IUser): Promise<ReviewCycle> {
     const start = new Date(dto.startDate);
-    const end   = new Date(dto.endDate);
+    const end = new Date(dto.endDate);
 
     if (end <= start) {
       throw new BadRequestException('endDate phải sau startDate');
@@ -90,10 +96,10 @@ export class HrReviewsService {
 
     // 1. Tạo và lưu ReviewCycle
     const cycle = this.reviewCycleRepository.create({
-      name:      dto.name,
+      name: dto.name,
       startDate: start,
-      endDate:   end,
-      status:    ReviewCycleStatus.DRAFT,
+      endDate: end,
+      status: ReviewCycleStatus.DRAFT,
       createdBy: auditUser,
       updatedBy: auditUser,
     });
@@ -105,11 +111,11 @@ export class HrReviewsService {
       const records = dto.employeeIds.map((empId) =>
         this.reviewRecordRepository.create({
           // TypeORM chấp nhận relation partial { id } — không cần fetch full entity
-          employee:    { id: empId } as any,
+          employee: { id: empId } as any,
           reviewCycle: savedCycle,
-          status:      ReviewRecordStatus.PENDING,
-          createdBy:   auditUser,
-          updatedBy:   auditUser,
+          status: ReviewRecordStatus.PENDING,
+          createdBy: auditUser,
+          updatedBy: auditUser,
         }),
       );
 
@@ -188,16 +194,38 @@ export class HrReviewsService {
       throw new NotFoundException(`Review record with id "${id}" not found`);
     }
 
-    // ── Business rule: không thể COMPLETED nếu chưa có điểm chốt ──────────
+    // Nếu chuyển sang trạng thái COMPLETED, chạy logic thưởng F-Token trong 1 Transaction
     if (updateDto.status === ReviewRecordStatus.COMPLETED) {
-      if (record.finalScore === null || record.finalScore === undefined) {
-        throw new BadRequestException(
-          'Không thể hoàn tất đánh giá khi chưa có điểm chốt cuối cùng.',
-        );
-      }
-    }
+      return this.dataSource.transaction(async (manager) => {
+        record.status = updateDto.status;
+        if (updateDto.finalScore !== undefined) {
+          record.finalScore = updateDto.finalScore;
+        }
 
-    // Cập nhật các field nghiệp vụ
+        // Cập nhật audit field
+        record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
+
+        // 1. Lưu record đã cập nhật
+        const savedRecord = await manager.save(record);
+
+        // 2. Tính thưởng và gọi logic thưởng qua Wallet service nếu có
+        if (savedRecord.finalScore !== null && savedRecord.finalScore !== undefined) {
+          const amount = this.rewardRuleService.calculateScoreReward(Number(savedRecord.finalScore));
+
+          if (amount > 0 && savedRecord.employee?.id) {
+            await this.hrWalletsService.processRewardWithManager(
+              savedRecord.employee.id,
+              amount,
+              savedRecord.id,
+              manager,
+              user?.id ?? ''
+            );
+          }
+        }
+
+        return savedRecord;
+      });
+    }
     record.status = updateDto.status;
     if (updateDto.finalScore !== undefined) {
       record.finalScore = updateDto.finalScore;
