@@ -32,6 +32,10 @@ import { HrReviewsModule } from './modules/hr-reviews/hr-reviews.module';
 import { ReviewCycle } from 'modules/hr-reviews/entities/review-cycle.entity';
 import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
 
+import { HrWalletsModule } from './modules/hr-wallets/hr-wallets.module';
+import { Wallet } from 'modules/hr-wallets/entities/wallet.entity';
+import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-history.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -57,6 +61,8 @@ import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
           UserSprint,
           ReviewCycle,
           ReviewRecord,
+          Wallet,
+          TransactionHistory,
         ],
         synchronize: true,
       }),
@@ -75,6 +81,7 @@ import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
     SprintsModule,
     ProjectsModule,
     HrReviewsModule,
+    HrWalletsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

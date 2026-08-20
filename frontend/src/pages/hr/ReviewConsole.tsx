@@ -238,7 +238,7 @@ const ReviewConsole: React.FC = () => {
         setApprovingId(record.id);
         try {
             await hrReviewsApi.updateRecordStatus(record.id, { status: 'COMPLETED' });
-            message.success(`Đã hoàn tất đánh giá: ${record.employee?.fullName ?? 'nhân viên'}`);
+            message.success('Đánh giá đã hoàn tất và phần thưởng đã được xử lý.');
             setRefreshKey(k => k + 1);
         } catch (err: any) {
             message.error(err?.message ?? 'Thao tác thất bại, vui lòng thử lại');

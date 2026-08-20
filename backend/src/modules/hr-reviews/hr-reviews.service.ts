@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ReviewCycleStatus, ReviewRecordStatus } from 'common/enum/hr-review.enum';
 import type { IUser } from 'common/types/user.interface';
 import { User } from 'modules/users/entities/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { RewardRuleService } from './reward-rule.service';
+import { HrWalletsService } from '../hr-wallets/hr-wallets.service';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
@@ -25,6 +27,10 @@ export class HrReviewsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly dataSource: DataSource,
+    private readonly rewardRuleService: RewardRuleService,
+    private readonly hrWalletsService: HrWalletsService,
   ) {}
 
   /**
@@ -187,7 +193,40 @@ export class HrReviewsService {
       throw new NotFoundException(`Review record with id "${id}" not found`);
     }
 
-    // Cập nhật các field nghiệp vụ
+    // Nếu chuyển sang trạng thái COMPLETED, chạy logic thưởng F-Token trong 1 Transaction
+    if (updateDto.status === ReviewRecordStatus.COMPLETED) {
+      return this.dataSource.transaction(async (manager) => {
+        record.status = updateDto.status;
+        if (updateDto.finalScore !== undefined) {
+          record.finalScore = updateDto.finalScore;
+        }
+        
+        // Cập nhật audit field
+        record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
+        
+        // 1. Lưu record đã cập nhật
+        const savedRecord = await manager.save(record);
+        
+        // 2. Tính thưởng và gọi logic thưởng qua Wallet service nếu có
+        if (savedRecord.finalScore !== null && savedRecord.finalScore !== undefined) {
+          const amount = this.rewardRuleService.calculateScoreReward(Number(savedRecord.finalScore));
+          
+          if (amount > 0 && savedRecord.employee?.id) {
+            await this.hrWalletsService.processRewardWithManager(
+              savedRecord.employee.id,
+              amount,
+              savedRecord.id,
+              manager,
+              user?.id ?? ''
+            );
+          }
+        }
+        
+        return savedRecord;
+      });
+    }
+
+    // Cập nhật các field nghiệp vụ bình thường nếu không phải COMPLETED
     record.status = updateDto.status;
     if (updateDto.finalScore !== undefined) {
       record.finalScore = updateDto.finalScore;
