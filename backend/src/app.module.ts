@@ -41,6 +41,8 @@ import { NotificationsModule } from 'modules/notifications/notifications.module'
 import { HrWalletsModule } from './modules/hr-wallets/hr-wallets.module';
 import { Wallet } from 'modules/hr-wallets/entities/wallet.entity';
 import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-history.entity';
+import { WebsocketModule } from 'websockets/websocket.module';
+import { Websocket } from 'websockets/entities/websocket.entity';
 
 @Module({
   imports: [
@@ -67,12 +69,12 @@ import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-hist
           UserSprint,
           ReviewCycle,
           ReviewRecord,
-
           Wallet,
           TransactionHistory,
-
           Notification,
+          Websocket
         ],
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),
@@ -91,6 +93,7 @@ import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-hist
     HrReviewsModule,
     HrWalletsModule,
     NotificationsModule,
+    WebsocketModule
   ],
   controllers: [AppController],
 

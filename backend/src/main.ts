@@ -5,6 +5,8 @@ import { TransformInterceptor } from 'core/transform.interceptor';
 import { JwtAuthGuard } from 'modules/auth/guard/jwt-auth.guard';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { WebsocketAdapter } from 'websockets/websocket.adapter';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -63,6 +65,8 @@ async function bootstrap() {
       persistAuthorization: true,
     },
   });
+
+  app.useWebSocketAdapter(new WebsocketAdapter(app));
 
   await app.listen(process.env.PORT ?? 8080);
 }

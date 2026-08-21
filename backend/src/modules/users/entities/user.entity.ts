@@ -13,6 +13,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Websocket } from 'websockets/entities/websocket.entity';
 
 @Entity('users')
 export class User {
@@ -60,6 +61,9 @@ export class User {
     default: UserStatusType.AVAILABLE,
   })
   status: UserStatusType;
+
+  @OneToMany(() => Websocket, (websocket) => websocket.user)
+  websockets: Websocket[];
 
   @Column({ type: 'json', nullable: true })
   createdBy: { id: string; email: string };

@@ -5,15 +5,20 @@ import { IUser } from 'common/types/user.interface';
 import { RolesService } from 'modules/roles/roles.service';
 import { UsersService } from 'modules/users/users.service';
 import { Response } from 'express';
+import { SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
 
+@WebSocketGateway({ namespace: '/login' })
 @Injectable()
 export class AuthService {
+  @WebSocketServer()
+  server: Server;
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private rolesService: RolesService,
-  ) {}
+  ) { }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
@@ -65,6 +70,10 @@ export class AuthService {
       httpOnly: true,
       maxAge: this.configService.get<number>('JWT_REFRESH_EXPIRATION_TIME'),
     });
+    this.server.emit('response-login', {
+      email: email,
+      fullName: fullName,
+    })
     return {
       access_token: this.jwtService.sign(payload),
       user: {
