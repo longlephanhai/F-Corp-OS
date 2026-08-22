@@ -44,6 +44,22 @@ export const pmApi = {
     return axios.get<IBackendRes<TaskItem[]>>(`/tasks/sprint/${sprintId}`);
   },
 
+  submitAllocationForApproval: (id: string) => {
+    return axios.patch<IBackendRes<UserSprintItem>>(
+      `/user-sprint/${id}/submit-approval`,
+    );
+  },
+
+  cancelAllocationRequest: (id: string) => {
+    return axios.delete<
+      IBackendRes<{
+        success: boolean;
+        id: string;
+      }>
+    >(`/user-sprint/${id}/request`);
+  },
+
+  
   getTaskCandidates: (taskId: string) => {
     return axios.get<IBackendRes<TaskCandidate[]>>(
       `/tasks/${taskId}/candidates`,

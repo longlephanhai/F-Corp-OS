@@ -325,7 +325,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
           </div>
         }
         placement="right"
-        width={850}
+        size="large"
         onClose={onClose}
         open={open}
       >

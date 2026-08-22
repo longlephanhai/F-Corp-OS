@@ -1,10 +1,11 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
+  Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import { SkipCheckPermission } from 'decorator/customize';
@@ -36,10 +37,33 @@ export class UserSprintController {
     };
   }
   // Tương ứng với: pmApi.assignUserToSprint
+
   @Post()
   async assignUserToSprint(@Body() body: any) {
     const data = await this.userSprintService.assignUserToSprint(body);
     return { statusCode: 201, message: 'Đã gửi yêu cầu gán nhân sự', data };
+  }
+
+  @Patch(':id/submit-approval')
+  async submitForApproval(@Param('id') id: string) {
+    const data = await this.userSprintService.submitForApproval(id);
+
+    return {
+      statusCode: 200,
+      message: 'Đã gửi yêu cầu phân bổ để phê duyệt',
+      data,
+    };
+  }
+
+  @Delete(':id/request')
+  async cancelRequest(@Param('id') id: string) {
+    const data = await this.userSprintService.cancelRequest(id);
+
+    return {
+      statusCode: 200,
+      message: 'Đã hủy yêu cầu phân bổ',
+      data,
+    };
   }
 
   // Tương ứng với: pmApi.updateUserSprintStatus

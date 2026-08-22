@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -279,7 +280,65 @@ export class UserSprintService {
 
     return await this.userSprintRepo.save(newUserSprint);
   }
+  async submitForApproval(id: string) {
+    const allocation = await this.userSprintRepo.findOne({
+      where: {
+        id,
+      },
+      relations: {
+        user: true,
+        sprint: true,
+      },
+    });
 
+    if (!allocation) {
+      throw new NotFoundException('Không tìm thấy yêu cầu phân bổ.');
+    }
+
+    if (allocation.status !== UserSprintStatus.REQUESTED) {
+      throw new ConflictException({
+        code: 'INVALID_ALLOCATION_TRANSITION',
+
+        message:
+          'Chỉ allocation ở trạng thái REQUESTED mới được gửi phê duyệt.',
+
+        currentStatus: allocation.status,
+
+        expectedStatus: UserSprintStatus.REQUESTED,
+      });
+    }
+
+    allocation.status = UserSprintStatus.PENDING_APPROVAL;
+
+    return await this.userSprintRepo.save(allocation);
+  }
+
+  async cancelRequest(id: string) {
+    const allocation = await this.userSprintRepo.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!allocation) {
+      throw new NotFoundException('Không tìm thấy yêu cầu phân bổ.');
+    }
+
+    if (allocation.status !== UserSprintStatus.REQUESTED) {
+      throw new ForbiddenException({
+        code: 'CANNOT_CANCEL_ALLOCATION',
+
+        message: 'Chỉ yêu cầu chưa gửi phê duyệt mới có thể hủy.',
+      });
+    }
+
+    await this.userSprintRepo.remove(allocation);
+
+    return {
+      success: true,
+      id,
+    };
+  }
   // 3. Cập nhật trạng thái (assigned / released)
   async updateStatus(id: string, status: UserSprintStatus) {
     const record = await this.userSprintRepo.findOne({ where: { id } });
@@ -297,8 +356,18 @@ export class UserSprintService {
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
     }
 
+    if (record.status !== UserSprintStatus.ASSIGNED) {
+      throw new ConflictException({
+        code: 'INVALID_RELEASE',
+
+        message: 'Chỉ nhân sự đang ASSIGNED mới được giải phóng.',
+
+        currentStatus: record.status,
+      });
+    }
+
     // Cập nhật trạng thái và thông tin đánh giá
-    record.status = 'released' as any; // Ép kiểu theo Enum của bạn
+    record.status = UserSprintStatus.RELEASED;
     record.hardSkillRate = reviewData.hardSkillRate;
     record.softSkillRate = reviewData.softSkillRate;
     record.reviewComment = reviewData.reviewComment;
