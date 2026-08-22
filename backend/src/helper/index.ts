@@ -5,3 +5,7 @@ export const getHashPassword = (password: string) => {
     const hash = hashSync(password, salt);
     return hash;
 }
+
+export const generatedRoomUserId = (userId: string) => {
+    return `userId-${userId}`;
+}

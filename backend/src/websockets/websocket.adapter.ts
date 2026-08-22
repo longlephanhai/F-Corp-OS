@@ -4,6 +4,7 @@ import { IoAdapter } from "@nestjs/platform-socket.io";
 import { Server, ServerOptions, Socket } from "socket.io";
 import { Repository } from "typeorm";
 import { Websocket } from "./entities/websocket.entity";
+import { generatedRoomUserId } from "helper";
 
 export class WebsocketAdapter extends IoAdapter {
     private webSocketRepository: Repository<Websocket>;
@@ -50,17 +51,19 @@ export class WebsocketAdapter extends IoAdapter {
                 secret: process.env.JWT_SECRET_KEY
             })
             const userId = payload.id;
-            // console.log(`User ID from token: ${userId}`);
-            await this.webSocketRepository.save({
-                id: socket.id,
-                userId: userId
-            })
+            await socket.join(generatedRoomUserId(userId));
 
-            socket.on('disconnect', async () => {
-                await this.webSocketRepository.delete({ id: socket.id }).catch((error) => {
-                    console.error(`Error deleting websocket with id ${socket.id}:`, error);
-                });
-            })
+            // console.log(`User ID from token: ${userId}`);
+            // await this.webSocketRepository.save({
+            //     id: socket.id,
+            //     userId: userId
+            // })
+
+            // socket.on('disconnect', async () => {
+            //     await this.webSocketRepository.delete({ id: socket.id }).catch((error) => {
+            //         console.error(`Error deleting websocket with id ${socket.id}:`, error);
+            //     });
+            // })
             next();
         }
         catch (error) {

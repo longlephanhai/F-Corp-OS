@@ -7,6 +7,7 @@ import { UsersService } from 'modules/users/users.service';
 import { Response } from 'express';
 import { SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
+import { generatedRoomUserId } from 'helper';
 
 @WebSocketGateway({ namespace: '/login' })
 @Injectable()
@@ -70,10 +71,10 @@ export class AuthService {
       httpOnly: true,
       maxAge: this.configService.get<number>('JWT_REFRESH_EXPIRATION_TIME'),
     });
-    this.server.emit('response-login', {
+    this.server.to(generatedRoomUserId(id)).emit('response-login', {
       email: email,
       fullName: fullName,
-    })
+    });
     return {
       access_token: this.jwtService.sign(payload),
       user: {
