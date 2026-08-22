@@ -70,6 +70,7 @@ import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-hist
           TransactionHistory,
           Notification,
         ],
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),
