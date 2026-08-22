@@ -9,12 +9,16 @@ import {
   Table,
   Tag,
   Tabs,
+  Select,
+  Progress,
+  Alert,
 } from "antd";
 import { useParams } from "react-router-dom";
 import type {
   TaskItem,
   UserSprintItem,
   UserSprintStatus,
+  TeamMember,
 } from "../../common/types/pm";
 import { pmApi } from "../../api/pm";
 import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
@@ -32,6 +36,15 @@ export const SprintManagementPage: React.FC = () => {
   const { sprintId } = useParams<{ sprintId: string }>();
   const [loading, setLoading] = useState(false);
   const [userSprints, setUserSprints] = useState<UserSprintItem[]>([]);
+
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  const [selectedCapacity, setSelectedCapacity] = useState<{
+    currentAllocation: number;
+    availableCapacity: number;
+  } | null>(null);
+
+  const [capacityLoading, setCapacityLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [form] = Form.useForm<AssignUserFormValues>();
@@ -85,7 +98,6 @@ export const SprintManagementPage: React.FC = () => {
       render: (skills: TaskItem["requiredSkills"]) => (
         <div className="flex flex-wrap gap-1">
           {skills?.map((sk, idx) => {
-            
             const legacySkill = sk as typeof sk & {
               skill?: string;
               level?: number;
@@ -151,13 +163,15 @@ export const SprintManagementPage: React.FC = () => {
     setLoading(true);
     try {
       // add thêm api thay vì mockdataa
-      const [resUsers, resTasks] = await Promise.all([
+      const [resUsers, resTasks, resTeam] = await Promise.all([
         pmApi.getSprintUsers(sprintId),
         pmApi.getSprintTasks(sprintId),
+        pmApi.getMyTeam(),
       ]);
 
       setUserSprints(resUsers?.data?.data ?? resUsers?.data ?? []);
       setTasks(resTasks?.data?.data ?? resTasks?.data ?? []);
+      setTeamMembers(resTeam?.data?.data ?? resTeam?.data ?? []);
     } catch (error) {
       console.error("Lỗi tải dữ liệu Sprint từ Server:", error);
       message.error("Lỗi khi tải dữ liệu Sprint từ Server!");
@@ -325,17 +339,84 @@ export const SprintManagementPage: React.FC = () => {
         >
           <Form.Item
             name="userId"
-            label="Mã/ID Nhân viên"
-            rules={[{ required: true, message: "Vui lòng nhập User ID." }]}
+            label="Chọn nhân sự"
+            rules={[
+              {
+                required: true,
+                message: "Vui lòng chọn nhân sự.",
+              },
+            ]}
           >
-            <Input placeholder="Nhập User ID" />
+            <Select
+              showSearch
+              placeholder="Tìm theo tên hoặc email..."
+              optionFilterProp="label"
+              onChange={(userId) => void handleSelectEmployee(userId)}
+              options={teamMembers.map((member) => ({
+                value: member.id,
+
+                label:
+                  `${member.fullName} · ` +
+                  `${member.email}` +
+                  `${member.title ? ` · ${member.title}` : ""}`,
+              }))}
+            />
           </Form.Item>
+          {capacityLoading && (
+            <div className="mb-4 text-sm text-gray-500">
+              Đang kiểm tra capacity...
+            </div>
+          )}
+
+          {selectedCapacity && (
+            <div className="mb-5 rounded-lg border border-gray-200 p-4">
+              <div className="mb-3 font-semibold">
+                Capacity trong thời gian Sprint
+              </div>
+
+              <Progress
+                percent={selectedCapacity.currentAllocation}
+                status={
+                  selectedCapacity.currentAllocation >= 100
+                    ? "exception"
+                    : "active"
+                }
+              />
+
+              <div className="mt-2 flex justify-between text-sm">
+                <span>
+                  Đã sử dụng:{" "}
+                  <strong>{selectedCapacity.currentAllocation}%</strong>
+                </span>
+
+                <span>
+                  Còn trống:{" "}
+                  <strong>{selectedCapacity.availableCapacity}%</strong>
+                </span>
+              </div>
+
+              {selectedCapacity.availableCapacity === 0 && (
+                <Alert
+                  className="mt-3"
+                  type="error"
+                  showIcon
+                  message="Nhân sự đã hết capacity trong thời gian Sprint này."
+                />
+              )}
+            </div>
+          )}
           <Form.Item
             name="percitant"
             label="% Công suất tham gia"
             rules={[{ required: true, message: "Vui lòng nhập công suất." }]}
           >
-            <InputNumber min={1} max={100} className="w-full" />
+            <InputNumber
+              min={1}
+              max={selectedCapacity?.availableCapacity ?? 100}
+              addonAfter="%"
+              disabled={selectedCapacity?.availableCapacity === 0}
+              className="w-full"
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -351,7 +432,9 @@ export const SprintManagementPage: React.FC = () => {
       <TaskMatchingDrawer
         open={isMatchingOpen}
         task={selectedTask}
+        sprintId={sprintId!}
         onClose={() => setIsMatchingOpen(false)}
+        onAssigned={fetchSprintData}
       />
       <ReleaseReviewModal
         open={isReleaseModalOpen}

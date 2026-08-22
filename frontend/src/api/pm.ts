@@ -15,13 +15,20 @@ export const pmApi = {
     );
   },
 
+  getUserCapacity: (userId: string, sprintId: string) => {
+    return axios.get<IBackendRes<any>>(`/user-sprint/capacity/${userId}`, {
+      params: {
+        sprintId,
+      },
+    });
+  },
+
   // PM gửi yêu cầu gán nhân sự vào Sprint
   assignUserToSprint: (sprintId: string, userId: string, percitant: number) => {
     return axios.post<IBackendRes<UserSprintItem>>("/user-sprint", {
       sprintId,
       userId,
       percitant,
-      status: "requested",
     });
   },
 

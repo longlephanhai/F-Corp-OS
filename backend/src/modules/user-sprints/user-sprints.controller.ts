@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { SkipCheckPermission } from 'decorator/customize';
 import { UserSprintService } from './user-sprints.service';
 import { UserSprintStatus } from './entities/user-sprint.entity';
@@ -14,7 +22,19 @@ export class UserSprintController {
     const data = await this.userSprintService.getSprintUsers(sprintId);
     return { statusCode: 200, message: 'Lấy danh sách thành công', data };
   }
+  @Get('capacity/:userId')
+  async getUserCapacity(
+    @Param('userId') userId: string,
+    @Query('sprintId') sprintId: string,
+  ) {
+    const data = await this.userSprintService.getUserCapacity(userId, sprintId);
 
+    return {
+      statusCode: 200,
+      message: 'Lấy capacity nhân sự thành công',
+      data,
+    };
+  }
   // Tương ứng với: pmApi.assignUserToSprint
   @Post()
   async assignUserToSprint(@Body() body: any) {
