@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import type { IUser } from 'common/types/user.interface';
-import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import { ResponseMessage, User } from 'decorator/customize';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { HrWalletsService } from './hr-wallets.service';
 
@@ -18,11 +18,8 @@ export class HrWalletsController {
    * Nếu nhân viên chưa có ví, hệ thống sẽ tự động khởi tạo ví mới.
    * Toàn bộ thao tác được bọc trong một DB transaction để đảm bảo tính nguyên tử.
    *
-   * TODO: Thay @SkipCheckPermission() bằng guard phân quyền HR/Admin khi đã
-   *       hoàn thiện hệ thống Permission (ví dụ: @Roles('HR', 'ADMIN')).
    */
   @Post('transaction')
-  @SkipCheckPermission()
   @ResponseMessage('Giao dịch F-Token thực hiện thành công')
   processTransaction(
     @Body() createTransactionDto: CreateTransactionDto,
@@ -56,7 +53,6 @@ export class HrWalletsController {
    * Lấy danh sách tất cả các ví (dành cho HR/Admin)
    */
   @Get()
-  @SkipCheckPermission()
   @ResponseMessage('Lấy danh sách tất cả ví F-Token thành công')
   getAllWallets(@Query() query: any) {
     return this.hrWalletsService.getAllWallets(query);
