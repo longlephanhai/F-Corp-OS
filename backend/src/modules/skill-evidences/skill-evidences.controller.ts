@@ -57,20 +57,4 @@ export class SkillEvidencesController {
       data,
     };
   }
-  @SkipCheckPermission()
-  @Get('notifications/history')
-  async getNotifications() {
-    const data = await this.evidencesService.getNotifications();
-    return { statusCode: 200, data };
-  }
-  @SkipCheckPermission()
-  @Patch('notifications/read-all')
-  async markAllAsRead() {
-    return await this.evidencesService.markAllAsRead();
-  }
-  @SkipCheckPermission()
-  @Patch('notifications/:id/read')
-  async markAsRead(@Param('id') id: string) {
-    return await this.evidencesService.markAsRead(id);
-  }
 }

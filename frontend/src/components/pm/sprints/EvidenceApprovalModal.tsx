@@ -24,12 +24,11 @@ import { SkillRadarChart } from "./SkillRadarChart";
 import { pmApi } from "../../../api/pm";
 
 const { Link } = Typography;
-
 interface Props {
   open: boolean;
   member: TeamMember | null;
   onClose: () => void;
-  onRefresh: () => void;
+  onRefresh: () => Promise<any>;
 }
 
 // Cấu hình trạng thái bằng chứng
@@ -37,15 +36,31 @@ const STATUS_CONFIG: Record<
   string,
   { label: string; color: string; icon: React.ReactNode }
 > = {
-  pending: { label: "Chờ duyệt", color: "gold", icon: <ClockCircleFilled /> },
-  verified: { label: "Đã duyệt", color: "green", icon: <CheckCircleFilled /> },
-  rejected: { label: "Từ chối", color: "red", icon: <CloseCircleFilled /> },
+  PENDING: {
+    label: "Chờ duyệt",
+    color: "gold",
+    icon: <ClockCircleFilled />,
+  },
+  APPROVED: {
+    label: "Đã duyệt",
+    color: "green",
+    icon: <CheckCircleFilled />,
+  },
+  REJECTED: {
+    label: "Từ chối",
+    color: "red",
+    icon: <CloseCircleFilled />,
+  },
 };
 
+const normalizeEvidenceStatus = (status?: string) =>
+  (status ?? "PENDING").toUpperCase();
+
 const EVIDENCE_TYPE_LABEL: Record<string, string> = {
-  certification: "Chứng chỉ",
-  project_link: "Link dự án",
-  peer_review: "Đánh giá đồng nghiệp",
+  CERTIFICATE: "Chứng chỉ",
+  PROJECT_LINK: "Link dự án",
+  DOCUMENT: "Tài liệu",
+  WORK_EXPERIENCE: "Kinh nghiệm làm việc",
 };
 
 const getInitials = (name: string) =>
@@ -73,15 +88,21 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
     sk.evidences.map((ev) => ({ ...ev, skillName: sk.skill.name })),
   );
   const pendingCount = allEvidences.filter(
-    (e) => e.status === "pending",
+    (e) => normalizeEvidenceStatus(e.status) === "PENDING",
   ).length;
-
   const handleVerify = async (evidenceId: string) => {
     try {
-      await pmApi.verifyEvidence(evidenceId, { status: "verified" });
-      message.success("Đã duyệt bằng chứng thành công! (Điểm tin cậy đã tăng)");
-      onRefresh();
+      await pmApi.verifyEvidence(evidenceId, {
+        status: "APPROVED",
+      });
+
+      // Đợi lấy dữ liệu mới về xong
+      await onRefresh();
+
+      message.success("Đã duyệt bằng chứng thành công!");
     } catch (error) {
+      console.error(error);
+
       message.error("Lỗi khi duyệt bằng chứng");
     }
   };
@@ -89,22 +110,28 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
   const handleReject = async (evidenceId: string) => {
     if (!rejectReason.trim()) {
       message.warning("Vui lòng nhập lý do từ chối");
+
       return;
     }
+
     try {
       await pmApi.verifyEvidence(evidenceId, {
-        status: "rejected",
+        status: "REJECTED",
         rejectReason,
       });
+
+      await onRefresh();
+
       message.success("Đã từ chối bằng chứng!");
+
       setRejectingId(null);
       setRejectReason("");
-      onRefresh();
     } catch (error) {
+      console.error(error);
+
       message.error("Lỗi khi từ chối bằng chứng");
     }
   };
-
   return (
     <Modal
       title={
@@ -166,7 +193,7 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
                 defaultActiveKey={member.userSkills.map((sk) => sk.id)}
                 items={member.userSkills.map((userSkill) => {
                   const pendingEvidences = userSkill.evidences.filter(
-                    (e) => e.status === "pending",
+                    (e) => normalizeEvidenceStatus(e.status) === "PENDING",
                   );
 
                   return {
@@ -194,8 +221,27 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
                         {userSkill.evidences &&
                         userSkill.evidences.length > 0 ? (
                           userSkill.evidences.map((ev) => {
+                            const normalizedStatus = normalizeEvidenceStatus(
+                              ev.status,
+                            );
+
                             const cfg =
-                              STATUS_CONFIG[ev.status] ?? STATUS_CONFIG.pending;
+                              STATUS_CONFIG[normalizedStatus] ??
+                              STATUS_CONFIG.PENDING;
+
+                            const evidence = ev as typeof ev & {
+                              url?: string;
+                              type?: string;
+                              evidenceUrl?: string;
+                              evidenceType?: string;
+                            };
+
+                            const evidenceUrl =
+                              evidence.url ?? evidence.evidenceUrl;
+
+                            const evidenceType =
+                              evidence.type ?? evidence.evidenceType;
+
                             return (
                               <div
                                 key={ev.id}
@@ -211,7 +257,7 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
                                     {cfg.label}
                                   </Tag>
 
-                                  {ev.status === "pending" &&
+                                  {normalizedStatus === "PENDING" &&
                                     rejectingId !== ev.id && (
                                       <Space size="small" className="shrink-0">
                                         <Button
@@ -237,17 +283,26 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
 
                                 {/* Hàng 2: Link đính kèm */}
                                 <div className="bg-slate-50 p-2 rounded mb-1">
-                                  <Link
-                                    href={ev.evidenceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-xs break-all"
-                                  >
-                                    <LinkOutlined /> Xem bằng chứng (
-                                    {EVIDENCE_TYPE_LABEL[ev.evidenceType] ??
-                                      ev.evidenceType}
-                                    )
-                                  </Link>
+                                  {evidenceUrl ? (
+                                    <Link
+                                      href={evidenceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-xs break-all"
+                                    >
+                                      <LinkOutlined /> Xem bằng chứng (
+                                      {EVIDENCE_TYPE_LABEL[
+                                        (evidenceType ?? "").toUpperCase()
+                                      ] ??
+                                        evidenceType ??
+                                        "Khác"}
+                                      )
+                                    </Link>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      Không có đường dẫn bằng chứng
+                                    </span>
+                                  )}
                                 </div>
 
                                 {/* Hàng 3: Input lý do từ chối (Chỉ hiện khi PM bấm Từ chối) */}

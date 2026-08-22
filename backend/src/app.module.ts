@@ -35,7 +35,6 @@ import { Notification } from 'modules/notifications/entities/notification.entity
 
 // BÙM 💥 BƯỚC 1: IMPORT GATEWAY VÀO ĐÂY
 // (Lưu ý: Bác chỉnh lại đường dẫn './notifications.gateway' sao cho khớp với thư mục bác lưu file nhé)
-import { NotificationsGateway } from './modules/projects/notifications.gateway';
 import { NotificationsModule } from 'modules/notifications/notifications.module';
 
 import { HrWalletsModule } from './modules/hr-wallets/hr-wallets.module';
@@ -67,10 +66,8 @@ import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-hist
           UserSprint,
           ReviewCycle,
           ReviewRecord,
-
           Wallet,
           TransactionHistory,
-
           Notification,
         ],
       }),
@@ -94,6 +91,6 @@ import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-hist
   ],
   controllers: [AppController],
 
-  providers: [AppService, NotificationsGateway],
+  providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

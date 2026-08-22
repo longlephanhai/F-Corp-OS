@@ -97,22 +97,14 @@ export const pmApi = {
   },
 
   getNotificationHistory: () => {
-    return axios.get<IBackendRes<any[]>>(
-      "/skill-evidences/notifications/history",
-    );
+    return axios.get<IBackendRes<any[]>>("/notifications");
   },
 
-  // Đánh dấu tất cả là đã đọc
   markAllNotificationsAsRead: () => {
-    return axios.patch<IBackendRes<any>>(
-      "/skill-evidences/notifications/read-all",
-    );
+    return axios.patch<IBackendRes<any>>("/notifications/read-all");
   },
 
-  // Đánh dấu 1 thông báo cụ thể là đã đọc
   markNotificationAsRead: (id: string) => {
-    return axios.patch<IBackendRes<any>>(
-      `/skill-evidences/notifications/${id}/read`,
-    );
+    return axios.patch<IBackendRes<any>>(`/notifications/${id}/read`);
   },
 };

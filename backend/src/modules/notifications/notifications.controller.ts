@@ -1,34 +1,61 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+} from '@nestjs/common';
+
 import { NotificationsService } from './notifications.service';
-import { CreateNotificationDto } from './dto/create-notification.dto';
-import { UpdateNotificationDto } from './dto/update-notification.dto';
+
+import {
+  User,
+  SkipCheckPermission,
+  ResponseMessage,
+} from 'decorator/customize';
+
+import type { IUser } from 'common/types/user.interface';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
-  @Post()
-  create(@Body() createNotificationDto: CreateNotificationDto) {
-    return this.notificationsService.create(createNotificationDto);
-  }
-
+  /**
+   * GET /notifications
+   *
+   * Lấy notification của user đang login.
+   */
+  @SkipCheckPermission()
+  @ResponseMessage('Get notifications successfully')
   @Get()
-  findAll() {
-    return this.notificationsService.findAll();
+  findMine(@User() user: IUser) {
+    return this.notificationsService.findMine(user.id);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.notificationsService.findOne(+id);
+  /**
+   * PATCH /notifications/read-all
+   */
+  @SkipCheckPermission()
+  @ResponseMessage('Mark all notifications as read successfully')
+  @Patch('read-all')
+  markAllAsRead(@User() user: IUser) {
+    return this.notificationsService.markAllAsRead(user.id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateNotificationDto: UpdateNotificationDto) {
-    return this.notificationsService.update(+id, updateNotificationDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.notificationsService.remove(+id);
+  /**
+   * PATCH /notifications/:id/read
+   */
+  @SkipCheckPermission()
+  @ResponseMessage('Mark notification as read successfully')
+  @Patch(':id/read')
+  markAsRead(
+    @User() user: IUser,
+    @Param('id') id: string,
+  ) {
+    return this.notificationsService.markAsRead(
+      user.id,
+      id,
+    );
   }
 }

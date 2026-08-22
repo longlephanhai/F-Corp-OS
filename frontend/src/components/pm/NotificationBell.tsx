@@ -10,7 +10,7 @@ import {
 } from "@ant-design/icons";
 
 // Socket dùng chung toàn app
-import { socket } from "../../config/socket";
+import { socket, connectSocket } from "../../config/socket";
 
 // API của PM
 import { pmApi } from "../../api/pm";
@@ -90,7 +90,7 @@ export const NotificationBell: React.FC = () => {
 
       const res = await pmApi.getNotificationHistory();
 
-      const data = res?.data?.data;
+      const data = (res as any)?.data ?? [];
 
       if (Array.isArray(data)) {
         const formattedData: Notification[] = data.map(formatNotification);
@@ -130,23 +130,16 @@ export const NotificationBell: React.FC = () => {
   // =========================================================
 
   useEffect(() => {
-    // Load lịch sử
     fetchNotificationHistory();
 
-    // ---------------------------------------------
-    // Notification mới từ Socket
-    // ---------------------------------------------
+    connectSocket();
 
     const handleNewNotification = (data: any) => {
-      console.log("🔔 Notification realtime:", data);
-
       const newNotification = formatNotification(data);
 
-      // Notification realtime luôn là unread
       newNotification.read = false;
 
       setNotifications((prev) => {
-        // Tránh duplicate nếu backend/API gửi lại
         const exists = prev.some((item) => item.id === newNotification.id);
 
         if (exists) {
@@ -156,26 +149,16 @@ export const NotificationBell: React.FC = () => {
         return [newNotification, ...prev];
       });
 
-      // Popup nhỏ
       message.info({
         content: `Thông báo mới: ${newNotification.title}`,
         duration: 3,
       });
     };
 
-    // Đăng ký listener
     socket.on("new_notification", handleNewNotification);
-
-    console.log("🔔 NotificationBell đã đăng ký Socket listener");
-
-    // ---------------------------------------------
-    // CLEANUP
-    // ---------------------------------------------
 
     return () => {
       socket.off("new_notification", handleNewNotification);
-
-      console.log("🔕 NotificationBell đã remove Socket listener");
     };
   }, []);
 
