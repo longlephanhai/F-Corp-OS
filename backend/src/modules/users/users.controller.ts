@@ -7,7 +7,10 @@ import {
   Param,
   Delete,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -21,7 +24,7 @@ import type { IUser } from 'common/types/user.interface';
 @SkipCheckPermission()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @ResponseMessage('User created successfully')
@@ -85,5 +88,12 @@ export class UsersController {
     const managerId = '2ff0de6e-2759-4d11-aab7-42ca161f2933';
     const data = await this.usersService.getMyTeam(managerId);
     return { statusCode: 200, message: 'Lấy My Team thành công', data };
+  }
+
+  @Post('import')
+  @ResponseMessage('Import users successfully')
+  @UseInterceptors(FileInterceptor('file'))
+  importUsers(@UploadedFile() file: Express.Multer.File, @User() user: IUser) {
+    return this.usersService.importUsers(file, user);
   }
 }

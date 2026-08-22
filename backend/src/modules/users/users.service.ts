@@ -10,13 +10,23 @@ import { Role } from 'modules/roles/entities/role.entity';
 import { IUser } from 'common/types/user.interface';
 import aqp from 'api-query-params';
 import { TITLE_COST_RATE } from 'common/constants/cost-rate.constant';
-import { UserStatusType } from 'common/enum/user.enum';
+import { TitleType, UserStatusType } from 'common/enum/user.enum';
+import * as XLSX from 'xlsx';
+
+interface ImportUserRow {
+  fullName?: string;
+  email?: string;
+  role?: string; // tên role, ví dụ "HR", "ADMIN"
+  title?: string; // JUNIOR_DEV, SENIOR_DEV, PM, HR
+  status?: string;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private usersRepository: Repository<User>,
     @InjectRepository(Role) private rolesRepository: Repository<Role>,
-  ) { }
+  ) {}
 
   findOneByEmail(email: string) {
     return this.usersRepository.findOne({
@@ -114,7 +124,7 @@ export class UsersService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('role.permissions', 'permission')
-      .withDeleted()
+      .withDeleted();
 
     if (search) {
       queryBuilder.andWhere(
@@ -190,7 +200,9 @@ export class UsersService {
     const { email, fullName, role_id, title, status } = updateUserDto;
 
     if (email && email !== existUser.email) {
-      const emailExists = await this.usersRepository.findOne({ where: { email } });
+      const emailExists = await this.usersRepository.findOne({
+        where: { email },
+      });
       if (emailExists) {
         throw new BadRequestException('Email already exists');
       }
@@ -200,9 +212,13 @@ export class UsersService {
     if (fullName) existUser.fullName = fullName;
 
     if (role_id) {
-      const role = await this.rolesRepository.findOne({ where: { id: role_id } });
+      const role = await this.rolesRepository.findOne({
+        where: { id: role_id },
+      });
       if (!role) {
-        throw new BadRequestException(`Role with id "${role_id}" does not exist`);
+        throw new BadRequestException(
+          `Role with id "${role_id}" does not exist`,
+        );
       }
       existUser.role = role;
     }
@@ -228,7 +244,6 @@ export class UsersService {
     console.log(`User with id "${id}" `);
     console.log(`User with id "${user.fullName}" `);
     if (!existUser) {
-
       throw new BadRequestException(`User with id "${id}" not found`);
     }
 
@@ -253,7 +268,7 @@ export class UsersService {
   async restore(id: string, user: IUser) {
     const existUser = await this.usersRepository.findOne({
       where: { id },
-      withDeleted: true,   // cần bật, vì user đã bị soft-delete nên find() mặc định sẽ không thấy
+      withDeleted: true, // cần bật, vì user đã bị soft-delete nên find() mặc định sẽ không thấy
     });
 
     if (!existUser) {
@@ -265,8 +280,8 @@ export class UsersService {
       {
         isDeleted: false,
         deletedBy: undefined,
-        updatedBy: { id: user.id, email: user.email }
-      }
+        updatedBy: { id: user.id, email: user.email },
+      },
     );
 
     await this.usersRepository.restore(id);
@@ -287,5 +302,75 @@ export class UsersService {
         },
       },
     });
+  }
+
+  async importUsers(file: Express.Multer.File, user: IUser) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn file Excel');
+    }
+
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows: ImportUserRow[] = XLSX.utils.sheet_to_json(sheet);
+
+    const DEFAULT_PASSWORD = '123456';
+    const errors: { row: number; message: string }[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2;
+      const row = rows[i];
+      try {
+        if (!row.fullName || !row.email || !row.role || !row.title) {
+          throw new Error('Thiếu fullName / email / role / title');
+        }
+
+        const existed = await this.usersRepository.findOne({
+          where: { email: row.email },
+        });
+        if (existed) {
+          throw new Error(`Email "${row.email}" đã tồn tại`);
+        }
+
+        const userRole = await this.rolesRepository.findOne({
+          where: { name: row.role },
+        });
+        if (!userRole) {
+          throw new Error(`Role "${row.role}" không tồn tại`);
+        }
+
+        const rawTitle = row.title as string;
+        if (!Object.values(TitleType).includes(rawTitle as TitleType)) {
+          throw new Error(`Title "${row.title}" không hợp lệ`);
+        }
+        const title: TitleType = rawTitle as TitleType;
+        const costRate = TITLE_COST_RATE[title];
+
+        const hashedPassword = getHashPassword(DEFAULT_PASSWORD);
+
+        await this.usersRepository.save({
+          fullName: row.fullName,
+          email: row.email,
+          password: hashedPassword,
+          role: userRole,
+          title,
+          costRate,
+          status: (row.status as UserStatusType) || UserStatusType.AVAILABLE,
+          createdBy: { id: user.id, email: user.email },
+        });
+
+        successCount++;
+      } catch (err: any) {
+        errors.push({ row: rowNumber, message: err.message });
+      }
+    }
+
+    return {
+      total: rows.length,
+      successCount,
+      failCount: errors.length,
+      errors,
+    };
   }
 }

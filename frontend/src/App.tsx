@@ -27,7 +27,6 @@ import UserSkillPage from "./pages/dev/user-skill";
 import { ProjectsPage } from "./pages/pm/ProjectsPage";
 import { ProjectDetail } from "./pages/pm/ProjectDetail";
 
-
 import BenchForecast from "./pages/hr/BenchForecast";
 
 // import LayoutApp from "./components/protected-route/layout.app";
@@ -44,8 +43,10 @@ function App() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchAccount());
-  }, []);
+    if (localStorage.getItem("access_token")) {
+      dispatch(fetchAccount());
+    }
+  }, [dispatch]);
 
   const router = createBrowserRouter([
     {
@@ -109,17 +110,17 @@ function App() {
       children: [
         {
           index: true,
-          element: <DashBoardDev />
+          element: <DashBoardDev />,
         },
         {
           path: "skills",
-          element: <SkillPage />
+          element: <SkillPage />,
         },
         {
-          path: 'user-skill',
-          element: <UserSkillPage />
-        }
-      ]
+          path: "user-skill",
+          element: <UserSkillPage />,
+        },
+      ],
     },
 
     {

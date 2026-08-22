@@ -72,9 +72,9 @@ import { Websocket } from 'websockets/entities/websocket.entity';
           Wallet,
           TransactionHistory,
           Notification,
-          Websocket
+          Websocket,
         ],
-        synchronize: true,
+        synchronize: false, // Set to false in production to avoid data loss
       }),
       inject: [ConfigService],
     }),
@@ -93,10 +93,10 @@ import { Websocket } from 'websockets/entities/websocket.entity';
     HrReviewsModule,
     HrWalletsModule,
     NotificationsModule,
-    WebsocketModule
+    WebsocketModule,
   ],
   controllers: [AppController],
 
   providers: [AppService, NotificationsGateway],
 })
-export class AppModule { }
+export class AppModule {}

@@ -6,8 +6,7 @@ import { JwtAuthGuard } from 'modules/auth/guard/jwt-auth.guard';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WebsocketAdapter } from 'websockets/websocket.adapter';
-
-
+import 'multer';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
@@ -34,15 +33,12 @@ async function bootstrap() {
 
   app.useGlobalGuards(new JwtAuthGuard(reflector));
 
-  app.enableCors(
-    {
-      "origin": true,
-      "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
-      "preflightContinue": false,
-      "credentials": true
-    }
-  );
-
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    credentials: true,
+  });
 
   const config = new DocumentBuilder()
     .setTitle('APIs Documentation')
