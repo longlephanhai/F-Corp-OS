@@ -7,7 +7,9 @@ import {
   Tag,
   Avatar,
   message,
-  Tooltip, // <-- Đã thêm Tooltip vào đây
+  Tooltip,
+  Modal,
+  InputNumber,
 } from "antd";
 import type { TaskCandidate, TaskItem } from "../../../common/types/pm";
 import { CandidateCompareModal } from "../CandidateCompareModal";
@@ -16,16 +18,34 @@ import { pmApi } from "../../../api/pm";
 interface Props {
   open: boolean;
   task: TaskItem | null;
+
+  // Sprint hiện tại mà PM đang quản lý
+  sprintId: string;
+
   onClose: () => void;
+
+  // Refresh lại Sprint sau khi tạo allocation
+  onAssigned: () => void | Promise<void>;
 }
 
 export const TaskMatchingDrawer: React.FC<Props> = ({
   open,
   task,
+  sprintId,
   onClose,
+  onAssigned,
 }) => {
   const [loading, setLoading] = useState(false);
   const [candidates, setCandidates] = useState<TaskCandidate[]>([]);
+
+  const [selectedCandidate, setSelectedCandidate] =
+    useState<TaskCandidate | null>(null);
+
+  const [allocationPercent, setAllocationPercent] = useState<number>(100);
+
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
 
   // --- STATE MỚI CHO TÍNH NĂNG SO SÁNH ---
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -67,10 +87,124 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
   }, [fetchMatchingCandidates, open, task]);
 
   const handleAssign = (devId: string) => {
-    message.success(`Đã gửi yêu cầu gán Dev ${devId} vào Task này!`);
-    // Chỗ này sau sẽ gọi pmApi.assignUserToSprint / Task
-    setIsCompareOpen(false);
-    onClose();
+    const candidate = candidates.find((item) => item.id === devId);
+
+    if (!candidate) {
+      message.error("Không tìm thấy thông tin ứng viên.");
+      return;
+    }
+
+    // Chưa gọi API ngay.
+    // Mở modal để PM chọn % allocation trước.
+    setSelectedCandidate(candidate);
+    setAllocationPercent(100);
+    setIsAllocationModalOpen(true);
+  };
+
+  const handleSubmitAllocation = async () => {
+    if (!selectedCandidate) {
+      message.error("Chưa chọn nhân sự.");
+      return;
+    }
+
+    if (
+      !allocationPercent ||
+      allocationPercent < 1 ||
+      allocationPercent > 100
+    ) {
+      message.warning("Công suất tham gia phải từ 1% đến 100%.");
+      return;
+    }
+
+    try {
+      setAssignLoading(true);
+
+      await pmApi.assignUserToSprint(
+        sprintId,
+        selectedCandidate.id,
+        allocationPercent,
+      );
+
+      message.success(
+        `Đã gửi yêu cầu phân bổ ${selectedCandidate.fullName} với ${allocationPercent}% công suất.`,
+      );
+
+      setIsAllocationModalOpen(false);
+      setSelectedCandidate(null);
+      setAllocationPercent(100);
+
+      // đóng modal compare nếu đang mở
+      setIsCompareOpen(false);
+
+      // refresh bảng Allocation bên Sprint
+      await onAssigned();
+
+      // đóng drawer matching
+      onClose();
+    } catch (error: any) {
+      console.error("Lỗi khi gửi yêu cầu phân bổ:", error);
+
+      const errorData = error?.response?.data;
+
+      // ======================================
+      // BỊ TRÙNG REQUEST TRONG CÙNG SPRINT
+      // ======================================
+
+      if (errorData?.code === "DUPLICATE_ALLOCATION") {
+        message.warning("Nhân sự này đã có yêu cầu phân bổ trong Sprint.");
+
+        return;
+      }
+
+      // ======================================
+      // VƯỢT QUÁ CAPACITY
+      // ======================================
+
+      if (errorData?.code === "OVER_ALLOCATION") {
+        Modal.warning({
+          title: "Không đủ capacity",
+
+          content: (
+            <div className="mt-3 space-y-2">
+              <div>
+                Đang được phân bổ:{" "}
+                <strong>{errorData.currentAllocation}%</strong>
+              </div>
+
+              <div>
+                Yêu cầu thêm: <strong>{errorData.requestedAllocation}%</strong>
+              </div>
+
+              <div>
+                Sau khi phân bổ:{" "}
+                <strong className="text-red-500">
+                  {errorData.afterAllocation}%
+                </strong>
+              </div>
+
+              <div>
+                Capacity còn lại:{" "}
+                <strong className="text-green-600">
+                  {errorData.availableCapacity}%
+                </strong>
+              </div>
+
+              <div className="pt-2 text-gray-500">
+                Hãy giảm % phân bổ hoặc chọn nhân sự khác.
+              </div>
+            </div>
+          ),
+        });
+
+        return;
+      }
+
+      message.error(
+        errorData?.message ?? "Không thể gửi yêu cầu phân bổ nhân sự.",
+      );
+    } finally {
+      setAssignLoading(false);
+    }
   };
 
   const columns = [
@@ -144,7 +278,9 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
             }
             onClick={() => handleAssign(record.id)}
           >
-            {record.status === "on_project" ? "Đang kẹt dự án" : "Gán Nhân Sự"}
+            {record.status === "on_project"
+              ? "Đang kẹt dự án"
+              : "Yêu cầu phân bổ"}
           </Button>
         </Tooltip>
       ),
@@ -189,7 +325,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
           </div>
         }
         placement="right"
-        width={850}
+        size="large"
         onClose={onClose}
         open={open}
       >
@@ -238,6 +374,67 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
         onClose={() => setIsCompareOpen(false)}
         onAssign={handleAssign}
       />
+
+      <Modal
+        title="Yêu cầu phân bổ nhân sự"
+        open={isAllocationModalOpen}
+        onCancel={() => {
+          if (assignLoading) return;
+
+          setIsAllocationModalOpen(false);
+          setSelectedCandidate(null);
+          setAllocationPercent(100);
+        }}
+        onOk={() => void handleSubmitAllocation()}
+        okText="Gửi yêu cầu"
+        cancelText="Hủy"
+        confirmLoading={assignLoading}
+        destroyOnClose
+      >
+        {selectedCandidate && (
+          <div className="space-y-5 py-2">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="text-xs text-gray-500">Nhân sự</div>
+
+              <div className="mt-1 font-semibold text-gray-900">
+                {selectedCandidate.fullName}
+              </div>
+
+              <div className="text-sm text-gray-500">
+                {selectedCandidate.title}
+              </div>
+
+              <div className="mt-2">
+                <Tag color="blue">Match {selectedCandidate.matchScore}%</Tag>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 font-medium text-gray-700">
+                Công suất tham gia Sprint (%)
+              </div>
+
+              <InputNumber
+                min={1}
+                max={100}
+                value={allocationPercent}
+                onChange={(value) => setAllocationPercent(value ?? 100)}
+                addonAfter="%"
+                className="w-full"
+              />
+
+              <div className="mt-2 text-xs text-gray-500">
+                Ví dụ: 50% nghĩa là nhân sự dành khoảng một nửa công suất cho
+                Sprint này.
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+              Yêu cầu sẽ được tạo ở trạng thái <strong>REQUESTED</strong>.
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 };

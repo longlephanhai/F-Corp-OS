@@ -15,13 +15,20 @@ export const pmApi = {
     );
   },
 
+  getUserCapacity: (userId: string, sprintId: string) => {
+    return axios.get<IBackendRes<any>>(`/user-sprint/capacity/${userId}`, {
+      params: {
+        sprintId,
+      },
+    });
+  },
+
   // PM gửi yêu cầu gán nhân sự vào Sprint
   assignUserToSprint: (sprintId: string, userId: string, percitant: number) => {
     return axios.post<IBackendRes<UserSprintItem>>("/user-sprint", {
       sprintId,
       userId,
       percitant,
-      status: "requested",
     });
   },
 
@@ -37,6 +44,22 @@ export const pmApi = {
     return axios.get<IBackendRes<TaskItem[]>>(`/tasks/sprint/${sprintId}`);
   },
 
+  submitAllocationForApproval: (id: string) => {
+    return axios.patch<IBackendRes<UserSprintItem>>(
+      `/user-sprint/${id}/submit-approval`,
+    );
+  },
+
+  cancelAllocationRequest: (id: string) => {
+    return axios.delete<
+      IBackendRes<{
+        success: boolean;
+        id: string;
+      }>
+    >(`/user-sprint/${id}/request`);
+  },
+
+  
   getTaskCandidates: (taskId: string) => {
     return axios.get<IBackendRes<TaskCandidate[]>>(
       `/tasks/${taskId}/candidates`,
@@ -97,22 +120,14 @@ export const pmApi = {
   },
 
   getNotificationHistory: () => {
-    return axios.get<IBackendRes<any[]>>(
-      "/skill-evidences/notifications/history",
-    );
+    return axios.get<IBackendRes<any[]>>("/notifications");
   },
 
-  // Đánh dấu tất cả là đã đọc
   markAllNotificationsAsRead: () => {
-    return axios.patch<IBackendRes<any>>(
-      "/skill-evidences/notifications/read-all",
-    );
+    return axios.patch<IBackendRes<any>>("/notifications/read-all");
   },
 
-  // Đánh dấu 1 thông báo cụ thể là đã đọc
   markNotificationAsRead: (id: string) => {
-    return axios.patch<IBackendRes<any>>(
-      `/skill-evidences/notifications/${id}/read`,
-    );
+    return axios.patch<IBackendRes<any>>(`/notifications/${id}/read`);
   },
 };

@@ -85,19 +85,46 @@ export const MyTeamPage: React.FC = () => {
   }, []);
 
   const fetchTeam = async () => {
-    setLoading(true);
-    try {
-      // Giả sử bạn đã định nghĩa pmApi.getMyTeam() trong api/pm.ts gọi đến '/users/pm/my-team'
-      const res = await pmApi.getMyTeam();
+  setLoading(true);
 
-      console.log("My Team data:", res?.data?.data || res?.data);
-      setTeam(res?.data?.data || res?.data || []);
-    } catch (error) {
-      message.error("Lỗi khi lấy danh sách Team!");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const res = await pmApi.getMyTeam();
+
+    const newTeam: TeamMember[] =
+      res?.data?.data || res?.data || [];
+
+    console.log("My Team data:", newTeam);
+
+    // Cập nhật bảng My Team
+    setTeam(newTeam);
+
+    // QUAN TRỌNG:
+    // Nếu modal đang mở thì cập nhật luôn member trong modal
+    setSelectedMember((currentMember) => {
+      if (!currentMember) {
+        return null;
+      }
+
+      const refreshedMember = newTeam.find(
+        (member) => member.id === currentMember.id,
+      );
+
+      return refreshedMember ?? currentMember;
+    });
+
+    return newTeam;
+  } catch (error) {
+    console.error(error);
+
+    message.error(
+      "Lỗi khi lấy danh sách Team!",
+    );
+
+    return [];
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Hàm đếm số bằng chứng đang pending của 1 Dev
   const countPendingEvidences = (skills: TeamMember["userSkills"]) => {

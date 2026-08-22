@@ -1,166 +1,106 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Button,
-  Form,
-  Input,
-  InputNumber,
-  message,
-  Modal,
-  Table,
-  Tag,
-  Tabs,
-} from "antd";
+
+import { Button, message, Tabs, Typography } from "antd";
+
 import { useParams } from "react-router-dom";
+
 import type {
   TaskItem,
+  TeamMember,
   UserSprintItem,
-  UserSprintStatus,
 } from "../../common/types/pm";
-import { pmApi } from "../../api/pm";
-import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
-import { ReleaseReviewModal } from "../../components/pm/sprints/ReleaseReviewModal";
-import { TaskMatchingDrawer } from "../../components/pm/sprints/TaskMatchingDrawer";
 
-type AssignUserFormValues = {
-  userId: string;
-  percitant: number;
-};
+import { pmApi } from "../../api/pm";
+
+import { SprintResourceSummary } from "../../components/pm/sprints/SprintResourceSummary";
+import { SprintAllocationTable } from "../../components/pm/sprints/SprintAllocationTable";
+import { AssignResourceModal } from "../../components/pm/sprints/AssignResourceModal";
+import { SprintTaskTable } from "../../components/pm/sprints/SprintTaskTable";
+
+import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
+import { TaskMatchingDrawer } from "../../components/pm/sprints/TaskMatchingDrawer";
+import { ReleaseReviewModal } from "../../components/pm/sprints/ReleaseReviewModal";
+
+const { Title, Text } = Typography;
 
 export const SprintManagementPage: React.FC = () => {
-  // Route is configured as /pm/sprints/:sprintId in App.tsx.
-  // Hooks must be called inside a React component, not at module scope.
-  const { sprintId } = useParams<{ sprintId: string }>();
-  const [loading, setLoading] = useState(false);
-  const [userSprints, setUserSprints] = useState<UserSprintItem[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [form] = Form.useForm<AssignUserFormValues>();
+  const { sprintId } = useParams<{
+    sprintId: string;
+  }>();
 
-  // States mới cho Task & Matching
+  // ==========================================
+  // DATA
+  // ==========================================
+
+  const [loading, setLoading] = useState(false);
+
+  const [userSprints, setUserSprints] = useState<UserSprintItem[]>([]);
+
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  // ==========================================
+  // ASSIGN RESOURCE MODAL
+  // ==========================================
+
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+
+  // ==========================================
+  // TASK
+  // ==========================================
+
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
-  // Release modal states
+  const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+
+  // ==========================================
+  // RELEASE
+  // ==========================================
+
   const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+
   const [releaseUserSprintId, setReleaseUserSprintId] = useState<string | null>(
     null,
   );
-  const [releaseDevName, setReleaseDevName] = useState<string>("");
 
-  // Hàm mở Drawer tìm ứng viên
-  const handleOpenMatching = (task: TaskItem) => {
-    setSelectedTask(task);
-    setIsMatchingOpen(true);
-  };
+  const [releaseDevName, setReleaseDevName] = useState("");
 
-  const handleOpenReleaseModal = (record: UserSprintItem) => {
-    setReleaseUserSprintId(record.id);
-    setReleaseDevName(record.user?.fullName || "Nhân sự");
-    setIsReleaseModalOpen(true);
-  };
-
-  // Cột cho Bảng Task
-  const taskColumns = [
-    {
-      title: "Thời gian",
-      key: "time",
-      render: (_: any, record: TaskItem) => (
-        <div className="text-sm">
-          <div>
-            <span className="font-semibold text-gray-500">Từ:</span>{" "}
-            {record.startDate || "N/A"}
-          </div>
-          <div>
-            <span className="font-semibold text-gray-500">Đến:</span>{" "}
-            {record.endDate || "N/A"}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Kỹ năng yêu cầu (Required Skills)",
-      dataIndex: "requiredSkills",
-      key: "skills",
-      render: (skills: TaskItem["requiredSkills"]) => (
-        <div className="flex flex-wrap gap-1">
-          {skills?.map((sk, idx) => {
-            
-            const legacySkill = sk as typeof sk & {
-              skill?: string;
-              level?: number;
-              years?: number;
-            };
-            const skillName =
-              legacySkill.skill_id ?? legacySkill.skill ?? "Chưa xác định";
-            const level = legacySkill.min_level ?? legacySkill.level;
-
-            return (
-              <Tag key={`${skillName}-${idx}`} color="processing">
-                {skillName}
-                {level !== undefined ? ` (Lv.${level})` : ""}
-                {legacySkill.years ? ` · ${legacySkill.years} năm` : ""}
-              </Tag>
-            );
-          })}
-        </div>
-      ),
-    },
-    {
-      title: "Ngân sách",
-      dataIndex: "budgetRate",
-      key: "budget",
-      render: (val: number) => (
-        <span className="font-semibold text-green-600">${val || 0}</span>
-      ),
-    },
-    {
-      title: "Nhân sự đảm nhận",
-      dataIndex: "userId",
-      key: "user",
-      render: (userId: string) =>
-        userId ? (
-          <Tag color="green">Đã có người</Tag>
-        ) : (
-          <Tag color="orange">Đang thiếu</Tag>
-        ),
-    },
-    {
-      title: "Thao tác",
-      key: "action",
-      render: (_: any, record: TaskItem) => (
-        <Button
-          type="primary"
-          ghost
-          size="small"
-          onClick={() => handleOpenMatching(record)}
-        >
-          🔍 Tìm Nhân Sự
-        </Button>
-      ),
-    },
-  ];
+  // ==========================================
+  // FETCH SPRINT DATA
+  // ==========================================
 
   const fetchSprintData = useCallback(async () => {
     if (!sprintId) {
       setUserSprints([]);
       setTasks([]);
+      setTeamMembers([]);
+
       return;
     }
 
     setLoading(true);
+
     try {
-      // add thêm api thay vì mockdataa
-      const [resUsers, resTasks] = await Promise.all([
+      const [resUsers, resTasks, resTeam] = await Promise.all([
         pmApi.getSprintUsers(sprintId),
+
         pmApi.getSprintTasks(sprintId),
+
+        pmApi.getMyTeam(),
       ]);
 
       setUserSprints(resUsers?.data?.data ?? resUsers?.data ?? []);
+
       setTasks(resTasks?.data?.data ?? resTasks?.data ?? []);
+
+      setTeamMembers(resTeam?.data?.data ?? resTeam?.data ?? []);
     } catch (error) {
-      console.error("Lỗi tải dữ liệu Sprint từ Server:", error);
-      message.error("Lỗi khi tải dữ liệu Sprint từ Server!");
+      console.error("Lỗi tải dữ liệu Sprint:", error);
+
+      message.error("Không thể tải dữ liệu Sprint.");
     } finally {
       setLoading(false);
     }
@@ -170,194 +110,202 @@ export const SprintManagementPage: React.FC = () => {
     void fetchSprintData();
   }, [fetchSprintData]);
 
-  const handleUpdateStatus = async (
-    id: string,
-    newStatus: UserSprintStatus,
-  ) => {
-    try {
-      await pmApi.updateUserSprintStatus(id, newStatus);
-      message.success("Cập nhật trạng thái thành công!");
-      await fetchSprintData();
-    } catch (error) {
-      console.error("Lỗi khi cập nhật trạng thái:", error);
-      message.error("Lỗi khi cập nhật trạng thái.");
-    }
+  // ==========================================
+  // ALLOCATION STATUS
+  // ==========================================
+
+  // ==========================================
+  // ACCEPT
+  // ==========================================
+
+  // ==========================================
+  // RELEASE
+  // ==========================================
+
+  const handleOpenRelease = (record: UserSprintItem) => {
+    setReleaseUserSprintId(record.id);
+
+    setReleaseDevName(record.user?.fullName ?? "Nhân sự");
+
+    setIsReleaseModalOpen(true);
   };
 
-  const handleAssignUser = async (values: AssignUserFormValues) => {
-    if (!sprintId) {
-      message.error("Không tìm thấy Sprint ID trên URL.");
-      return;
-    }
+  // ==========================================
+  // TASK MATCHING
+  // ==========================================
 
-    try {
-      await pmApi.assignUserToSprint(sprintId, values.userId, values.percitant);
-      message.success("Đã gửi yêu cầu gán nhân viên!");
-      form.resetFields();
-      setIsModalOpen(false);
-      await fetchSprintData();
-    } catch (error) {
-      console.error("Lỗi khi gán nhân viên vào Sprint:", error);
-      message.error("Không thể gửi yêu cầu gán nhân viên.");
-    }
+  const handleFindCandidate = (task: TaskItem) => {
+    setSelectedTask(task);
+    setIsMatchingOpen(true);
   };
 
-  const columns = [
-    {
-      title: "Nhân viên",
-      dataIndex: ["user", "fullName"],
-      key: "fullName",
-      render: (text: string, record: UserSprintItem) => (
-        <div>
-          <div className="font-semibold">{text || "N/A"}</div>
-          <div className="text-xs text-gray-400">{record.user?.email}</div>
-        </div>
-      ),
-    },
-    {
-      title: "Công suất (% Effort)",
-      dataIndex: "percitant",
-      key: "percitant",
-      render: (value: number) => `${value}%`,
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status: UserSprintStatus) => {
-        const colorMap: Record<UserSprintStatus, string> = {
-          requested: "orange",
-          pending_approval: "gold",
-          assigned: "green",
-          released: "gray",
-        };
+  // ==========================================
+  // INVALID ROUTE
+  // ==========================================
 
-        return <Tag color={colorMap[status]}>{status.toUpperCase()}</Tag>;
-      },
-    },
-    {
-      title: "Thao tác (PM)",
-      key: "action",
-      render: (_: unknown, record: UserSprintItem) => (
-        <div className="space-x-2">
-          {record.status === "requested" && (
-            <Button
-              type="primary"
-              size="small"
-              onClick={() => void handleUpdateStatus(record.id, "assigned")}
-            >
-              Chấp nhận (Assign)
-            </Button>
-          )}
-          {record.status === "assigned" && (
-            <Button
-              danger
-              size="small"
-              onClick={() => handleOpenReleaseModal(record)}
-            >
-              Giải phóng (Release 100%)
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
+  if (!sprintId) {
+    return (
+      <div
+        style={{
+          padding: 24,
+        }}
+      >
+        <Title level={4}>Không tìm thấy Sprint</Title>
+
+        <Text type="secondary">URL hiện tại không chứa Sprint ID.</Text>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-sm">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Quản lý Sprint: <span className="text-blue-600">{sprintId}</span>
-        </h2>
+    <div
+      style={{
+        padding: 24,
+        background: "#fff",
+        borderRadius: 8,
+      }}
+    >
+      {/* HEADER */}
+
+      <div
+        style={{
+          marginBottom: 20,
+        }}
+      >
+        <Title
+          level={3}
+          style={{
+            marginBottom: 4,
+          }}
+        >
+          Quản lý Sprint
+        </Title>
+
+        <Text type="secondary">
+          Sprint ID: <Text code>{sprintId}</Text>
+        </Text>
       </div>
 
-      <Tabs defaultActiveKey="1">
-        <Tabs.TabPane tab="Nhân sự tham gia (Allocation)" key="1">
-          <div className="flex justify-end mb-4">
-            <Button type="primary" onClick={() => setIsModalOpen(true)}>
-              + Gán Nhân viên vào Sprint
-            </Button>
-          </div>
-          <Table
-            columns={columns}
-            dataSource={userSprints}
-            rowKey="id"
-            loading={loading}
-          />
-        </Tabs.TabPane>
+      {/* TABS */}
 
-        <Tabs.TabPane tab="Danh sách Tasks" key="2">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-gray-500 italic">
-              Tính năng chia việc chi tiết cho nhân sự...
-            </span>
-            <Button
-              type="primary"
-              style={{ backgroundColor: "#52c41a" }}
-              onClick={() => setIsTaskModalOpen(true)}
-            >
-              + Tạo Task Mới
-            </Button>
-          </div>
+      <Tabs
+        defaultActiveKey="allocation"
+        items={[
+          {
+            key: "allocation",
 
-          <Table
-            columns={taskColumns}
-            dataSource={tasks}
-            rowKey="id"
-            pagination={false}
-            className="border border-gray-200 rounded"
-          />
-        </Tabs.TabPane>
-      </Tabs>
+            label: "Nhân sự tham gia (Allocation)",
 
-      <Modal
-        title="Yêu cầu gán nhân viên vào Sprint"
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        onOk={() => form.submit()}
-        destroyOnHidden
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ percitant: 100 }}
-          onFinish={handleAssignUser}
-        >
-          <Form.Item
-            name="userId"
-            label="Mã/ID Nhân viên"
-            rules={[{ required: true, message: "Vui lòng nhập User ID." }]}
-          >
-            <Input placeholder="Nhập User ID" />
-          </Form.Item>
-          <Form.Item
-            name="percitant"
-            label="% Công suất tham gia"
-            rules={[{ required: true, message: "Vui lòng nhập công suất." }]}
-          >
-            <InputNumber min={1} max={100} className="w-full" />
-          </Form.Item>
-        </Form>
-      </Modal>
+            children: (
+              <>
+                {/* SUMMARY */}
+
+                <SprintResourceSummary userSprints={userSprints} />
+
+                {/* ACTION */}
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginBottom: 16,
+                  }}
+                >
+                  <Button
+                    type="primary"
+                    onClick={() => setIsAssignModalOpen(true)}
+                  >
+                    + Gán nhân viên vào Sprint
+                  </Button>
+                </div>
+
+                {/* ALLOCATION TABLE */}
+                <SprintAllocationTable
+                  userSprints={userSprints}
+                  loading={loading}
+                  onRefresh={fetchSprintData}
+                  onRelease={handleOpenRelease}
+                />
+              </>
+            ),
+          },
+
+          {
+            key: "tasks",
+
+            label: "Danh sách Tasks",
+
+            children: (
+              <SprintTaskTable
+                tasks={tasks}
+                loading={loading}
+                onCreateTask={() => setIsTaskModalOpen(true)}
+                onFindCandidate={handleFindCandidate}
+              />
+            ),
+          },
+        ]}
+      />
+
+      {/* ====================================== */}
+      {/* ASSIGN RESOURCE */}
+      {/* ====================================== */}
+
+      <AssignResourceModal
+        open={isAssignModalOpen}
+        sprintId={sprintId}
+        teamMembers={teamMembers}
+        onClose={() => setIsAssignModalOpen(false)}
+        onSuccess={fetchSprintData}
+      />
+
+      {/* ====================================== */}
+      {/* CREATE TASK */}
+      {/* ====================================== */}
 
       <CreateTaskModal
         open={isTaskModalOpen}
-        sprintId={sprintId!}
+        sprintId={sprintId}
         onClose={() => setIsTaskModalOpen(false)}
         onRefresh={() => {
           void fetchSprintData();
         }}
       />
+
+      {/* ====================================== */}
+      {/* MATCHING */}
+      {/* ====================================== */}
+
       <TaskMatchingDrawer
         open={isMatchingOpen}
         task={selectedTask}
-        onClose={() => setIsMatchingOpen(false)}
+        sprintId={sprintId}
+        onClose={() => {
+          setIsMatchingOpen(false);
+          setSelectedTask(null);
+        }}
+        onAssigned={fetchSprintData}
       />
+
+      {/* ====================================== */}
+      {/* RELEASE REVIEW */}
+      {/* ====================================== */}
+
       <ReleaseReviewModal
         open={isReleaseModalOpen}
         userSprintId={releaseUserSprintId}
         devName={releaseDevName}
-        onClose={() => setIsReleaseModalOpen(false)}
+        onClose={() => {
+          setIsReleaseModalOpen(false);
+
+          setReleaseUserSprintId(null);
+
+          setReleaseDevName("");
+        }}
         onRefresh={() => {
           void fetchSprintData();
         }}
