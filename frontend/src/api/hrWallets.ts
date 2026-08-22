@@ -23,6 +23,19 @@ export interface TransactionHistoryItem {
   createdAt: string;
 }
 
+export type WalletTransactionType =
+  | 'REWARD'
+  | 'PENALTY'
+  | 'TRANSFER';
+
+export interface CreateWalletTransactionPayload {
+  employeeId: string;
+  amount: number;
+  type: WalletTransactionType;
+  reason: string;
+  referenceId?: string;
+}
+
 export interface WalletsResponse {
   meta: {
     currentPage: number;
@@ -53,7 +66,12 @@ export const hrWalletsApi = {
   getAllWallets: (params?: any) => {
     return axios.get<IBackendRes<WalletsResponse>>('/hr-wallets', { params });
   },
-  createTransaction: (data: any) => {
-    return axios.post<IBackendRes<any>>('/hr-wallets/transaction', data);
-  }
+  createTransaction: (
+    data: CreateWalletTransactionPayload,
+  ) => {
+    return axios.post<IBackendRes<TransactionHistoryItem>>(
+      '/hr-wallets/transaction',
+      data,
+    );
+  },
 };
