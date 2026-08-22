@@ -15,7 +15,7 @@ import {
   DatabaseOutlined,
 } from "@ant-design/icons";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Outlet,
   useLocation,
@@ -27,7 +27,48 @@ import { NotificationBell } from "../../components/pm/NotificationBell";
 const { Content, Sider, Header } = Layout;
 const { Text } = Typography;
 
+import { io, Socket } from 'socket.io-client';
+
 const LayoutPM = () => {
+
+
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) return;
+
+    const rawToken = token.replace(/^Bearer\s+/i, '');
+
+    const socket = io("http://localhost:8080/user-skills", {
+      auth: {
+        token: `Bearer ${rawToken}`
+      },
+      transports: ["polling", "websocket"],
+      reconnectionAttempts: 3,
+      timeout: 10000
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('ẾT NỐI THÀNH CÔNG! Socket ID:', socket.id);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('LỖI KẾT NỐI SOCKET:', err.message);
+    });
+
+    socket.on('user-skill-updated', (message) => {
+      console.log('Cập nhật kỹ năng người dùng:', message);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
   const [collapsed, setCollapsed] = useState(false);
 
   const location = useLocation();

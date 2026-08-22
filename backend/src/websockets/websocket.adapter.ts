@@ -36,37 +36,58 @@ export class WebsocketAdapter extends IoAdapter {
         return server;
     }
 
-    async authMiddleware(socket: Socket, next: (err?: any) => void) {
-        const { authorization } = socket.handshake.headers;
-        if (!authorization) {
-            return next(new Error('Unauthorized'));
-        }
-        const accessToken = authorization.split(' ')[1];
-        if (!accessToken) {
-            return next(new Error('Access token is missing'));
-        }
+    // async authMiddleware(socket: Socket, next: (err?: any) => void) {
+    //     const { authorization } = socket.handshake.headers;
+    //     if (!authorization) {
+    //         return next(new Error('Unauthorized'));
+    //     }
+    //     const accessToken = authorization.split(' ')[1];
+    //     if (!accessToken) {
+    //         return next(new Error('Access token is missing'));
+    //     }
 
+    //     try {
+    //         const payload = await this.jwtService.verifyAsync(accessToken, {
+    //             secret: process.env.JWT_SECRET_KEY
+    //         })
+    //         const userId = payload.id;
+    //         await socket.join(generatedRoomUserId(userId));
+
+    //         next();
+    //     }
+    //     catch (error) {
+    //         next(error);
+    //     }
+    // }
+
+    async authMiddleware(socket: Socket, next: (err?: any) => void) {
         try {
+            const authHeader = socket.handshake.headers?.authorization;
+            const authPayload = socket.handshake.auth?.token;
+            const rawToken = authHeader || authPayload;
+
+            if (!rawToken) {
+                return next(new Error('Unauthorized: Missing token'));
+            }
+
+            const accessToken = rawToken.replace(/^Bearer\s+/i, '').trim();
+
+            if (!accessToken) {
+                return next(new Error('Unauthorized: Access token is missing'));
+            }
             const payload = await this.jwtService.verifyAsync(accessToken, {
                 secret: process.env.JWT_SECRET_KEY
-            })
+            });
+
+            socket.data.user = payload;
+
             const userId = payload.id;
-            await socket.join(generatedRoomUserId(userId));
+            if (userId) {
+                socket.join(generatedRoomUserId(userId));
+            }
 
-            // console.log(`User ID from token: ${userId}`);
-            // await this.webSocketRepository.save({
-            //     id: socket.id,
-            //     userId: userId
-            // })
-
-            // socket.on('disconnect', async () => {
-            //     await this.webSocketRepository.delete({ id: socket.id }).catch((error) => {
-            //         console.error(`Error deleting websocket with id ${socket.id}:`, error);
-            //     });
-            // })
             next();
-        }
-        catch (error) {
+        } catch (error) {
             next(error);
         }
     }

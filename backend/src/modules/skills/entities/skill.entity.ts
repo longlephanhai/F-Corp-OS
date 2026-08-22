@@ -12,7 +12,6 @@ export class Skill {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  // Quan hệ 1-N: Một kỹ năng có thể được nhiều nhân sự (user) sở hữu
   @OneToMany(() => UserSkill, (userSkill) => userSkill.skill)
   userSkills: UserSkill[];
 

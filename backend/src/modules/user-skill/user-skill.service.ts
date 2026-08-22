@@ -7,9 +7,15 @@ import { Repository } from 'typeorm';
 import { IUser } from 'common/types/user.interface';
 import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.entity';
 import { EVIDENCE_WEIGHTS, STATUS_FACTORS } from './constants/skill-weight.constant';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
+import { generatedRoomUserId } from 'helper';
 
+@WebSocketGateway({ namespace: '/user-skills' })
 @Injectable()
 export class UserSkillService {
+  @WebSocketServer()
+  server: Server;
   constructor(
     @InjectRepository(UserSkill) private userSkillsRepository: Repository<UserSkill>,
     @InjectRepository(SkillEvidence) private skillEvidencesRepository: Repository<SkillEvidence>,
@@ -114,7 +120,12 @@ export class UserSkillService {
 
       await this.skillEvidencesRepository.save(evidencesToSave);
     }
-
+    // this.server.to(generatedRoomUserId(user.id)).emit('user-skill-updated', {
+    //   message: `User ${user.fullName} has added a new skill with evidence: ${createUserSkillDto.description}`,
+    // });
+    this.server.emit('user-skill-updated', {
+      message: `User ${user.fullName} has added a new skill...`,
+    });
     return await this.recalculateUserSkill(savedUserSkill.id);
   }
 
