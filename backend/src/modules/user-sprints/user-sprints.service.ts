@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserSprint, UserSprintStatus } from './entities/user-sprint.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class UserSprintService {
@@ -18,6 +19,9 @@ export class UserSprintService {
 
     @InjectRepository(Sprint)
     private readonly sprintRepo: Repository<Sprint>,
+
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   // 1. Lấy danh sách nhân sự tham gia Sprint (Có JOIN với bảng User để lấy Tên, Email)
@@ -373,5 +377,228 @@ export class UserSprintService {
     record.reviewComment = reviewData.reviewComment;
 
     return await this.userSprintRepo.save(record);
+  }
+
+  async getResourcePlanner(pmId: string) {
+    // ==========================================
+    // 1. LẤY TEAM CỦA PM
+    // ==========================================
+
+    const teamMembers = await this.userRepo.find({
+      where: {
+        managerId: pmId,
+        isDeleted: false,
+      },
+
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        title: true,
+        status: true,
+      },
+
+      order: {
+        fullName: 'ASC',
+      },
+    });
+
+    if (teamMembers.length === 0) {
+      return {
+        generatedAt: new Date(),
+
+        summary: {
+          totalResources: 0,
+          availableResources: 0,
+          nearFullResources: 0,
+          fullResources: 0,
+          overAllocatedResources: 0,
+          totalUsedFte: 0,
+        },
+
+        resources: [],
+      };
+    }
+
+    const userIds = teamMembers.map((member) => member.id);
+
+    // ==========================================
+    // 2. LẤY ALLOCATION CÒN HIỆU LỰC
+    // ==========================================
+
+    const allocations = await this.userSprintRepo
+      .createQueryBuilder('allocation')
+
+      .leftJoinAndSelect('allocation.sprint', 'sprint')
+
+      .leftJoinAndSelect('sprint.project', 'project')
+
+      .where('allocation.userId IN (:...userIds)', {
+        userIds,
+      })
+
+      .andWhere('allocation.status IN (:...statuses)', {
+        statuses: [
+          UserSprintStatus.REQUESTED,
+          UserSprintStatus.PENDING_APPROVAL,
+          UserSprintStatus.ASSIGNED,
+        ],
+      })
+
+      .getMany();
+
+    // ==========================================
+    // 3. CHỈ TÍNH CAPACITY TẠI THỜI ĐIỂM HIỆN TẠI
+    // ==========================================
+
+    const now = new Date().getTime();
+
+    const currentAllocations = allocations.filter((allocation) => {
+      if (
+        !allocation.sprint ||
+        !allocation.sprint.startDate ||
+        !allocation.sprint.endDate
+      ) {
+        return false;
+      }
+
+      const startTime = new Date(allocation.sprint.startDate).getTime();
+
+      const endTime = new Date(allocation.sprint.endDate).getTime();
+
+      return now >= startTime && now <= endTime;
+    });
+
+    // ==========================================
+    // 4. GROUP THEO USER
+    // ==========================================
+
+    const resources = teamMembers.map((member) => {
+      const memberAllocations = currentAllocations.filter(
+        (allocation) => allocation.userId === member.id,
+      );
+
+      const assignedAllocation = memberAllocations
+        .filter((allocation) => allocation.status === UserSprintStatus.ASSIGNED)
+        .reduce(
+          (total, allocation) => total + Number(allocation.percitant ?? 0),
+          0,
+        );
+
+      const pendingAllocation = memberAllocations
+        .filter(
+          (allocation) =>
+            allocation.status === UserSprintStatus.REQUESTED ||
+            allocation.status === UserSprintStatus.PENDING_APPROVAL,
+        )
+        .reduce(
+          (total, allocation) => total + Number(allocation.percitant ?? 0),
+          0,
+        );
+
+      // Capacity engine hiện tại reserve luôn
+      // REQUESTED / PENDING / ASSIGNED.
+      const usedCapacity = assignedAllocation + pendingAllocation;
+
+      const availableCapacity = Math.max(0, 100 - usedCapacity);
+
+      let capacityStatus: 'AVAILABLE' | 'NEAR_FULL' | 'FULL' | 'OVER_ALLOCATED';
+
+      if (usedCapacity > 100) {
+        capacityStatus = 'OVER_ALLOCATED';
+      } else if (usedCapacity === 100) {
+        capacityStatus = 'FULL';
+      } else if (usedCapacity >= 80) {
+        capacityStatus = 'NEAR_FULL';
+      } else {
+        capacityStatus = 'AVAILABLE';
+      }
+
+      return {
+        id: member.id,
+
+        fullName: member.fullName,
+
+        email: member.email,
+
+        title: member.title,
+
+        employeeStatus: member.status,
+
+        assignedAllocation,
+
+        pendingAllocation,
+
+        usedCapacity,
+
+        availableCapacity,
+
+        capacityStatus,
+
+        allocations: memberAllocations.map((allocation) => ({
+          id: allocation.id,
+
+          percitant: Number(allocation.percitant ?? 0),
+
+          status: allocation.status,
+
+          sprintId: allocation.sprintId,
+
+          sprintName: allocation.sprint?.name ?? null,
+
+          sprintStartDate: allocation.sprint?.startDate ?? null,
+
+          sprintEndDate: allocation.sprint?.endDate ?? null,
+
+          projectId: allocation.sprint?.projectId ?? null,
+
+          projectName: allocation.sprint?.project?.name ?? null,
+        })),
+      };
+    });
+
+    // ==========================================
+    // 5. SUMMARY
+    // ==========================================
+
+    const availableResources = resources.filter(
+      (resource) => resource.capacityStatus === 'AVAILABLE',
+    ).length;
+
+    const nearFullResources = resources.filter(
+      (resource) => resource.capacityStatus === 'NEAR_FULL',
+    ).length;
+
+    const fullResources = resources.filter(
+      (resource) => resource.capacityStatus === 'FULL',
+    ).length;
+
+    const overAllocatedResources = resources.filter(
+      (resource) => resource.capacityStatus === 'OVER_ALLOCATED',
+    ).length;
+
+    const totalUsedFte =
+      resources.reduce((total, resource) => total + resource.usedCapacity, 0) /
+      100;
+
+    return {
+      generatedAt: new Date(),
+
+      summary: {
+        totalResources: resources.length,
+
+        availableResources,
+
+        nearFullResources,
+
+        fullResources,
+
+        overAllocatedResources,
+
+        totalUsedFte,
+      },
+
+      resources,
+    };
   }
 }
