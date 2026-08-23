@@ -32,6 +32,11 @@ export const pmApi = {
     });
   },
 
+  // phan ben rì suột
+  getResourcePlanner: () => {
+    return axios.get<IBackendRes<any>>("/user-sprint/resource-planner");
+  },
+
   // Duyệt hoặc đổi trạng thái (assigned / released)
   updateUserSprintStatus: (id: string, status: string) => {
     return axios.patch<IBackendRes<UserSprintItem>>(`/user-sprint/${id}`, {
@@ -59,7 +64,6 @@ export const pmApi = {
     >(`/user-sprint/${id}/request`);
   },
 
-  
   getTaskCandidates: (taskId: string) => {
     return axios.get<IBackendRes<TaskCandidate[]>>(
       `/tasks/${taskId}/candidates`,
