@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { Button, message, Tabs, Typography } from "antd";
+import { Button, message, Segmented, Tabs, Typography } from "antd";
 
 import { useParams } from "react-router-dom";
 
@@ -20,6 +20,7 @@ import { SprintTaskTable } from "../../components/pm/sprints/SprintTaskTable";
 import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
 import { TaskMatchingDrawer } from "../../components/pm/sprints/TaskMatchingDrawer";
 import { ReleaseReviewModal } from "../../components/pm/sprints/ReleaseReviewModal";
+import { SprintTaskKanban } from "../../components/pm/sprints/SprintTaskKanban";
 
 const { Title, Text } = Typography;
 
@@ -66,6 +67,7 @@ export const SprintManagementPage: React.FC = () => {
     null,
   );
 
+  const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
   const [releaseDevName, setReleaseDevName] = useState("");
 
   // ==========================================
@@ -240,13 +242,57 @@ export const SprintManagementPage: React.FC = () => {
             label: "Danh sách Tasks",
 
             children: (
-              <SprintTaskTable
-                tasks={tasks}
-                loading={loading}
-                onCreateTask={() => setIsTaskModalOpen(true)}
-                onFindCandidate={handleFindCandidate}
-                onRefresh={fetchSprintData}
-              />
+              <>
+                {/* VIEW MODE */}
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginBottom: 16,
+                  }}
+                >
+                  <Segmented
+                    value={taskViewMode}
+                    onChange={(value) =>
+                      setTaskViewMode(value as "TABLE" | "KANBAN")
+                    }
+                    options={[
+                      {
+                        label: "Bảng",
+                        value: "TABLE",
+                      },
+
+                      {
+                        label: "Kanban",
+                        value: "KANBAN",
+                      },
+                    ]}
+                  />
+                </div>
+
+                {/* TABLE VIEW */}
+
+                {taskViewMode === "TABLE" ? (
+                  <SprintTaskTable
+                    tasks={tasks}
+                    loading={loading}
+                    onCreateTask={() => setIsTaskModalOpen(true)}
+                    onFindCandidate={handleFindCandidate}
+                    onRefresh={fetchSprintData}
+                  />
+                ) : (
+                  /* KANBAN VIEW */
+
+                  <SprintTaskKanban
+                    tasks={tasks}
+                    loading={loading}
+                    onCreateTask={() => setIsTaskModalOpen(true)}
+                    onFindCandidate={handleFindCandidate}
+                    onRefresh={fetchSprintData}
+                  />
+                )}
+              </>
             ),
           },
         ]}
