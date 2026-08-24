@@ -95,3 +95,12 @@ export interface ProjectItem {
   endDate: string;
   status: string;
 }
+export interface TaskDependencyStatus {
+  taskId: string;
+
+  totalDependencies: number;
+
+  unfinishedDependencies: number;
+
+  isBlockedByDependency: boolean;
+}

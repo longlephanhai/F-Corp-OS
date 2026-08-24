@@ -149,4 +149,24 @@ export const pmApi = {
   markNotificationAsRead: (id: string) => {
     return axios.patch<IBackendRes<any>>(`/notifications/${id}/read`);
   },
+  //  task dependencies
+  getTaskDependencies: (taskId: string) => {
+    return axios.get(`/tasks/${taskId}/dependencies`);
+  },
+
+  getTaskDependencyStatus: (taskId: string) => {
+    return axios.get(`/tasks/${taskId}/dependencies/status`);
+  },
+
+  addTaskDependency: (taskId: string, dependsOnTaskId: string) => {
+    return axios.post(`/tasks/${taskId}/dependencies`, {
+      dependsOnTaskId,
+    });
+  },
+
+  removeTaskDependency: (taskId: string, dependencyId: string) => {
+    return axios.delete(`/tasks/${taskId}/dependencies/${dependencyId}`);
+  },
+
+  
 };

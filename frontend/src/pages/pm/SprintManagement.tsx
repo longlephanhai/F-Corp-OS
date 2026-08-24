@@ -5,6 +5,7 @@ import { Button, message, Segmented, Tabs, Typography } from "antd";
 import { useParams } from "react-router-dom";
 
 import type {
+  TaskDependencyStatus,
   TaskItem,
   TeamMember,
   UserSprintItem,
@@ -13,17 +14,30 @@ import type {
 import { pmApi } from "../../api/pm";
 
 import { SprintResourceSummary } from "../../components/pm/sprints/SprintResourceSummary";
+
 import { SprintAllocationTable } from "../../components/pm/sprints/SprintAllocationTable";
+
 import { AssignResourceModal } from "../../components/pm/sprints/AssignResourceModal";
+
 import { SprintTaskTable } from "../../components/pm/sprints/SprintTaskTable";
 
 import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
+
 import { TaskMatchingDrawer } from "../../components/pm/sprints/TaskMatchingDrawer";
+
 import { ReleaseReviewModal } from "../../components/pm/sprints/ReleaseReviewModal";
+
 import { SprintTaskKanban } from "../../components/pm/sprints/SprintTaskKanban";
+
 import { SprintRiskPanel } from "../../components/pm/sprints/SprintRiskPanel";
 
+import { TaskDependenciesModal } from "../../components/pm/sprints/TaskDependenciesModal";
+
 const { Title, Text } = Typography;
+
+// ==========================================
+// PAGE
+// ==========================================
 
 export const SprintManagementPage: React.FC = () => {
   const { sprintId } = useParams<{
@@ -43,20 +57,40 @@ export const SprintManagementPage: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // ==========================================
+  // DEPENDENCY STATUS
+  // ==========================================
+
+  const [dependencyStatusMap, setDependencyStatusMap] = useState<
+    Record<string, TaskDependencyStatus>
+  >({});
+
+  // ==========================================
   // ASSIGN RESOURCE MODAL
   // ==========================================
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   // ==========================================
-  // TASK
+  // CREATE TASK
   // ==========================================
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
+  // ==========================================
+  // MATCHING
+  // ==========================================
+
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
   const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+
+  // ==========================================
+  // DEPENDENCY MODAL
+  // ==========================================
+
+  const [dependencyTask, setDependencyTask] = useState<TaskItem | null>(null);
+
+  const [isDependencyModalOpen, setIsDependencyModalOpen] = useState(false);
 
   // ==========================================
   // RELEASE
@@ -68,8 +102,76 @@ export const SprintManagementPage: React.FC = () => {
     null,
   );
 
-  const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
   const [releaseDevName, setReleaseDevName] = useState("");
+
+  // ==========================================
+  // TASK VIEW
+  // ==========================================
+
+  const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
+
+  // ==========================================
+  // OPEN DEPENDENCY
+  // ==========================================
+
+  const handleOpenDependencies = (task: TaskItem) => {
+    setDependencyTask(task);
+
+    setIsDependencyModalOpen(true);
+  };
+
+  // ==========================================
+  // LOAD DEPENDENCY STATUS
+  // ==========================================
+
+  const loadDependencyStatuses = useCallback(async (taskList: TaskItem[]) => {
+    if (taskList.length === 0) {
+      setDependencyStatusMap({});
+
+      return;
+    }
+
+    const entries = await Promise.all(
+      taskList.map(async (task) => {
+        try {
+          const response = await pmApi.getTaskDependencyStatus(task.id);
+
+          const data = response?.data?.data ?? response?.data;
+
+          const normalized: TaskDependencyStatus = {
+            taskId: data?.taskId ?? task.id,
+
+            totalDependencies: Number(data?.totalDependencies ?? 0),
+
+            unfinishedDependencies: Number(data?.unfinishedDependencies ?? 0),
+
+            isBlockedByDependency: Boolean(data?.isBlockedByDependency),
+          };
+
+          return [task.id, normalized] as const;
+        } catch (error) {
+          console.error(
+            `Không load được dependency status task ${task.id}`,
+            error,
+          );
+
+          const fallback: TaskDependencyStatus = {
+            taskId: task.id,
+
+            totalDependencies: 0,
+
+            unfinishedDependencies: 0,
+
+            isBlockedByDependency: false,
+          };
+
+          return [task.id, fallback] as const;
+        }
+      }),
+    );
+
+    setDependencyStatusMap(Object.fromEntries(entries));
+  }, []);
 
   // ==========================================
   // FETCH SPRINT DATA
@@ -78,8 +180,12 @@ export const SprintManagementPage: React.FC = () => {
   const fetchSprintData = useCallback(async () => {
     if (!sprintId) {
       setUserSprints([]);
+
       setTasks([]);
+
       setTeamMembers([]);
+
+      setDependencyStatusMap({});
 
       return;
     }
@@ -95,11 +201,39 @@ export const SprintManagementPage: React.FC = () => {
         pmApi.getMyTeam(),
       ]);
 
-      setUserSprints(resUsers?.data?.data ?? resUsers?.data ?? []);
+      // ==================================
+      // NORMALIZE RESPONSE
+      // ==================================
 
-      setTasks(resTasks?.data?.data ?? resTasks?.data ?? []);
+      const userSprintList = resUsers?.data?.data ?? resUsers?.data ?? [];
 
-      setTeamMembers(resTeam?.data?.data ?? resTeam?.data ?? []);
+      const taskList = resTasks?.data?.data ?? resTasks?.data ?? [];
+
+      const teamList = resTeam?.data?.data ?? resTeam?.data ?? [];
+
+      const normalizedUserSprints = Array.isArray(userSprintList)
+        ? userSprintList
+        : [];
+
+      const normalizedTasks = Array.isArray(taskList) ? taskList : [];
+
+      const normalizedTeam = Array.isArray(teamList) ? teamList : [];
+
+      // ==================================
+      // SET DATA
+      // ==================================
+
+      setUserSprints(normalizedUserSprints);
+
+      setTasks(normalizedTasks);
+
+      setTeamMembers(normalizedTeam);
+
+      // ==================================
+      // DEPENDENCY STATUS
+      // ==================================
+
+      await loadDependencyStatuses(normalizedTasks);
     } catch (error) {
       console.error("Lỗi tải dữ liệu Sprint:", error);
 
@@ -107,19 +241,15 @@ export const SprintManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [sprintId]);
+  }, [sprintId, loadDependencyStatuses]);
+
+  // ==========================================
+  // INITIAL LOAD
+  // ==========================================
 
   useEffect(() => {
     void fetchSprintData();
   }, [fetchSprintData]);
-
-  // ==========================================
-  // ALLOCATION STATUS
-  // ==========================================
-
-  // ==========================================
-  // ACCEPT
-  // ==========================================
 
   // ==========================================
   // RELEASE
@@ -139,6 +269,7 @@ export const SprintManagementPage: React.FC = () => {
 
   const handleFindCandidate = (task: TaskItem) => {
     setSelectedTask(task);
+
     setIsMatchingOpen(true);
   };
 
@@ -168,11 +299,15 @@ export const SprintManagementPage: React.FC = () => {
     <div
       style={{
         padding: 24,
+
         background: "#fff",
+
         borderRadius: 8,
       }}
     >
+      {/* ====================================== */}
       {/* HEADER */}
+      {/* ====================================== */}
 
       <div
         style={{
@@ -193,11 +328,17 @@ export const SprintManagementPage: React.FC = () => {
         </Text>
       </div>
 
+      {/* ====================================== */}
       {/* TABS */}
+      {/* ====================================== */}
 
       <Tabs
         defaultActiveKey="allocation"
         items={[
+          // ====================================
+          // ALLOCATION TAB
+          // ====================================
+
           {
             key: "allocation",
 
@@ -205,16 +346,18 @@ export const SprintManagementPage: React.FC = () => {
 
             children: (
               <>
-                {/* SUMMARY */}
+                {/* RESOURCE SUMMARY */}
 
                 <SprintResourceSummary userSprints={userSprints} />
 
-                {/* ACTION */}
+                {/* ASSIGN ACTION */}
 
                 <div
                   style={{
                     display: "flex",
+
                     justifyContent: "flex-end",
+
                     marginBottom: 16,
                   }}
                 >
@@ -227,6 +370,7 @@ export const SprintManagementPage: React.FC = () => {
                 </div>
 
                 {/* ALLOCATION TABLE */}
+
                 <SprintAllocationTable
                   userSprints={userSprints}
                   loading={loading}
@@ -237,6 +381,10 @@ export const SprintManagementPage: React.FC = () => {
             ),
           },
 
+          // ====================================
+          // TASK TAB
+          // ====================================
+
           {
             key: "tasks",
 
@@ -244,14 +392,28 @@ export const SprintManagementPage: React.FC = () => {
 
             children: (
               <>
-                <SprintRiskPanel tasks={tasks} />
+                {/* ============================ */}
+                {/* SPRINT RISK */}
+                {/* ============================ */}
 
+                <SprintRiskPanel
+                  tasks={tasks}
+                  // QUAN TRỌNG:
+                  // truyền dependency status
+                  // xuống Risk Monitor.
+                  dependencyStatusMap={dependencyStatusMap}
+                />
+
+                {/* ============================ */}
                 {/* VIEW MODE */}
+                {/* ============================ */}
 
                 <div
                   style={{
                     display: "flex",
+
                     justifyContent: "flex-end",
+
                     marginBottom: 16,
                   }}
                 >
@@ -263,30 +425,34 @@ export const SprintManagementPage: React.FC = () => {
                     options={[
                       {
                         label: "Bảng",
+
                         value: "TABLE",
                       },
 
                       {
                         label: "Kanban",
+
                         value: "KANBAN",
                       },
                     ]}
                   />
                 </div>
 
-                {/* TABLE VIEW */}
+                {/* ============================ */}
+                {/* TABLE / KANBAN */}
+                {/* ============================ */}
 
                 {taskViewMode === "TABLE" ? (
                   <SprintTaskTable
                     tasks={tasks}
                     loading={loading}
+                    dependencyStatusMap={dependencyStatusMap}
                     onCreateTask={() => setIsTaskModalOpen(true)}
                     onFindCandidate={handleFindCandidate}
+                    onManageDependencies={handleOpenDependencies}
                     onRefresh={fetchSprintData}
                   />
                 ) : (
-                  /* KANBAN VIEW */
-
                   <SprintTaskKanban
                     tasks={tasks}
                     loading={loading}
@@ -327,7 +493,7 @@ export const SprintManagementPage: React.FC = () => {
       />
 
       {/* ====================================== */}
-      {/* MATCHING */}
+      {/* TASK MATCHING */}
       {/* ====================================== */}
 
       <TaskMatchingDrawer
@@ -336,6 +502,7 @@ export const SprintManagementPage: React.FC = () => {
         sprintId={sprintId}
         onClose={() => {
           setIsMatchingOpen(false);
+
           setSelectedTask(null);
         }}
         onAssigned={fetchSprintData}
@@ -358,6 +525,43 @@ export const SprintManagementPage: React.FC = () => {
         }}
         onRefresh={() => {
           void fetchSprintData();
+        }}
+      />
+
+      {/* ====================================== */}
+      {/* TASK DEPENDENCIES */}
+      {/* ====================================== */}
+
+      <TaskDependenciesModal
+        open={isDependencyModalOpen}
+        task={dependencyTask}
+        tasks={tasks}
+        // ====================================
+        // REFRESH DEPENDENCY
+        // ====================================
+        //
+        // Sau khi ADD / DELETE dependency,
+        // không cần gọi lại toàn bộ Sprint.
+        //
+        // Chỉ refresh dependency status.
+        //
+        // Khi map này thay đổi:
+        //
+        // SprintTaskTable
+        //   → khóa/mở status & progress
+        //
+        // SprintRiskPanel
+        //   → cập nhật Dependency Risk
+        //
+        // ====================================
+
+        onChanged={async () => {
+          await loadDependencyStatuses(tasks);
+        }}
+        onClose={() => {
+          setIsDependencyModalOpen(false);
+
+          setDependencyTask(null);
         }}
       />
     </div>

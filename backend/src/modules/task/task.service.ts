@@ -5,6 +5,7 @@ import { Task, TaskPriority, TaskStatus } from './entities/task.entity';
 
 import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { User } from '../users/entities/user.entity';
+import { TaskDependenciesService } from '../task-dependencies/task-dependencies.service';
 
 @Injectable()
 export class TasksService {
@@ -13,6 +14,8 @@ export class TasksService {
     private taskRepo: Repository<Task>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+
+    private readonly taskDependenciesService: TaskDependenciesService,
   ) {}
 
   async getTasksBySprint(sprintId: string) {
@@ -24,7 +27,7 @@ export class TasksService {
 
   // 4. Tạo Task và gán kĩ năng yêu cầu (Required Skills JSON)
   async createTask(data: any) {
-     Logger.debug("tao là khánh" , data)
+    Logger.debug('tao là khánh', data);
     const newTask = this.taskRepo.create({
       sprintId: data.sprintId,
 
@@ -124,6 +127,7 @@ export class TasksService {
       })
       .sort((left, right) => right.matchScore - left.matchScore);
   }
+
   async updateTaskLifecycle(taskId: string, data: UpdateTaskLifecycleDto) {
     const task = await this.taskRepo.findOne({
       where: {
@@ -136,9 +140,45 @@ export class TasksService {
       throw new NotFoundException('Không tìm thấy Task');
     }
 
+    // ==========================================
+    // DEPENDENCY ENFORCEMENT
+    // ==========================================
+
+    // Chỉ những action thể hiện Task bắt đầu/thực thi
+    // mới bị dependency khóa.
+    //
+    // Vẫn cho phép:
+    // - đổi priority
+    // - reset về TODO
+    // - reset progress về 0
+
+    const requestedStatus = data.status?.toString().toUpperCase();
+
+    const requestedProgress =
+      data.progress !== undefined ? Number(data.progress) : undefined;
+
+    const triesToStart = requestedStatus === 'IN_PROGRESS';
+
+    const triesToComplete = requestedStatus === 'DONE';
+
+    const triesToProgress =
+      requestedProgress !== undefined && requestedProgress > 0;
+
+    if (triesToStart || triesToComplete || triesToProgress) {
+      await this.taskDependenciesService.assertDependenciesCompleted(taskId);
+    }
+
+    // ==========================================
+    // UPDATE PRIORITY
+    // ==========================================
+
     if (data.priority !== undefined) {
       task.priority = data.priority;
     }
+
+    // ==========================================
+    // UPDATE STATUS
+    // ==========================================
 
     if (data.status !== undefined) {
       task.status = data.status;
@@ -147,6 +187,10 @@ export class TasksService {
         task.progress = 100;
       }
     }
+
+    // ==========================================
+    // UPDATE PROGRESS
+    // ==========================================
 
     if (data.progress !== undefined) {
       task.progress = data.progress;
