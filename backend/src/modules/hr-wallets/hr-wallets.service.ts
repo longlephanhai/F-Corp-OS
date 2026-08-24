@@ -4,6 +4,7 @@ import { TransactionType, WalletStatus } from 'common/enum/hr-wallet.enum';
 import type { IUser } from 'common/types/user.interface';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { GetWalletTransactionsDto } from './dto/get-wallet-transactions.dto';
 import { TransactionHistory } from './entities/transaction-history.entity';
 import { Wallet } from './entities/wallet.entity';
 
@@ -25,7 +26,7 @@ export class HrWalletsService {
      * khi cập nhật Wallet balance và tạo TransactionHistory trong cùng một transaction DB.
      */
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Xử lý một giao dịch F-Token (REWARD / PENALTY / TRANSFER) một cách an toàn.
@@ -64,8 +65,8 @@ export class HrWalletsService {
         // Chưa có ví → tự động khởi tạo ví mới với balance = 0
         wallet = queryRunner.manager.create(Wallet, {
           employee: { id: dto.employeeId } as any,
-          balance:  0,
-          status:   WalletStatus.ACTIVE,
+          balance: 0,
+          status: WalletStatus.ACTIVE,
           createdBy: auditUser,
           updatedBy: auditUser,
         });
@@ -81,8 +82,8 @@ export class HrWalletsService {
 
       // --- Bước 3: Tính số dư mới ---
       const currentBalance = Number(wallet.balance);
-      const amount         = Number(dto.amount);
-      let   newBalance: number;
+      const amount = Number(dto.amount);
+      let newBalance: number;
 
       if (dto.type === TransactionType.REWARD || dto.type === TransactionType.TRANSFER) {
         // REWARD / TRANSFER: cộng vào số dư
@@ -98,19 +99,19 @@ export class HrWalletsService {
       }
 
       // --- Bước 4: Cập nhật Wallet ---
-      wallet.balance   = newBalance;
+      wallet.balance = newBalance;
       wallet.updatedBy = auditUser;
       await queryRunner.manager.save(Wallet, wallet);
 
       // --- Bước 5: Tạo TransactionHistory ---
       const history = queryRunner.manager.create(TransactionHistory, {
-        amount:      dto.amount,
-        type:        dto.type,
-        reason:      dto.reason,
+        amount: dto.amount,
+        type: dto.type,
+        reason: dto.reason,
         referenceId: dto.referenceId ?? undefined,
-        wallet:      wallet,
-        createdBy:   auditUser,
-        updatedBy:   auditUser,
+        wallet: wallet,
+        createdBy: auditUser,
+        updatedBy: auditUser,
       });
 
       const savedHistory = await queryRunner.manager.save(TransactionHistory, history);
@@ -152,7 +153,7 @@ export class HrWalletsService {
     const existingTx = await manager.findOne(TransactionHistory, {
       where: { referenceId, type: TransactionType.REWARD, isDeleted: false },
     });
-    
+
     if (existingTx) {
       return; // Đã nhận thưởng cho đánh giá này, bỏ qua
     }
@@ -188,8 +189,8 @@ export class HrWalletsService {
       createdBy: auditUser,
       updatedBy: auditUser,
     });
-    
-    
+
+
     await manager.save(TransactionHistory, history);
   }
 
@@ -236,6 +237,74 @@ export class HrWalletsService {
   }
 
   /**
+   * Lấy lịch sử giao dịch F-Token toàn hệ thống dành cho HR.
+   * Hỗ trợ phân trang và lọc theo nhân viên / loại giao dịch.
+   */
+  async getAllTransactions(
+    query: GetWalletTransactionsDto,
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      employeeId,
+      type,
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    const queryBuilder =
+      this.transactionHistoryRepository
+        .createQueryBuilder('transaction')
+        .leftJoinAndSelect(
+          'transaction.wallet',
+          'wallet',
+        )
+        .leftJoinAndSelect(
+          'wallet.employee',
+          'employee',
+        )
+        .where('transaction.isDeleted = :isDeleted', {
+          isDeleted: false,
+        });
+
+    if (employeeId) {
+      queryBuilder.andWhere(
+        'employee.id = :employeeId',
+        {
+          employeeId,
+        },
+      );
+    }
+
+    if (type) {
+      queryBuilder.andWhere(
+        'transaction.type = :type',
+        {
+          type,
+        },
+      );
+    }
+
+    queryBuilder
+      .orderBy('transaction.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    const [result, total] =
+      await queryBuilder.getManyAndCount();
+
+    return {
+      meta: {
+        currentPage: Number(page),
+        pageSize: Number(limit),
+        pages: Math.ceil(total / limit),
+        total,
+      },
+      result,
+    };
+  }
+
+  /**
    * Lấy danh sách tất cả các ví (dành cho HR/Admin)
    */
   async getAllWallets(query: any) {
@@ -244,7 +313,7 @@ export class HrWalletsService {
 
     const [result, total] = await this.walletRepository.findAndCount({
       where: { isDeleted: false },
-      relations: { employee: true }, 
+      relations: { employee: true },
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
