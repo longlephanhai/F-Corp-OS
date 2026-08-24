@@ -85,3 +85,22 @@ export interface ProjectItem {
   endDate: string;
   status: string;
 }
+// ==== Chat theo Dự án ====
+export interface ChatMember {
+  id: string;
+  fullName: string;
+  email: string;
+  title?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  projectId: string;
+  content: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+}

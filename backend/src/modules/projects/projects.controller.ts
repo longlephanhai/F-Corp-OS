@@ -19,8 +19,8 @@ export class ProjectsController {
   @UseGuards(JwtAuthGuard)
   @SkipCheckPermission()
   @Post()
-  async createProject(@Body() body: any) {
-    const data = await this.projectsService.createProject(body);
+  async createProject( @Body() body: any, @Req() req: any) {
+    const data = await this.projectsService.createProject(body, req.user.id);
     return { statusCode: 201, message: 'Tạo dự án thành công', data };
   }
 

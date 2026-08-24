@@ -36,35 +36,42 @@ export class WebsocketAdapter extends IoAdapter {
     }
 
     async authMiddleware(socket: Socket, next: (err?: any) => void) {
-        const { authorization } = socket.handshake.headers;
-        if (!authorization) {
-            return next(new Error('Unauthorized'));
-        }
-        const accessToken = authorization.split(' ')[1];
-        if (!accessToken) {
-            return next(new Error('Access token is missing'));
-        }
+    const authToken = socket.handshake.auth?.token;
+    const { authorization } = socket.handshake.headers;
 
-        try {
-            const payload = await this.jwtService.verifyAsync(accessToken, {
-                secret: process.env.JWT_SECRET_KEY
-            })
-            const userId = payload.id;
-            // console.log(`User ID from token: ${userId}`);
-            await this.webSocketRepository.save({
-                id: socket.id,
-                userId: userId
-            })
+    const accessToken = authToken || (authorization ? authorization.split(' ')[1] : undefined);
 
-            socket.on('disconnect', async () => {
-                await this.webSocketRepository.delete({ id: socket.id }).catch((error) => {
-                    console.error(`Error deleting websocket with id ${socket.id}:`, error);
-                });
-            })
-            next();
-        }
-        catch (error) {
-            next(error);
-        }
+    if (!accessToken) {
+        return next(new Error('Access token is missing'));
     }
+
+    try {
+        const payload = await this.jwtService.verifyAsync(accessToken, {
+            secret: process.env.JWT_SECRET_KEY
+        })
+        const userId = payload.id;
+
+        socket.data.user = {
+            id: payload.id,
+            email: payload.email,
+            fullName: payload.fullName,
+            role: payload.role,
+        };
+
+        await this.webSocketRepository.save({
+            id: socket.id,
+            userId: userId
+        })
+
+        socket.on('disconnect', async () => {
+            await this.webSocketRepository.delete({ id: socket.id }).catch((error) => {
+                console.error(`Error deleting websocket with id ${socket.id}:`, error);
+            });
+        })
+        next();
+    }
+    catch (error) {
+        next(error);
+    }
+}
 }

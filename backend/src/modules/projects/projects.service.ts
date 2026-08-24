@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
@@ -13,15 +13,15 @@ export class ProjectsService {
   //   return await this.projectRepo.find({ order: { startDate: 'DESC' } });
   // }
 
-  async createProject(data: any) {
+  async createProject(data: any,pmId: string) {
+    Logger.log('Data received in createProject:', data); // Debug: In ra dữ liệu nhận được từ Controller
     const newProject = this.projectRepo.create({
       name: data.name,
       description: data.description,
       startDate: data.startDate,
       endDate: data.endDate,
       status: 'active',
-
-      pmId: data.pmId,
+      pmId: pmId,
     });
     return await this.projectRepo.save(newProject);
   }

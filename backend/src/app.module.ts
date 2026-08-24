@@ -44,6 +44,9 @@ import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-hist
 import { WebsocketModule } from 'websockets/websocket.module';
 import { Websocket } from 'websockets/entities/websocket.entity';
 
+import { ChatModule } from 'modules/chat/chat.module';
+import { ChatMessage } from 'modules/chat/entities/chat-message.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -72,7 +75,8 @@ import { Websocket } from 'websockets/entities/websocket.entity';
           Wallet,
           TransactionHistory,
           Notification,
-          Websocket
+          Websocket,
+          ChatMessage,
         ],
         synchronize: true,
       }),
@@ -93,7 +97,8 @@ import { Websocket } from 'websockets/entities/websocket.entity';
     HrReviewsModule,
     HrWalletsModule,
     NotificationsModule,
-    WebsocketModule
+    WebsocketModule,
+    ChatModule,
   ],
   controllers: [AppController],
 

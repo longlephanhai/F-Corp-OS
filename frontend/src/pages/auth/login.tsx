@@ -18,7 +18,7 @@ import { callApiLogin } from "../../api";
 import { useAppDispatch, useAppSelector } from "../../hooks/hooks";
 import { setUserLoginInfo } from "../../redux/account/accountSlice";
 import CompanyLogo from "../../components/auth/logo-company";
-
+import { reconnectSocketWithAuth } from "../../config/socket";
 const { Title, Text, Link } = Typography;
 
 const LoginPage = () => {
@@ -54,6 +54,7 @@ const LoginPage = () => {
         const roleName = userInfo?.role?.name;
 
         localStorage.setItem("access_token", response.data.access_token);
+        reconnectSocketWithAuth();
         dispatch(
           setUserLoginInfo({
             ...userInfo,
