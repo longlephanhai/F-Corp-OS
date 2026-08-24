@@ -32,6 +32,11 @@ export const pmApi = {
     });
   },
 
+  // phan ben rì suột
+  getResourcePlanner: () => {
+    return axios.get<IBackendRes<any>>("/user-sprint/resource-planner");
+  },
+
   // Duyệt hoặc đổi trạng thái (assigned / released)
   updateUserSprintStatus: (id: string, status: string) => {
     return axios.patch<IBackendRes<UserSprintItem>>(`/user-sprint/${id}`, {
@@ -59,7 +64,6 @@ export const pmApi = {
     >(`/user-sprint/${id}/request`);
   },
 
-  
   getTaskCandidates: (taskId: string) => {
     return axios.get<IBackendRes<TaskCandidate[]>>(
       `/tasks/${taskId}/candidates`,
@@ -69,6 +73,21 @@ export const pmApi = {
   // Tạo Task và gán kĩ năng yêu cầu (Required Skills JSON)
   createTask: (data: Partial<TaskItem>) => {
     return axios.post<IBackendRes<TaskItem>>("/tasks", data);
+  },
+  updateTaskLifecycle: (
+    taskId: string,
+    data: {
+      status?: "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
+
+      priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+      progress?: number;
+    },
+  ) => {
+    return axios.patch<IBackendRes<TaskItem>>(
+      `/tasks/${taskId}/lifecycle`,
+      data,
+    );
   },
 
   // Giải phóng nhân sự kèm Đánh giá (Review)
@@ -130,4 +149,24 @@ export const pmApi = {
   markNotificationAsRead: (id: string) => {
     return axios.patch<IBackendRes<any>>(`/notifications/${id}/read`);
   },
+  //  task dependencies
+  getTaskDependencies: (taskId: string) => {
+    return axios.get(`/tasks/${taskId}/dependencies`);
+  },
+
+  getTaskDependencyStatus: (taskId: string) => {
+    return axios.get(`/tasks/${taskId}/dependencies/status`);
+  },
+
+  addTaskDependency: (taskId: string, dependsOnTaskId: string) => {
+    return axios.post(`/tasks/${taskId}/dependencies`, {
+      dependsOnTaskId,
+    });
+  },
+
+  removeTaskDependency: (taskId: string, dependencyId: string) => {
+    return axios.delete(`/tasks/${taskId}/dependencies/${dependencyId}`);
+  },
+
+  
 };
