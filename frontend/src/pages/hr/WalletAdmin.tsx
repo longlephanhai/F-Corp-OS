@@ -12,6 +12,7 @@ import {
 import { PlusOutlined } from '@ant-design/icons';
 import WalletTable from '../../components/hr/wallets/WalletTable';
 import WalletStats from '../../components/hr/wallets/WalletStats';
+import WalletTransactionModal from '../../components/hr/wallets/WalletTransactionModal';
 import {
     hrWalletsApi,
     type WalletItem,
@@ -22,8 +23,11 @@ const { Title, Text } = Typography;
 const WalletAdmin: React.FC = () => {
     const [wallets, setWallets] = useState<WalletItem[]>([]);
     const [loading, setLoading] = useState(false);
-
     const [totalWallets, setTotalWallets] = useState(0);
+
+    const [transactionModalOpen, setTransactionModalOpen] =
+        useState(false);
+
 
     const fetchWallets = useCallback(async () => {
         setLoading(true);
@@ -92,6 +96,7 @@ const WalletAdmin: React.FC = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     size="large"
+                    onClick={() => setTransactionModalOpen(true)}
                     style={{
                         borderRadius: 8,
                         fontWeight: 600,
@@ -110,6 +115,12 @@ const WalletAdmin: React.FC = () => {
             <WalletTable
                 wallets={wallets}
                 loading={loading}
+            />
+
+            <WalletTransactionModal
+                open={transactionModalOpen}
+                onClose={() => setTransactionModalOpen(false)}
+                onSuccess={fetchWallets}
             />
         </div>
     );

@@ -73,7 +73,7 @@ import { Websocket } from 'websockets/entities/websocket.entity';
           Notification,
           Websocket
         ],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),
