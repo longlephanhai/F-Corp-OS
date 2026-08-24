@@ -24,13 +24,14 @@ import {
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
+import { ProjectHealthPanel } from "../../components/pm/projects/ProjectHealthPanel";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 // Formatter cho Statistic (hiển thị số có dấu phẩy)
-const formatter = (value: number | string) => 
+const formatter = (value: number | string) =>
   Number(value).toLocaleString("en-US");
 
 export const ProjectDetail: React.FC = () => {
@@ -71,7 +72,7 @@ export const ProjectDetail: React.FC = () => {
   // 2. HÀM TÍNH % TIẾN ĐỘ DỰ ÁN DỰA TRÊN SPRINT
   const calculateProgress = () => {
     if (!sprints || sprints.length === 0) return 0;
-    
+
     // Đếm số Sprint đã hoàn thành (status = completed hoặc ngày endDate nhỏ hơn hôm nay)
     const completedSprints = sprints.filter((s) => {
       const isCompletedByDate = dayjs().isAfter(dayjs(s.end_date || s.endDate));
@@ -98,7 +99,7 @@ export const ProjectDetail: React.FC = () => {
       message.success("Đã tạo Sprint thành công!");
       setIsModalOpen(false);
       form.resetFields();
-      fetchProjectDetails(); 
+      fetchProjectDetails();
     } catch (error) {
       message.error("Lỗi khi tạo Sprint!");
     } finally {
@@ -198,7 +199,6 @@ export const ProjectDetail: React.FC = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      
       {/* --- THÔNG TIN DỰ ÁN & TIẾN ĐỘ --- */}
       <Card
         bordered={false}
@@ -206,7 +206,6 @@ export const ProjectDetail: React.FC = () => {
         loading={loading}
       >
         <Flex justify="space-between" align="center" wrap="wrap" gap="large">
-          
           {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
           <Space direction="vertical" size="small">
             <Space align="center" size="middle">
@@ -236,7 +235,7 @@ export const ProjectDetail: React.FC = () => {
               </Space>
               {/* Đã gỡ bỏ cục Ngân sách text thường ở đây */}
             </Space>
-            
+
             <Text type="secondary" style={{ marginTop: "8px" }}>
               {project?.description}
             </Text>
@@ -244,27 +243,44 @@ export const ProjectDetail: React.FC = () => {
 
           {/* CỘT PHẢI: THỐNG KÊ (NGÂN SÁCH + TIẾN ĐỘ) & NÚT TẠO SPRINT */}
           <div className="flex gap-6 items-center">
-            
             {/* Cục ngân sách nhảy số VIP */}
-            <Card bordered={false} className="bg-green-50 shadow-sm" styles={{ body: { padding: '16px 24px' } }}>
-              <Statistic 
-                title={<span className="text-gray-500 font-semibold text-xs uppercase tracking-wider">Tổng Ngân Sách</span>}
-                value={project?.totalBudget || 0} 
+            <Card
+              bordered={false}
+              className="bg-green-50 shadow-sm"
+              styles={{ body: { padding: "16px 24px" } }}
+            >
+              <Statistic
+                title={
+                  <span className="text-gray-500 font-semibold text-xs uppercase tracking-wider">
+                    Tổng Ngân Sách
+                  </span>
+                }
+                value={project?.totalBudget || 0}
                 formatter={formatter}
                 prefix="$"
-                valueStyle={{ color: '#16a34a', fontWeight: 'bold', fontSize: '24px' }} 
+                valueStyle={{
+                  color: "#16a34a",
+                  fontWeight: "bold",
+                  fontSize: "24px",
+                }}
               />
             </Card>
 
             {/* Vòng tròn % Tiến độ VIP */}
-            <Card bordered={false} className="bg-blue-50 shadow-sm" styles={{ body: { padding: '12px 24px' } }}>
+            <Card
+              bordered={false}
+              className="bg-blue-50 shadow-sm"
+              styles={{ body: { padding: "12px 24px" } }}
+            >
               <div className="flex flex-col items-center justify-center">
-                <span className="text-gray-500 font-semibold mb-1 text-xs uppercase tracking-wider">Tiến độ Dự án</span>
-                <Progress 
-                  type="circle" 
-                  percent={calculateProgress()} 
-                  size={65} 
-                  strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }} // Chuyển màu từ xanh dương sang xanh lá
+                <span className="text-gray-500 font-semibold mb-1 text-xs uppercase tracking-wider">
+                  Tiến độ Dự án
+                </span>
+                <Progress
+                  type="circle"
+                  percent={calculateProgress()}
+                  size={65}
+                  strokeColor={{ "0%": "#108ee9", "100%": "#87d068" }} // Chuyển màu từ xanh dương sang xanh lá
                 />
               </div>
             </Card>
@@ -274,14 +290,26 @@ export const ProjectDetail: React.FC = () => {
               size="large"
               icon={<PlusOutlined />}
               onClick={() => setIsModalOpen(true)}
-              style={{ height: 'auto', padding: '16px 24px', fontWeight: 600 }}
+              style={{ height: "auto", padding: "16px 24px", fontWeight: 600 }}
             >
-              Tạo Sprint<br/>Mới
+              Tạo Sprint
+              <br />
+              Mới
             </Button>
           </div>
         </Flex>
       </Card>
 
+      {/* ========================================== */}
+      {/* PROJECT / SPRINT HEALTH */}
+      {/* ========================================== */}
+
+      <ProjectHealthPanel
+        sprints={sprints}
+        loading={loading}
+        onOpenSprint={(id) => navigate(`/pm/sprints/${id}`)}
+      />
+      
       {/* --- BẢNG DANH SÁCH SPRINT --- */}
       <Card
         title={
