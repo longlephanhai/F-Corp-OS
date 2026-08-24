@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import type { IUser } from 'common/types/user.interface';
 import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { GetWalletTransactionsDto } from './dto/get-wallet-transactions.dto';
 import { HrWalletsService } from './hr-wallets.service';
 
 /**
@@ -10,7 +11,7 @@ import { HrWalletsService } from './hr-wallets.service';
  */
 @Controller('hr-wallets')
 export class HrWalletsController {
-  constructor(private readonly hrWalletsService: HrWalletsService) {}
+  constructor(private readonly hrWalletsService: HrWalletsService) { }
 
   /**
    * POST /api/v1/hr-wallets/transaction
@@ -49,6 +50,20 @@ export class HrWalletsController {
   @ResponseMessage('Lấy lịch sử giao dịch thành công')
   getMyTransactions(@User() user: IUser, @Query() query: any) {
     return this.hrWalletsService.getMyTransactions(user.id, query);
+  }
+
+  /**
+   * GET /api/v1/hr-wallets/transactions
+   * HR xem lịch sử giao dịch F-Token toàn hệ thống.
+   */
+  @Get('transactions')
+  @ResponseMessage('Lấy lịch sử giao dịch F-Token thành công')
+  getAllTransactions(
+    @Query() query: GetWalletTransactionsDto,
+  ) {
+    return this.hrWalletsService.getAllTransactions(
+      query,
+    );
   }
 
   /**
