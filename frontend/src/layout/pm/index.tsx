@@ -5,6 +5,9 @@ import {
   Button,
   Flex,
   theme,
+  message,
+  type GetProp,
+  type MessageArgsProps
 } from "antd";
 
 import {
@@ -27,47 +30,82 @@ import { NotificationBell } from "../../components/pm/NotificationBell";
 const { Content, Sider, Header } = Layout;
 const { Text } = Typography;
 
-import { io, Socket } from 'socket.io-client';
+import { connectSocket, getSocket } from "../../config/socket.config";
+// import { connectSocket, getSocket } from "../../config/socket";
+
+
+const defaultStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
+  root: {
+    backgroundColor: '#f6ffed',
+    border: '2px solid #95de64',
+    borderRadius: 16,
+    boxShadow: '4px 4px 0 #d9f7be',
+  },
+  icon: {
+    color: '#237804',
+  },
+  title: {
+    color: '#237804',
+    fontWeight: 600,
+  },
+};
 
 const LayoutPM = () => {
 
+  const [messageApi, contextHolder] = message.useMessage();
+  // const socketRef = useRef<Socket | null>(null);
 
-  const socketRef = useRef<Socket | null>(null);
+  // useEffect(() => {
+  //   const token = localStorage.getItem('access_token');
+
+  //   if (!token) return;
+
+  //   const rawToken = token.replace(/^Bearer\s+/i, '');
+  //   console.log(`${import.meta.env.VITE_SOCKET_URL}/user-skills`);
+  //   const socket = io(`${import.meta.env.VITE_SOCKET_URL}/user-skills`, {
+  //     auth: {
+  //       token: `Bearer ${rawToken}`
+  //     },
+  //     transports: ["websocket"],
+  //     reconnectionAttempts: 5,
+  //     timeout: 10000
+  //   });
+
+  //   socketRef.current = socket;
+
+  //   socket.on('connect', () => console.log('Socket Connected:', socket.id));
+  //   socket.on('disconnect', (reason) => console.log('Socket Disconnected:', reason));
+  //   socket.on('connect_error', (err) => console.error('Socket Error:', err.message));
+
+  //   socket.on('user-skill-updated', (message) => {
+  //     console.log('Nhận thông báo từ server:', message);
+  //     messageApi.open({
+  //       type: 'success',
+  //       content: message.message,
+  //       styles: defaultStyles,
+  //     });
+  //   });
+
+  //   return () => {
+  //     socket.off('user-skill-updated');
+  //     socket.disconnect();
+  //   };
+  // }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-
-    if (!token) return;
-
-    const rawToken = token.replace(/^Bearer\s+/i, '');
-
-    const socket = io("http://localhost:8080/user-skills", {
-      auth: {
-        token: `Bearer ${rawToken}`
-      },
-      transports: ["polling", "websocket"],
-      reconnectionAttempts: 3,
-      timeout: 10000
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('ẾT NỐI THÀNH CÔNG! Socket ID:', socket.id);
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('LỖI KẾT NỐI SOCKET:', err.message);
-    });
-
+    const namespace = 'user-skills';
+    connectSocket(namespace);
+    const socket = getSocket('user-skills');
     socket.on('user-skill-updated', (message) => {
-      console.log('Cập nhật kỹ năng người dùng:', message);
+      console.log('Nhận thông báo từ server:', message);
+      messageApi.open({
+        type: 'success',
+        content: message.message,
+        styles: defaultStyles,
+      });
     });
+  }, [messageApi]);
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
 
   const [collapsed, setCollapsed] = useState(false);
 
@@ -107,7 +145,7 @@ const LayoutPM = () => {
       {/* ==========================================
           SIDEBAR
       ========================================== */}
-
+      {contextHolder}
       <Sider
         trigger={null}
         collapsible
