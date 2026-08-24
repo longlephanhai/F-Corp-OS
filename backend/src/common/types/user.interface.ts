@@ -24,5 +24,6 @@ export interface IUser {
     // allocation  1-n
 
     status: UserStatusType;
+    managerId: string;
 }
 

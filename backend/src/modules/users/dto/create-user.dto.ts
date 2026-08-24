@@ -23,7 +23,8 @@ export class CreateUserDto {
     @IsString({ message: 'Role ID must be a string' })
     role_id: string;
 
-    @IsNotEmpty({ message: 'Title is required' })
+    // @IsNotEmpty({ message: 'Title is required' })
+    @IsOptional()
     @IsEnum(TitleType, { message: 'Title không hợp lệ' })
     title: TitleType;
 

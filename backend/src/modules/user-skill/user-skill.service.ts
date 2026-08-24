@@ -123,8 +123,11 @@ export class UserSkillService {
     // this.server.to(generatedRoomUserId(user.id)).emit('user-skill-updated', {
     //   message: `User ${user.fullName} has added a new skill with evidence: ${createUserSkillDto.description}`,
     // });
-    this.server.emit('user-skill-updated', {
-      message: `User ${user.fullName} has added a new skill...`,
+    // this.server.emit('user-skill-updated', {
+    //   message: `User ${user.fullName} has added a new skill...`,
+    // });
+    this.server.to(generatedRoomUserId(user?.managerId)).emit('user-skill-updated', {
+      message: `User ${user.fullName} has added a new skill with evidence: ${createUserSkillDto.description}`,
     });
     return await this.recalculateUserSkill(savedUserSkill.id);
   }
