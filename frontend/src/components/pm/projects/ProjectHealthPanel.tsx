@@ -20,6 +20,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   FundProjectionScreenOutlined,
+  LockOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 
@@ -28,9 +29,14 @@ import dayjs from "dayjs";
 import { pmApi } from "../../../api/pm";
 
 import type { TaskItem, UserSprintItem } from "../../../common/types/pm";
+
 import { summarizeTaskRisks } from "../../../utils/pm/taskRisk";
 
 const { Text, Title } = Typography;
+
+// ==========================================
+// TYPES
+// ==========================================
 
 interface SprintItem {
   id: string;
@@ -63,9 +69,14 @@ interface SprintHealthItem {
   name: string;
 
   startDate: string | null;
+
   endDate: string | null;
 
   sprintStatus: SprintTimelineStatus;
+
+  // ========================================
+  // TASK
+  // ========================================
 
   totalTasks: number;
 
@@ -75,6 +86,10 @@ interface SprintHealthItem {
 
   taskCoverage: number;
 
+  // ========================================
+  // RESOURCE
+  // ========================================
+
   activeMembers: number;
 
   activeEffort: number;
@@ -82,6 +97,10 @@ interface SprintHealthItem {
   pendingRequests: number;
 
   pendingEffort: number;
+
+  // ========================================
+  // TASK RISK
+  // ========================================
 
   riskTasks: number;
 
@@ -93,10 +112,23 @@ interface SprintHealthItem {
 
   highRiskTasks: number;
 
+  // ========================================
+  // DEPENDENCY RISK
+  // ========================================
+
+  dependencyRiskTasks: number;
+
+  unfinishedDependencies: number;
+
+  // ========================================
+  // HEALTH
+  // ========================================
+
   healthStatus: HealthStatus;
 
   healthReasons: string[];
 }
+
 interface Props {
   sprints: SprintItem[];
 
@@ -104,6 +136,10 @@ interface Props {
 
   onOpenSprint: (sprintId: string) => void;
 }
+
+// ==========================================
+// HELPERS
+// ==========================================
 
 const normalizeStatus = (status?: string) => (status ?? "").toUpperCase();
 
@@ -122,15 +158,80 @@ const getSprintTimelineStatus = (sprint: SprintItem): SprintTimelineStatus => {
     return "COMPLETED";
   }
 
-  if (endDate && dayjs().isAfter(dayjs(endDate))) {
+  if (endDate && dayjs().isAfter(dayjs(endDate), "day")) {
     return "COMPLETED";
   }
 
-  if (startDate && dayjs().isBefore(dayjs(startDate))) {
+  if (startDate && dayjs().isBefore(dayjs(startDate), "day")) {
     return "UPCOMING";
   }
 
   return "ACTIVE";
+};
+
+// ==========================================
+// DEPENDENCY SUMMARY
+// ==========================================
+
+const loadTaskDependencySummary = async (tasks: TaskItem[]) => {
+  // Task DONE không cần tính
+  // Dependency Risk nữa.
+  const relevantTasks = tasks.filter(
+    (task) => normalizeStatus(task.status) !== "DONE",
+  );
+
+  if (relevantTasks.length === 0) {
+    return {
+      dependencyRiskTasks: 0,
+
+      unfinishedDependencies: 0,
+    };
+  }
+
+  const statuses = await Promise.all(
+    relevantTasks.map(async (task) => {
+      try {
+        const response = await pmApi.getTaskDependencyStatus(task.id);
+
+        const data = response?.data?.data ?? response?.data;
+
+        return {
+          isBlockedByDependency: Boolean(data?.isBlockedByDependency),
+
+          unfinishedDependencies: Number(data?.unfinishedDependencies ?? 0),
+        };
+      } catch (error) {
+        console.error(
+          `[PROJECT HEALTH] Không load dependency status task ${task.id}`,
+          error,
+        );
+
+        // Một task lỗi API
+        // không được làm chết
+        // toàn bộ Project Health.
+        return {
+          isBlockedByDependency: false,
+
+          unfinishedDependencies: 0,
+        };
+      }
+    }),
+  );
+
+  const dependencyRiskTasks = statuses.filter(
+    (status) => status.isBlockedByDependency,
+  ).length;
+
+  const unfinishedDependencies = statuses.reduce(
+    (total, status) => total + status.unfinishedDependencies,
+    0,
+  );
+
+  return {
+    dependencyRiskTasks,
+
+    unfinishedDependencies,
+  };
 };
 
 // ==========================================
@@ -159,6 +260,10 @@ const calculateHealth = ({
   criticalRiskTasks,
 
   highRiskTasks,
+
+  dependencyRiskTasks,
+
+  unfinishedDependencies,
 }: {
   sprintStatus: SprintTimelineStatus;
 
@@ -181,6 +286,10 @@ const calculateHealth = ({
   criticalRiskTasks: number;
 
   highRiskTasks: number;
+
+  dependencyRiskTasks: number;
+
+  unfinishedDependencies: number;
 }): {
   healthStatus: HealthStatus;
 
@@ -217,6 +326,10 @@ const calculateHealth = ({
       reasons.push(`${pendingRequests} allocation đang chờ`);
     }
 
+    if (dependencyRiskTasks > 0) {
+      reasons.push(`${dependencyRiskTasks} task đang chờ dependency`);
+    }
+
     return {
       healthStatus: "PLANNED",
 
@@ -243,6 +356,13 @@ const calculateHealth = ({
   }
 
   if (criticalReasons.length > 0) {
+    // Nếu Sprint đã Critical
+    // vẫn thêm dependency reason
+    // để PM biết nguyên nhân phụ.
+    if (dependencyRiskTasks > 0) {
+      criticalReasons.push(`${dependencyRiskTasks} task đang chờ dependency`);
+    }
+
     return {
       healthStatus: "CRITICAL",
 
@@ -260,6 +380,24 @@ const calculateHealth = ({
     warningReasons.push("Sprint đang chạy nhưng chưa có task");
   }
 
+  // ========================================
+  // DEPENDENCY RISK
+  // ========================================
+
+  if (dependencyRiskTasks > 0) {
+    warningReasons.push(`${dependencyRiskTasks} task đang chờ dependency`);
+
+    if (unfinishedDependencies > dependencyRiskTasks) {
+      warningReasons.push(
+        `${unfinishedDependencies} prerequisite chưa hoàn thành`,
+      );
+    }
+  }
+
+  // ========================================
+  // DIRECT TASK RISK
+  // ========================================
+
   if (blockedTasks > 0) {
     warningReasons.push(`${blockedTasks} task đang Blocked`);
   }
@@ -276,6 +414,10 @@ const calculateHealth = ({
     warningReasons.push(`${riskTasks} task cần theo dõi`);
   }
 
+  // ========================================
+  // TASK COVERAGE
+  // ========================================
+
   if (totalTasks > 0 && taskCoverage < 70) {
     warningReasons.push(`Task coverage chỉ ${taskCoverage}%`);
   }
@@ -283,6 +425,10 @@ const calculateHealth = ({
   if (unassignedTasks > 0) {
     warningReasons.push(`${unassignedTasks} task chưa có owner`);
   }
+
+  // ========================================
+  // ALLOCATION
+  // ========================================
 
   if (pendingRequests > 0) {
     warningReasons.push(`${pendingRequests} allocation đang chờ phê duyệt`);
@@ -296,10 +442,14 @@ const calculateHealth = ({
     };
   }
 
+  // ========================================
+  // HEALTHY
+  // ========================================
+
   return {
     healthStatus: "HEALTHY",
 
-    healthReasons: ["Task và resource đang ổn định"],
+    healthReasons: ["Task, dependency và resource đang ổn định"],
   };
 };
 
@@ -342,7 +492,7 @@ const getHealthTag = (status: HealthStatus) => {
 };
 
 // ==========================================
-// SPRINT TAG
+// SPRINT STATUS TAG
 // ==========================================
 
 const getSprintStatusTag = (status: SprintTimelineStatus) => {
@@ -358,20 +508,30 @@ const getSprintStatusTag = (status: SprintTimelineStatus) => {
 };
 
 // ==========================================
-// SORT PRIORITY
+// HEALTH PRIORITY
 // ==========================================
 
 const HEALTH_PRIORITY: Record<HealthStatus, number> = {
   CRITICAL: 1,
+
   WARNING: 2,
+
   HEALTHY: 3,
+
   PLANNED: 4,
+
   COMPLETED: 5,
 };
 
+// ==========================================
+// COMPONENT
+// ==========================================
+
 export const ProjectHealthPanel: React.FC<Props> = ({
   sprints,
+
   loading = false,
+
   onOpenSprint,
 }) => {
   const [healthLoading, setHealthLoading] = useState(false);
@@ -390,6 +550,7 @@ export const ProjectHealthPanel: React.FC<Props> = ({
     const loadHealth = async () => {
       if (!sprints || sprints.length === 0) {
         setHealthRows([]);
+
         return;
       }
 
@@ -402,9 +563,9 @@ export const ProjectHealthPanel: React.FC<Props> = ({
 
             let allocations: UserSprintItem[] = [];
 
-            // ======================================
+            // ==========================
             // TASKS
-            // ======================================
+            // ==========================
 
             try {
               const tasksResponse = await pmApi.getSprintTasks(sprint.id);
@@ -422,9 +583,9 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               tasks = [];
             }
 
-            // ======================================
+            // ==========================
             // ALLOCATIONS
-            // ======================================
+            // ==========================
 
             try {
               const allocationsResponse = await pmApi.getSprintUsers(sprint.id);
@@ -444,9 +605,9 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               allocations = [];
             }
 
-            // ======================================
+            // ==========================
             // TASK
-            // ======================================
+            // ==========================
 
             const totalTasks = tasks.length;
 
@@ -461,25 +622,39 @@ export const ProjectHealthPanel: React.FC<Props> = ({
                 ? Math.round((assignedTasks / totalTasks) * 100)
                 : 0;
 
-            // ======================================
-            // TASK RISK
-            // ======================================
+            // ==========================
+            // NORMAL TASK RISK
+            // ==========================
 
             const taskRisk = summarizeTaskRisks(tasks);
 
-            // ======================================
-            // RESOURCE
-            // ======================================
+            // ==========================
+            // DEPENDENCY RISK
+            // ==========================
+
+            const dependencySummary = await loadTaskDependencySummary(tasks);
+
+            // ==========================
+            // ACTIVE ALLOCATIONS
+            // ==========================
 
             const activeAllocations = allocations.filter(
               (allocation) => normalizeStatus(allocation.status) === "ASSIGNED",
             );
+
+            // ==========================
+            // PENDING ALLOCATIONS
+            // ==========================
 
             const pendingAllocations = allocations.filter((allocation) => {
               const status = normalizeStatus(allocation.status);
 
               return status === "REQUESTED" || status === "PENDING_APPROVAL";
             });
+
+            // ==========================
+            // UNIQUE ACTIVE MEMBERS
+            // ==========================
 
             const uniqueActiveUsers = new Set(
               activeAllocations.map(
@@ -490,10 +665,18 @@ export const ProjectHealthPanel: React.FC<Props> = ({
 
             const activeMembers = uniqueActiveUsers.size;
 
+            // ==========================
+            // ACTIVE EFFORT
+            // ==========================
+
             const activeEffort = activeAllocations.reduce(
               (total, allocation) => total + Number(allocation.percitant ?? 0),
               0,
             );
+
+            // ==========================
+            // PENDING
+            // ==========================
 
             const pendingRequests = pendingAllocations.length;
 
@@ -502,17 +685,21 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               0,
             );
 
-            // ======================================
+            // ==========================
             // TIMELINE
-            // ======================================
+            // ==========================
 
             const sprintStatus = getSprintTimelineStatus(sprint);
 
-            // ======================================
+            // ==========================
             // HEALTH
-            // ======================================
+            // ==========================
 
-            const { healthStatus, healthReasons } = calculateHealth({
+            const {
+              healthStatus,
+
+              healthReasons,
+            } = calculateHealth({
               sprintStatus,
 
               totalTasks,
@@ -534,11 +721,15 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               criticalRiskTasks: taskRisk.criticalCount,
 
               highRiskTasks: taskRisk.highCount,
+
+              dependencyRiskTasks: dependencySummary.dependencyRiskTasks,
+
+              unfinishedDependencies: dependencySummary.unfinishedDependencies,
             });
 
-            // ======================================
+            // ==========================
             // RESULT
-            // ======================================
+            // ==========================
 
             return {
               id: sprint.id,
@@ -551,6 +742,8 @@ export const ProjectHealthPanel: React.FC<Props> = ({
 
               sprintStatus,
 
+              // TASK
+
               totalTasks,
 
               assignedTasks,
@@ -559,6 +752,8 @@ export const ProjectHealthPanel: React.FC<Props> = ({
 
               taskCoverage,
 
+              // RESOURCE
+
               activeMembers,
 
               activeEffort,
@@ -566,6 +761,8 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               pendingRequests,
 
               pendingEffort,
+
+              // NORMAL RISK
 
               riskTasks: taskRisk.riskCount,
 
@@ -576,6 +773,14 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               criticalRiskTasks: taskRisk.criticalCount,
 
               highRiskTasks: taskRisk.highCount,
+
+              // DEPENDENCY RISK
+
+              dependencyRiskTasks: dependencySummary.dependencyRiskTasks,
+
+              unfinishedDependencies: dependencySummary.unfinishedDependencies,
+
+              // HEALTH
 
               healthStatus,
 
@@ -605,7 +810,6 @@ export const ProjectHealthPanel: React.FC<Props> = ({
 
   // ==========================================
   // ACTIVE SUMMARY
-  // Chỉ KPI của sprint đang chạy
   // ==========================================
 
   const summary = useMemo(() => {
@@ -632,6 +836,11 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       0,
     );
 
+    const dependencyRiskTasks = activeSprints.reduce(
+      (total, item) => total + item.dependencyRiskTasks,
+      0,
+    );
+
     return {
       totalSprints: healthRows.length,
 
@@ -644,6 +853,8 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       unassignedTasks,
 
       activeEffort,
+
+      dependencyRiskTasks,
     };
   }, [healthRows]);
 
@@ -687,12 +898,22 @@ export const ProjectHealthPanel: React.FC<Props> = ({
   // ==========================================
 
   const columns = [
+    // ========================================
+    // SPRINT
+    // ========================================
+
     {
       title: "Sprint",
+
       key: "sprint",
+
       width: 220,
 
-      render: (_: unknown, record: SprintHealthItem) => (
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => (
         <Space direction="vertical" size={2}>
           <Text strong>{record.name}</Text>
 
@@ -716,14 +937,27 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       ),
     },
 
+    // ========================================
+    // TIMELINE
+    // ========================================
+
     {
       title: "Timeline",
+
       key: "timeline",
+
       width: 130,
 
-      render: (_: unknown, record: SprintHealthItem) =>
-        getSprintStatusTag(record.sprintStatus),
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => getSprintStatusTag(record.sprintStatus),
     },
+
+    // ========================================
+    // TASK COVERAGE
+    // ========================================
 
     {
       title: "Task Coverage",
@@ -732,7 +966,11 @@ export const ProjectHealthPanel: React.FC<Props> = ({
 
       width: 230,
 
-      render: (_: unknown, record: SprintHealthItem) => (
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => (
         <div
           style={{
             width: 190,
@@ -778,23 +1016,40 @@ export const ProjectHealthPanel: React.FC<Props> = ({
         </div>
       ),
     },
+
+    // ========================================
+    // TASK + DEPENDENCY RISK
+    // ========================================
+
     {
       title: "Task Risk",
-      key: "taskRisk",
-      width: 180,
 
-      render: (_: unknown, record: SprintHealthItem) => {
+      key: "taskRisk",
+
+      width: 210,
+
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => {
         if (record.sprintStatus === "COMPLETED") {
           return <Text type="secondary">Không áp dụng</Text>;
         }
 
-        if (record.riskTasks === 0) {
+        const hasNormalRisk = record.riskTasks > 0;
+
+        const hasDependencyRisk = record.dependencyRiskTasks > 0;
+
+        if (!hasNormalRisk && !hasDependencyRisk) {
           return <Tag color="green">Không có rủi ro</Tag>;
         }
 
         return (
           <Space direction="vertical" size={3}>
-            <Tag color="gold">{record.riskTasks} risk</Tag>
+            {hasNormalRisk && (
+              <Tag color="gold">{record.riskTasks} task risk</Tag>
+            )}
 
             {record.blockedTasks > 0 && (
               <Tag color="red">{record.blockedTasks} Blocked</Tag>
@@ -807,17 +1062,48 @@ export const ProjectHealthPanel: React.FC<Props> = ({
             {record.criticalRiskTasks > 0 && (
               <Tag color="red">{record.criticalRiskTasks} Critical</Tag>
             )}
+
+            {/* ============================= */}
+            {/* DEPENDENCY RISK */}
+            {/* ============================= */}
+
+            {record.dependencyRiskTasks > 0 && (
+              <Tag color="orange" icon={<LockOutlined />}>
+                {record.dependencyRiskTasks} Dependency Risk
+              </Tag>
+            )}
+
+            {record.unfinishedDependencies > 0 && (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: 12,
+                }}
+              >
+                {record.unfinishedDependencies} prerequisite chưa hoàn thành
+              </Text>
+            )}
           </Space>
         );
       },
     },
 
+    // ========================================
+    // RESOURCE
+    // ========================================
+
     {
       title: "Resource",
+
       key: "resource",
+
       width: 190,
 
-      render: (_: unknown, record: SprintHealthItem) => {
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => {
         const isUpcoming = record.sprintStatus === "UPCOMING";
 
         const isCompleted = record.sprintStatus === "COMPLETED";
@@ -842,12 +1128,22 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       },
     },
 
+    // ========================================
+    // PENDING
+    // ========================================
+
     {
       title: "Pending",
+
       key: "pending",
+
       width: 160,
 
-      render: (_: unknown, record: SprintHealthItem) => {
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => {
         if (record.sprintStatus === "COMPLETED") {
           return <Text type="secondary">Không áp dụng</Text>;
         }
@@ -873,12 +1169,22 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       },
     },
 
+    // ========================================
+    // HEALTH
+    // ========================================
+
     {
       title: "Health",
-      key: "health",
-      width: 250,
 
-      render: (_: unknown, record: SprintHealthItem) => (
+      key: "health",
+
+      width: 280,
+
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => (
         <Space direction="vertical" size={4}>
           {getHealthTag(record.healthStatus)}
 
@@ -897,12 +1203,22 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       ),
     },
 
+    // ========================================
+    // ACTION
+    // ========================================
+
     {
       title: "Thao tác",
+
       key: "action",
+
       width: 120,
 
-      render: (_: unknown, record: SprintHealthItem) => (
+      render: (
+        _: unknown,
+
+        record: SprintHealthItem,
+      ) => (
         <Button
           type="link"
           size="small"
@@ -913,6 +1229,10 @@ export const ProjectHealthPanel: React.FC<Props> = ({
       ),
     },
   ];
+
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
     <Card
@@ -940,21 +1260,25 @@ export const ProjectHealthPanel: React.FC<Props> = ({
           options={[
             {
               value: "ALL",
+
               label: "Tất cả Sprint",
             },
 
             {
               value: "ACTIVE",
+
               label: "Đang chạy",
             },
 
             {
               value: "RISK",
+
               label: "Có rủi ro",
             },
 
             {
               value: "UPCOMING",
+
               label: "Sắp tới",
             },
 
@@ -1027,8 +1351,9 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               <Col xs={24} sm={12} lg={6}>
                 <Card size="small">
                   <Statistic
-                    title="Task chưa owner"
-                    value={summary.unassignedTasks}
+                    title="Dependency Risk"
+                    value={summary.dependencyRiskTasks}
+                    prefix={<LockOutlined />}
                   />
 
                   <Text type="secondary">Chỉ Active Sprint</Text>
@@ -1038,9 +1363,8 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               <Col xs={24} sm={12} lg={6}>
                 <Card size="small">
                   <Statistic
-                    title="Active Effort"
-                    value={summary.activeEffort}
-                    suffix="%"
+                    title="Task chưa owner"
+                    value={summary.unassignedTasks}
                   />
 
                   <Text type="secondary">Chỉ Active Sprint</Text>
@@ -1058,7 +1382,7 @@ export const ProjectHealthPanel: React.FC<Props> = ({
               rowKey="id"
               pagination={false}
               scroll={{
-                x: 1300,
+                x: 1450,
               }}
             />
           </>
