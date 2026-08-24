@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { UsersModule } from './modules/users/users.module';
 import { User } from 'modules/users/entities/user.entity';
 import { AuthModule } from './modules/auth/auth.module';
@@ -11,43 +11,44 @@ import { Role } from 'modules/roles/entities/role.entity';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { DatabasesModule } from './modules/databases/databases.module';
-
 import { SkillsModule } from './modules/skills/skills.module';
-import { UserSkillModule } from './modules/user-skill/user-skill.module';
 import { Skill } from 'modules/skills/entities/skill.entity';
+
+import { UserSkillModule } from './modules/user-skill/user-skill.module';
 import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
+
 import { SkillEvidencesModule } from './modules/skill-evidences/skill-evidences.module';
 import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.entity';
-
-import { UserSprintsModule } from './modules/user-sprints/user-sprints.module';
-import { TaskModule } from './modules/task/task.module';
-import { SprintsModule } from './modules/sprints/sprints.module';
 import { ProjectsModule } from './modules/projects/projects.module';
-import { Sprint } from 'modules/sprints/entities/sprint.entity';
-import { Task } from 'modules/task/entities/task.entity';
-import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
 import { Project } from 'modules/projects/entities/project.entity';
-
+import { SprintsModule } from './modules/sprints/sprints.module';
+import { Sprint } from 'modules/sprints/entities/sprint.entity';
+import { TaskModule } from './modules/task/task.module';
+import { Task } from 'modules/task/entities/task.entity';
+import { UserSprintsModule } from './modules/user-sprints/user-sprints.module';
+import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
+import { TaskDependenciesModule } from './modules/task-dependencies/task-dependencies.module';
+import { TaskDependency } from './modules/task-dependencies/entities/task-dependency.entity';
 import { HrReviewsModule } from './modules/hr-reviews/hr-reviews.module';
 import { ReviewCycle } from 'modules/hr-reviews/entities/review-cycle.entity';
 import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
-import { Notification } from 'modules/notifications/entities/notification.entity';
-
-// BÙM 💥 BƯỚC 1: IMPORT GATEWAY VÀO ĐÂY
-// (Lưu ý: Bác chỉnh lại đường dẫn './notifications.gateway' sao cho khớp với thư mục bác lưu file nhé)
-import { NotificationsModule } from 'modules/notifications/notifications.module';
-
 import { HrWalletsModule } from './modules/hr-wallets/hr-wallets.module';
 import { Wallet } from 'modules/hr-wallets/entities/wallet.entity';
 import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-history.entity';
+import { NotificationsModule } from 'modules/notifications/notifications.module';
+import { Notification } from 'modules/notifications/entities/notification.entity';
 import { WebsocketModule } from 'websockets/websocket.module';
 import { Websocket } from 'websockets/entities/websocket.entity';
-
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
+
       useFactory: async (configService: ConfigService) => ({
         type: 'mysql',
         host: configService.get<string>('DATABASE_HOST'),
@@ -56,24 +57,25 @@ import { Websocket } from 'websockets/entities/websocket.entity';
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         entities: [
-          Skill,
-          UserSkill,
           User,
           Role,
           Permission,
+          Skill,
+          UserSkill,
           SkillEvidence,
           Project,
           Sprint,
           Task,
           UserSprint,
+          TaskDependency,
           ReviewCycle,
           ReviewRecord,
           Wallet,
           TransactionHistory,
           Notification,
-          Websocket
+          Websocket,
         ],
-        synchronize: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),
@@ -85,17 +87,17 @@ import { Websocket } from 'websockets/entities/websocket.entity';
     SkillsModule,
     UserSkillModule,
     SkillEvidencesModule,
-    UserSprintsModule,
-    TaskModule,
-    SprintsModule,
     ProjectsModule,
+    SprintsModule,
+    TaskModule,
+    UserSprintsModule,
+    TaskDependenciesModule,
     HrReviewsModule,
     HrWalletsModule,
     NotificationsModule,
-    WebsocketModule
+    WebsocketModule,
   ],
   controllers: [AppController],
-
   providers: [AppService],
 })
 export class AppModule {}

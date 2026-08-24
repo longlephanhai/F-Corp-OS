@@ -7,10 +7,13 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { SkipCheckPermission } from 'decorator/customize';
 import { UserSprintService } from './user-sprints.service';
 import { UserSprintStatus } from './entities/user-sprint.entity';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
 @SkipCheckPermission()
 @Controller('user-sprint')
@@ -42,6 +45,20 @@ export class UserSprintController {
   async assignUserToSprint(@Body() body: any) {
     const data = await this.userSprintService.assignUserToSprint(body);
     return { statusCode: 201, message: 'Đã gửi yêu cầu gán nhân sự', data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('resource-planner')
+  async getResourcePlanner(@Req() req: any) {
+    const pmId = req.user.id;
+
+    const data = await this.userSprintService.getResourcePlanner(pmId);
+
+    return {
+      statusCode: 200,
+      message: 'Lấy Resource Planner thành công',
+      data,
+    };
   }
 
   @Patch(':id/submit-approval')
