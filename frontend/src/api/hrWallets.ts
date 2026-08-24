@@ -23,6 +23,40 @@ export interface TransactionHistoryItem {
   createdAt: string;
 }
 
+export interface WalletTransactionEmployee {
+  id: string;
+  fullName?: string;
+  email?: string;
+  title?: string;
+}
+
+export interface WalletTransactionWallet {
+  id: string;
+  employee?: WalletTransactionEmployee;
+}
+
+export interface WalletTransactionListItem
+  extends TransactionHistoryItem {
+  wallet?: WalletTransactionWallet;
+}
+
+export interface GetWalletTransactionsParams {
+  page?: number;
+  limit?: number;
+  employeeId?: string;
+  type?: WalletTransactionType;
+}
+
+export interface WalletTransactionListResponse {
+  meta: {
+    currentPage: number;
+    pageSize: number;
+    pages: number;
+    total: number;
+  };
+  result: WalletTransactionListItem[];
+}
+
 export type WalletTransactionType =
   | 'REWARD'
   | 'PENALTY'
@@ -74,4 +108,14 @@ export const hrWalletsApi = {
       data,
     );
   },
+  getAllTransactions: (
+    params?: GetWalletTransactionsParams,
+  ) => {
+    return axios.get<
+      IBackendRes<WalletTransactionListResponse>
+    >('/hr-wallets/transactions', {
+      params,
+    });
+  },
+
 };

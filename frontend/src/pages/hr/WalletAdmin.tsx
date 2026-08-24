@@ -13,6 +13,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import WalletTable from '../../components/hr/wallets/WalletTable';
 import WalletStats from '../../components/hr/wallets/WalletStats';
 import WalletTransactionModal from '../../components/hr/wallets/WalletTransactionModal';
+import WalletTransactionHistory from '../../components/hr/wallets/WalletTransactionHistory';
 import {
     hrWalletsApi,
     type WalletItem,
@@ -24,11 +25,10 @@ const WalletAdmin: React.FC = () => {
     const [wallets, setWallets] = useState<WalletItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [totalWallets, setTotalWallets] = useState(0);
-
     const [transactionModalOpen, setTransactionModalOpen] =
         useState(false);
-
-
+    const [transactionHistoryRefreshKey, setTransactionHistoryRefreshKey] =
+        useState(0);
     const fetchWallets = useCallback(async () => {
         setLoading(true);
 
@@ -55,6 +55,13 @@ const WalletAdmin: React.FC = () => {
             setLoading(false);
         }
     }, []);
+    const handleTransactionSuccess = useCallback(async () => {
+        await fetchWallets();
+
+        setTransactionHistoryRefreshKey(
+            current => current + 1,
+        );
+    }, [fetchWallets]);
 
     useEffect(() => {
         fetchWallets();
@@ -111,16 +118,24 @@ const WalletAdmin: React.FC = () => {
                 wallets={wallets}
                 totalWallets={totalWallets}
             />
+
             {/* Wallet table */}
             <WalletTable
                 wallets={wallets}
                 loading={loading}
             />
 
+            <WalletTransactionHistory
+                wallets={wallets}
+                refreshKey={transactionHistoryRefreshKey}
+             />
+
             <WalletTransactionModal
                 open={transactionModalOpen}
-                onClose={() => setTransactionModalOpen(false)}
-                onSuccess={fetchWallets}
+                onClose={() =>
+                    setTransactionModalOpen(false)
+                }
+                onSuccess={handleTransactionSuccess}
             />
         </div>
     );
