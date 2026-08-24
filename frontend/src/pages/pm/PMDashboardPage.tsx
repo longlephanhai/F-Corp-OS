@@ -31,6 +31,8 @@ import dayjs from "dayjs";
 
 import { pmApi } from "../../api/pm";
 
+import { summarizeTaskRisks } from "../../utils/pm/taskRisk";
+
 import type {
   ProjectItem,
   TaskItem,
@@ -39,10 +41,15 @@ import type {
 
 const { Title, Text } = Typography;
 
+// ==========================================
+// TYPES
+// ==========================================
+
 type ProjectHealth = "HEALTHY" | "WARNING" | "CRITICAL" | "NO_ACTIVE_SPRINT";
 
 interface SprintApiItem {
   id: string;
+
   name?: string;
 
   startDate?: string;
@@ -56,7 +63,9 @@ interface SprintApiItem {
 
 interface ProjectDashboardItem {
   id: string;
+
   name: string;
+
   description?: string;
 
   status?: string;
@@ -65,22 +74,53 @@ interface ProjectDashboardItem {
   endDate?: string;
 
   totalSprints: number;
+
   activeSprints: number;
 
   totalTasks: number;
+
   unassignedTasks: number;
 
   activeMembers: number;
+
   activeEffort: number;
 
   pendingAllocations: number;
+
   pendingEffort: number;
 
+  // ========================================
+  // TASK RISK
+  // ========================================
+
+  riskTasks: number;
+
+  blockedTasks: number;
+
+  overdueTasks: number;
+
+  criticalRiskTasks: number;
+
+  highRiskTasks: number;
+
+  // ========================================
+  // HEALTH
+  // ========================================
+
   health: ProjectHealth;
+
   healthReasons: string[];
 }
 
+// ==========================================
+// NORMALIZE
+// ==========================================
+
 const normalizeStatus = (status?: string) => (status ?? "").toUpperCase();
+
+// ==========================================
+// ACTIVE SPRINT
+// ==========================================
 
 const isActiveSprint = (sprint: SprintApiItem) => {
   const normalized = normalizeStatus(sprint.status);
@@ -95,41 +135,87 @@ const isActiveSprint = (sprint: SprintApiItem) => {
 
   const now = dayjs();
 
-  if (startDate && now.isBefore(dayjs(startDate))) {
+  if (startDate && now.isBefore(dayjs(startDate), "day")) {
     return false;
   }
 
-  if (endDate && now.isAfter(dayjs(endDate))) {
+  if (endDate && now.isAfter(dayjs(endDate), "day")) {
     return false;
   }
 
   return true;
 };
 
+// ==========================================
+// PROJECT HEALTH ENGINE
+// ==========================================
+
 const calculateProjectHealth = ({
   activeSprints,
+
   totalTasks,
+
   unassignedTasks,
+
   activeMembers,
+
   pendingAllocations,
+
+  riskTasks,
+
+  blockedTasks,
+
+  overdueTasks,
+
+  criticalRiskTasks,
+
+  highRiskTasks,
 }: {
   activeSprints: number;
+
   totalTasks: number;
+
   unassignedTasks: number;
+
   activeMembers: number;
+
   pendingAllocations: number;
+
+  riskTasks: number;
+
+  blockedTasks: number;
+
+  overdueTasks: number;
+
+  criticalRiskTasks: number;
+
+  highRiskTasks: number;
 }): {
   health: ProjectHealth;
+
   reasons: string[];
 } => {
+  // ========================================
+  // NO ACTIVE SPRINT
+  // ========================================
+
   if (activeSprints === 0) {
     return {
       health: "NO_ACTIVE_SPRINT",
+
       reasons: ["Không có Sprint đang chạy"],
     };
   }
 
+  // ========================================
+  // CRITICAL
+  // ========================================
+
   const criticalReasons: string[] = [];
+
+  if (criticalRiskTasks > 0) {
+    criticalReasons.push(`${criticalRiskTasks} Task Critical`);
+  }
 
   if (totalTasks > 0 && activeMembers === 0) {
     criticalReasons.push("Có task đang chạy nhưng chưa có resource active");
@@ -142,14 +228,35 @@ const calculateProjectHealth = ({
   if (criticalReasons.length > 0) {
     return {
       health: "CRITICAL",
+
       reasons: criticalReasons,
     };
   }
+
+  // ========================================
+  // WARNING
+  // ========================================
 
   const warningReasons: string[] = [];
 
   if (totalTasks === 0) {
     warningReasons.push("Active Sprint chưa có task");
+  }
+
+  if (blockedTasks > 0) {
+    warningReasons.push(`${blockedTasks} task Blocked`);
+  }
+
+  if (overdueTasks > 0) {
+    warningReasons.push(`${overdueTasks} task quá hạn`);
+  }
+
+  if (highRiskTasks > 0) {
+    warningReasons.push(`${highRiskTasks} task High Risk`);
+  }
+
+  if (riskTasks > 0 && highRiskTasks === 0) {
+    warningReasons.push(`${riskTasks} task cần theo dõi`);
   }
 
   if (unassignedTasks > 0) {
@@ -163,15 +270,25 @@ const calculateProjectHealth = ({
   if (warningReasons.length > 0) {
     return {
       health: "WARNING",
+
       reasons: warningReasons,
     };
   }
 
+  // ========================================
+  // HEALTHY
+  // ========================================
+
   return {
     health: "HEALTHY",
+
     reasons: ["Project đang vận hành ổn định"],
   };
 };
+
+// ==========================================
+// HEALTH TAG
+// ==========================================
 
 const getHealthTag = (health: ProjectHealth) => {
   if (health === "CRITICAL") {
@@ -201,6 +318,10 @@ const getHealthTag = (health: ProjectHealth) => {
   return <Tag>Không có Active Sprint</Tag>;
 };
 
+// ==========================================
+// PAGE
+// ==========================================
+
 export const PMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -216,13 +337,25 @@ export const PMDashboardPage: React.FC = () => {
     try {
       setLoading(true);
 
+      // ====================================
+      // PROJECTS
+      // ====================================
+
       const projectsResponse = await pmApi.getMyProjects();
 
       const projectList: ProjectItem[] =
         projectsResponse?.data?.data ?? projectsResponse?.data ?? [];
 
+      // ====================================
+      // EACH PROJECT
+      // ====================================
+
       const projectRows = await Promise.all(
         projectList.map(async (project): Promise<ProjectDashboardItem> => {
+          // ============================
+          // SPRINTS
+          // ============================
+
           const sprintResponse = await pmApi.getSprintsByProject(project.id);
 
           const sprints: SprintApiItem[] =
@@ -230,8 +363,10 @@ export const PMDashboardPage: React.FC = () => {
 
           const activeSprints = sprints.filter(isActiveSprint);
 
-          // Chỉ lấy chi tiết những Sprint
-          // đang hoạt động.
+          // ============================
+          // LOAD ACTIVE SPRINT DATA
+          // ============================
+
           const activeSprintDetails = await Promise.all(
             activeSprints.map(async (sprint) => {
               const [taskResponse, allocationResponse] = await Promise.all([
@@ -250,30 +385,39 @@ export const PMDashboardPage: React.FC = () => {
 
               return {
                 sprint,
+
                 tasks,
+
                 allocations,
               };
             }),
           );
 
-          // ==============================
-          // TASK
-          // ==============================
+          // ============================
+          // ALL ACTIVE TASKS
+          // ============================
 
-          const totalTasks = activeSprintDetails.reduce(
-            (total, item) => total + item.tasks.length,
-            0,
-          );
+          const activeTasks = activeSprintDetails.flatMap((item) => item.tasks);
 
-          const unassignedTasks = activeSprintDetails.reduce(
-            (total, item) =>
-              total + item.tasks.filter((task) => !task.userId).length,
-            0,
-          );
+          // ============================
+          // TASK RISK ENGINE
+          // ============================
 
-          // ==============================
-          // ACTIVE ALLOCATION
-          // ==============================
+          const taskRisk = summarizeTaskRisks(activeTasks);
+
+          // ============================
+          // TASK SUMMARY
+          // ============================
+
+          const totalTasks = activeTasks.length;
+
+          const unassignedTasks = activeTasks.filter(
+            (task) => !task.userId && normalizeStatus(task.status) !== "DONE",
+          ).length;
+
+          // ============================
+          // ALLOCATION
+          // ============================
 
           const assignedAllocations = activeSprintDetails.flatMap((item) =>
             item.allocations.filter(
@@ -289,6 +433,10 @@ export const PMDashboardPage: React.FC = () => {
             }),
           );
 
+          // ============================
+          // UNIQUE ACTIVE USERS
+          // ============================
+
           const activeUserIds = new Set(
             assignedAllocations.map(
               (allocation) =>
@@ -298,19 +446,28 @@ export const PMDashboardPage: React.FC = () => {
 
           const activeMembers = activeUserIds.size;
 
+          // ============================
+          // ACTIVE EFFORT
+          // ============================
+
           const activeEffort = assignedAllocations.reduce(
             (total, allocation) => total + Number(allocation.percitant ?? 0),
             0,
           );
+
+          // ============================
+          // PENDING EFFORT
+          // ============================
 
           const pendingEffort = pendingAllocations.reduce(
             (total, allocation) => total + Number(allocation.percitant ?? 0),
             0,
           );
 
-          // ==============================
+          // ============================
           // HEALTH
-          // ==============================
+          // FIX QUAN TRỌNG Ở ĐÂY
+          // ============================
 
           const { health, reasons } = calculateProjectHealth({
             activeSprints: activeSprints.length,
@@ -322,7 +479,21 @@ export const PMDashboardPage: React.FC = () => {
             activeMembers,
 
             pendingAllocations: pendingAllocations.length,
+
+            riskTasks: taskRisk.riskCount,
+
+            blockedTasks: taskRisk.blockedCount,
+
+            overdueTasks: taskRisk.overdueCount,
+
+            criticalRiskTasks: taskRisk.criticalCount,
+
+            highRiskTasks: taskRisk.highCount,
           });
+
+          // ============================
+          // PROJECT RESULT
+          // ============================
 
           return {
             id: project.id,
@@ -353,6 +524,24 @@ export const PMDashboardPage: React.FC = () => {
 
             pendingEffort,
 
+            // =========================
+            // RISK
+            // =========================
+
+            riskTasks: taskRisk.riskCount,
+
+            blockedTasks: taskRisk.blockedCount,
+
+            overdueTasks: taskRisk.overdueCount,
+
+            criticalRiskTasks: taskRisk.criticalCount,
+
+            highRiskTasks: taskRisk.highCount,
+
+            // =========================
+            // HEALTH
+            // =========================
+
             health,
 
             healthReasons: reasons,
@@ -375,7 +564,7 @@ export const PMDashboardPage: React.FC = () => {
   }, [fetchDashboard]);
 
   // ==========================================
-  // SUMMARY
+  // GLOBAL SUMMARY
   // ==========================================
 
   const summary = useMemo(() => {
@@ -407,8 +596,18 @@ export const PMDashboardPage: React.FC = () => {
       0,
     );
 
-    const activeEffort = projects.reduce(
-      (total, project) => total + project.activeEffort,
+    const riskTasks = projects.reduce(
+      (total, project) => total + project.riskTasks,
+      0,
+    );
+
+    const blockedTasks = projects.reduce(
+      (total, project) => total + project.blockedTasks,
+      0,
+    );
+
+    const overdueTasks = projects.reduce(
+      (total, project) => total + project.overdueTasks,
       0,
     );
 
@@ -427,21 +626,27 @@ export const PMDashboardPage: React.FC = () => {
 
       pendingAllocations,
 
-      activeEffort,
+      riskTasks,
 
-      activeFte: activeEffort / 100,
+      blockedTasks,
+
+      overdueTasks,
     };
   }, [projects]);
 
   // ==========================================
   // SORT
+  // CRITICAL lên trước
   // ==========================================
 
   const sortedProjects = useMemo(() => {
     const priority: Record<ProjectHealth, number> = {
       CRITICAL: 1,
+
       WARNING: 2,
+
       HEALTHY: 3,
+
       NO_ACTIVE_SPRINT: 4,
     };
 
@@ -451,13 +656,19 @@ export const PMDashboardPage: React.FC = () => {
   }, [projects]);
 
   // ==========================================
-  // TABLE
+  // TABLE COLUMNS
   // ==========================================
 
   const columns = [
+    // ========================================
+    // PROJECT
+    // ========================================
+
     {
       title: "Project",
+
       key: "project",
+
       width: 260,
 
       render: (_: unknown, record: ProjectDashboardItem) => (
@@ -488,7 +699,9 @@ export const PMDashboardPage: React.FC = () => {
               }}
             >
               {record.startDate ?? "N/A"}
+
               {" → "}
+
               {record.endDate ?? "N/A"}
             </Text>
           )}
@@ -496,9 +709,15 @@ export const PMDashboardPage: React.FC = () => {
       ),
     },
 
+    // ========================================
+    // SPRINT
+    // ========================================
+
     {
       title: "Sprint",
+
       key: "sprint",
+
       width: 150,
 
       render: (_: unknown, record: ProjectDashboardItem) => (
@@ -512,10 +731,16 @@ export const PMDashboardPage: React.FC = () => {
       ),
     },
 
+    // ========================================
+    // TASK
+    // ========================================
+
     {
       title: "Task",
+
       key: "task",
-      width: 180,
+
+      width: 190,
 
       render: (_: unknown, record: ProjectDashboardItem) => {
         const coverage =
@@ -530,16 +755,20 @@ export const PMDashboardPage: React.FC = () => {
         return (
           <div
             style={{
-              width: 140,
+              width: 150,
             }}
           >
-            <Space>
-              <Text>{record.totalTasks} task</Text>
+            <Text>{record.totalTasks} task</Text>
 
-              {record.unassignedTasks > 0 && (
-                <Tag color="red">{record.unassignedTasks} thiếu owner</Tag>
-              )}
-            </Space>
+            {record.unassignedTasks > 0 && (
+              <div
+                style={{
+                  marginTop: 4,
+                }}
+              >
+                <Tag color="orange">{record.unassignedTasks} thiếu owner</Tag>
+              </div>
+            )}
 
             {record.totalTasks > 0 && (
               <Progress
@@ -554,9 +783,51 @@ export const PMDashboardPage: React.FC = () => {
       },
     },
 
+    // ========================================
+    // RISK
+    // ========================================
+
+    {
+      title: "Risk",
+
+      key: "risk",
+
+      width: 180,
+
+      render: (_: unknown, record: ProjectDashboardItem) => {
+        if (record.riskTasks === 0) {
+          return <Tag color="green">Không có</Tag>;
+        }
+
+        return (
+          <Space direction="vertical" size={3}>
+            <Tag color="gold">{record.riskTasks} task risk</Tag>
+
+            {record.blockedTasks > 0 && (
+              <Tag color="red">{record.blockedTasks} Blocked</Tag>
+            )}
+
+            {record.overdueTasks > 0 && (
+              <Tag color="volcano">{record.overdueTasks} Overdue</Tag>
+            )}
+
+            {record.criticalRiskTasks > 0 && (
+              <Tag color="red">{record.criticalRiskTasks} Critical</Tag>
+            )}
+          </Space>
+        );
+      },
+    },
+
+    // ========================================
+    // RESOURCE
+    // ========================================
+
     {
       title: "Resource",
+
       key: "resource",
+
       width: 180,
 
       render: (_: unknown, record: ProjectDashboardItem) => (
@@ -572,9 +843,15 @@ export const PMDashboardPage: React.FC = () => {
       ),
     },
 
+    // ========================================
+    // PENDING
+    // ========================================
+
     {
       title: "Pending",
+
       key: "pending",
+
       width: 150,
 
       render: (_: unknown, record: ProjectDashboardItem) =>
@@ -596,10 +873,16 @@ export const PMDashboardPage: React.FC = () => {
         ),
     },
 
+    // ========================================
+    // HEALTH
+    // ========================================
+
     {
       title: "Health",
+
       key: "health",
-      width: 250,
+
+      width: 260,
 
       render: (_: unknown, record: ProjectDashboardItem) => (
         <Space direction="vertical" size={4}>
@@ -620,9 +903,15 @@ export const PMDashboardPage: React.FC = () => {
       ),
     },
 
+    // ========================================
+    // ACTION
+    // ========================================
+
     {
       title: "Thao tác",
+
       key: "action",
+
       width: 120,
 
       render: (_: unknown, record: ProjectDashboardItem) => (
@@ -637,6 +926,10 @@ export const PMDashboardPage: React.FC = () => {
     },
   ];
 
+  // ==========================================
+  // UI
+  // ==========================================
+
   return (
     <div>
       {/* ====================================== */}
@@ -644,7 +937,6 @@ export const PMDashboardPage: React.FC = () => {
       {/* ====================================== */}
 
       <Card
-        bordered={false}
         style={{
           marginBottom: 20,
         }}
@@ -660,7 +952,7 @@ export const PMDashboardPage: React.FC = () => {
           </Title>
 
           <Text type="secondary">
-            Tổng quan Project, Sprint, Task và Resource cần PM chú ý.
+            Tổng quan Project, Sprint, Task, Risk và Resource cần PM chú ý.
           </Text>
         </Space>
       </Card>
@@ -730,7 +1022,7 @@ export const PMDashboardPage: React.FC = () => {
         </Row>
 
         {/* ==================================== */}
-        {/* RESOURCE KPI */}
+        {/* TASK RISK KPI */}
         {/* ==================================== */}
 
         <Row
@@ -739,7 +1031,7 @@ export const PMDashboardPage: React.FC = () => {
             marginBottom: 20,
           }}
         >
-          <Col xs={24} md={8}>
+          <Col xs={24} sm={12} xl={6}>
             <Card size="small">
               <Statistic
                 title="Task chưa owner"
@@ -748,30 +1040,27 @@ export const PMDashboardPage: React.FC = () => {
             </Card>
           </Col>
 
-          <Col xs={24} md={8}>
+          <Col xs={24} sm={12} xl={6}>
             <Card size="small">
-              <Statistic
-                title="Active Effort"
-                value={summary.activeEffort}
-                suffix="%"
-              />
+              <Statistic title="Task rủi ro" value={summary.riskTasks} />
             </Card>
           </Col>
 
-          <Col xs={24} md={8}>
+          <Col xs={24} sm={12} xl={6}>
             <Card size="small">
-              <Statistic
-                title="Active FTE"
-                value={summary.activeFte}
-                precision={1}
-                suffix="FTE"
-              />
+              <Statistic title="Blocked" value={summary.blockedTasks} />
+            </Card>
+          </Col>
+
+          <Col xs={24} sm={12} xl={6}>
+            <Card size="small">
+              <Statistic title="Overdue" value={summary.overdueTasks} />
             </Card>
           </Col>
         </Row>
 
         {/* ==================================== */}
-        {/* ALERT */}
+        {/* CRITICAL ALERT */}
         {/* ==================================== */}
 
         {summary.criticalProjects > 0 && (
@@ -779,7 +1068,33 @@ export const PMDashboardPage: React.FC = () => {
             type="error"
             showIcon
             title={`${summary.criticalProjects} Project đang có rủi ro cao`}
-            description="Kiểm tra các Project được đánh dấu đỏ bên dưới trước."
+            description="Kiểm tra Project được đánh dấu Critical bên dưới trước."
+            style={{
+              marginBottom: 20,
+            }}
+          />
+        )}
+
+        {/* ==================================== */}
+        {/* BLOCKED / OVERDUE ALERT */}
+        {/* ==================================== */}
+
+        {(summary.blockedTasks > 0 || summary.overdueTasks > 0) && (
+          <Alert
+            type="warning"
+            showIcon
+            title="Có Task cần PM xử lý"
+            description={
+              <Space wrap>
+                {summary.blockedTasks > 0 && (
+                  <Tag color="red">{summary.blockedTasks} Blocked</Tag>
+                )}
+
+                {summary.overdueTasks > 0 && (
+                  <Tag color="volcano">{summary.overdueTasks} Overdue</Tag>
+                )}
+              </Space>
+            }
             style={{
               marginBottom: 20,
             }}
@@ -805,10 +1120,11 @@ export const PMDashboardPage: React.FC = () => {
               rowKey="id"
               pagination={{
                 pageSize: 8,
+
                 showSizeChanger: false,
               }}
               scroll={{
-                x: 1200,
+                x: 1400,
               }}
             />
           ) : (

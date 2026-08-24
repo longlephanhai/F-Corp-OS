@@ -55,8 +55,13 @@ export const ProjectDetail: React.FC = () => {
         pmApi.getSprintsByProject(projectId),
       ]);
 
-      if (resProject?.data?.data) setProject(resProject.data.data);
-      if (resSprints?.data?.data) setSprints(resSprints.data.data);
+      const projectData = resProject?.data?.data ?? resProject?.data ?? null;
+
+      const sprintList = resSprints?.data?.data ?? resSprints?.data ?? [];
+
+      setProject(projectData);
+
+      setSprints(Array.isArray(sprintList) ? sprintList : []);
     } catch (error) {
       console.error(error);
       message.error("Lỗi khi tải dữ liệu Dự án!");
@@ -214,7 +219,7 @@ export const ProjectDetail: React.FC = () => {
               </Title>
               <Tag
                 color={project?.status === "active" ? "success" : "default"}
-                style={{ fontWeight: "bold", m: 0 }}
+                style={{ fontWeight: "bold", margin: 0 }}
               >
                 {project?.status?.toUpperCase() || "N/A"}
               </Tag>
@@ -303,7 +308,6 @@ export const ProjectDetail: React.FC = () => {
       {/* ========================================== */}
       {/* PROJECT / SPRINT HEALTH */}
       {/* ========================================== */}
-
       <ProjectHealthPanel
         sprints={sprints}
         loading={loading}

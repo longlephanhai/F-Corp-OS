@@ -21,6 +21,7 @@ import { CreateTaskModal } from "../../components/pm/sprints/CreateTaskModal";
 import { TaskMatchingDrawer } from "../../components/pm/sprints/TaskMatchingDrawer";
 import { ReleaseReviewModal } from "../../components/pm/sprints/ReleaseReviewModal";
 import { SprintTaskKanban } from "../../components/pm/sprints/SprintTaskKanban";
+import { SprintRiskPanel } from "../../components/pm/sprints/SprintRiskPanel";
 
 const { Title, Text } = Typography;
 
@@ -243,6 +244,8 @@ export const SprintManagementPage: React.FC = () => {
 
             children: (
               <>
+                <SprintRiskPanel tasks={tasks} />
+
                 {/* VIEW MODE */}
 
                 <div
