@@ -1,67 +1,54 @@
+import { Layout, Menu, Typography, Button, Flex, theme } from "antd";
 import {
-  Layout,
-  Menu,
-  Typography,
-  Button,
-  Flex,
-  theme,
-} from "antd";
-
-import {
+  DashboardOutlined,
+  DatabaseOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  TeamOutlined,
   ProjectOutlined,
-  DatabaseOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 
 import { useState, useEffect, useRef } from "react";
-import {
-  Outlet,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { NotificationBell } from "../../components/pm/NotificationBell";
 
 const { Content, Sider, Header } = Layout;
 const { Text } = Typography;
 
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from "socket.io-client";
 
 const LayoutPM = () => {
-
-
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem("access_token");
 
     if (!token) return;
 
-    const rawToken = token.replace(/^Bearer\s+/i, '');
+    const rawToken = token.replace(/^Bearer\s+/i, "");
 
     const socket = io("http://localhost:8080/user-skills", {
       auth: {
-        token: `Bearer ${rawToken}`
+        token: `Bearer ${rawToken}`,
       },
       transports: ["polling", "websocket"],
       reconnectionAttempts: 3,
-      timeout: 10000
+      timeout: 10000,
     });
 
     socketRef.current = socket;
 
-    socket.on('connect', () => {
-      console.log('ẾT NỐI THÀNH CÔNG! Socket ID:', socket.id);
+    socket.on("connect", () => {
+      console.log("ẾT NỐI THÀNH CÔNG! Socket ID:", socket.id);
     });
 
-    socket.on('connect_error', (err) => {
-      console.error('LỖI KẾT NỐI SOCKET:', err.message);
+    socket.on("connect_error", (err) => {
+      console.error("LỖI KẾT NỐI SOCKET:", err.message);
     });
 
-    socket.on('user-skill-updated', (message) => {
-      console.log('Cập nhật kỹ năng người dùng:', message);
+    socket.on("user-skill-updated", (message) => {
+      console.log("Cập nhật kỹ năng người dùng:", message);
     });
 
     return () => {
@@ -74,14 +61,10 @@ const LayoutPM = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [selectedKey, setSelectedKey] =
-    useState<string>("projects");
+  const [selectedKey, setSelectedKey] = useState<string>("projects");
 
   const {
-    token: {
-      colorBgContainer,
-      borderRadiusLG,
-    },
+    token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
   // ==========================================
@@ -91,13 +74,15 @@ const LayoutPM = () => {
   useEffect(() => {
     const path = location.pathname;
 
-    if (path.includes("/pm/my-team")) {
+    if (path === "/pm" || path.includes("/pm/dashboard")) {
+      setSelectedKey("dashboard");
+    } else if (path.includes("/pm/my-team")) {
       setSelectedKey("my-team");
     } else if (path.includes("/pm/sprints")) {
-      setSelectedKey("sprints");
+      setSelectedKey("projects");
     } else if (path.includes("/pm/resources")) {
       setSelectedKey("resources");
-    } else {
+    } else if (path.includes("/pm/projects")) {
       setSelectedKey("projects");
     }
   }, [location.pathname]);
@@ -108,12 +93,7 @@ const LayoutPM = () => {
           SIDEBAR
       ========================================== */}
 
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        width={260}
-      >
+      <Sider trigger={null} collapsible collapsed={collapsed} width={260}>
         {/* LOGO */}
         <div
           style={{
@@ -121,8 +101,7 @@ const LayoutPM = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            borderBottom:
-              "1px solid rgba(255,255,255,0.1)",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
             color: "#fff",
             fontWeight: 700,
             whiteSpace: "nowrap",
@@ -141,6 +120,15 @@ const LayoutPM = () => {
           selectedKeys={[selectedKey]}
           style={{ marginTop: 16 }}
           items={[
+            {
+              key: "dashboard",
+
+              icon: <DashboardOutlined />,
+
+              label: "Tổng quan",
+
+              onClick: () => navigate("/pm/dashboard"),
+            },
             {
               key: "projects",
               icon: <ProjectOutlined />,
@@ -191,16 +179,8 @@ const LayoutPM = () => {
             <Flex align="center" gap={12}>
               <Button
                 type="text"
-                icon={
-                  collapsed ? (
-                    <MenuUnfoldOutlined />
-                  ) : (
-                    <MenuFoldOutlined />
-                  )
-                }
-                onClick={() =>
-                  setCollapsed(!collapsed)
-                }
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
                 style={{
                   fontSize: "18px",
                   width: 42,
@@ -238,13 +218,9 @@ const LayoutPM = () => {
                   whiteSpace: "nowrap",
                 }}
               >
-                <Text type="secondary">
-                  Welcome,
-                </Text>
+                <Text type="secondary">Welcome,</Text>
 
-                <Text strong>
-                  Khanh Nguyễn (PM)
-                </Text>
+                <Text strong>Khanh Nguyễn (PM)</Text>
               </Flex>
             </Flex>
           </Flex>
@@ -263,8 +239,7 @@ const LayoutPM = () => {
         >
           <div
             style={{
-              minHeight:
-                "calc(100vh - 112px)",
+              minHeight: "calc(100vh - 112px)",
               borderRadius: borderRadiusLG,
             }}
           >

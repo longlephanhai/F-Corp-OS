@@ -245,6 +245,7 @@ export const SprintManagementPage: React.FC = () => {
                 loading={loading}
                 onCreateTask={() => setIsTaskModalOpen(true)}
                 onFindCandidate={handleFindCandidate}
+                onRefresh={fetchSprintData}
               />
             ),
           },

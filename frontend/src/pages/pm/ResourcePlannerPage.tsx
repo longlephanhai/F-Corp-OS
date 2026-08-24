@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
@@ -23,17 +18,11 @@ import {
   message,
 } from "antd";
 
-import {
-  SearchOutlined,
-  TeamOutlined,
-} from "@ant-design/icons";
+import { SearchOutlined, TeamOutlined } from "@ant-design/icons";
 
 import { pmApi } from "../../api/pm";
 
-const {
-  Title,
-  Text,
-} = Typography;
+const { Title, Text } = Typography;
 
 type AllocationStatus =
   | "requested"
@@ -42,36 +31,26 @@ type AllocationStatus =
   | "released"
   | string;
 
-type CapacityStatus =
-  | "AVAILABLE"
-  | "NEAR_FULL"
-  | "FULL"
-  | "OVER_ALLOCATED";
+type CapacityStatus = "AVAILABLE" | "NEAR_FULL" | "FULL" | "OVER_ALLOCATED";
 
 interface ResourceAllocation {
   id: string;
 
   percitant: number;
 
-  status:
-    AllocationStatus;
+  status: AllocationStatus;
 
   sprintId: string;
 
-  sprintName:
-    string | null;
+  sprintName: string | null;
 
-  sprintStartDate:
-    string | null;
+  sprintStartDate: string | null;
 
-  sprintEndDate:
-    string | null;
+  sprintEndDate: string | null;
 
-  projectId:
-    string | null;
+  projectId: string | null;
 
-  projectName:
-    string | null;
+  projectName: string | null;
 }
 
 interface ResourcePlannerItem {
@@ -81,29 +60,21 @@ interface ResourcePlannerItem {
 
   email: string;
 
-  title:
-    string | null;
+  title: string | null;
 
-  employeeStatus:
-    string;
+  employeeStatus: string;
 
-  assignedAllocation:
-    number;
+  assignedAllocation: number;
 
-  pendingAllocation:
-    number;
+  pendingAllocation: number;
 
-  usedCapacity:
-    number;
+  usedCapacity: number;
 
-  availableCapacity:
-    number;
+  availableCapacity: number;
 
-  capacityStatus:
-    CapacityStatus;
+  capacityStatus: CapacityStatus;
 
-  allocations:
-    ResourceAllocation[];
+  allocations: ResourceAllocation[];
 }
 
 interface ResourcePlannerSummary {
@@ -115,8 +86,7 @@ interface ResourcePlannerSummary {
 
   fullResources: number;
 
-  overAllocatedResources:
-    number;
+  overAllocatedResources: number;
 
   totalUsedFte: number;
 }
@@ -124,153 +94,84 @@ interface ResourcePlannerSummary {
 interface ResourcePlannerData {
   generatedAt: string;
 
-  summary:
-    ResourcePlannerSummary;
+  summary: ResourcePlannerSummary;
 
-  resources:
-    ResourcePlannerItem[];
+  resources: ResourcePlannerItem[];
 }
 
-const normalizeStatus = (
-  status?: string,
-) =>
-  (status ?? "").toUpperCase();
+const normalizeStatus = (status?: string) => (status ?? "").toUpperCase();
 
-const getAllocationStatusTag = (
-  status: string,
-) => {
-  const normalized =
-    normalizeStatus(status);
+const getAllocationStatusTag = (status: string) => {
+  const normalized = normalizeStatus(status);
 
-  if (
-    normalized === "ASSIGNED"
-  ) {
-    return (
-      <Tag color="green">
-        Assigned
-      </Tag>
-    );
+  if (normalized === "ASSIGNED") {
+    return <Tag color="green">Assigned</Tag>;
   }
 
-  if (
-    normalized ===
-    "PENDING_APPROVAL"
-  ) {
-    return (
-      <Tag color="gold">
-        Chờ duyệt
-      </Tag>
-    );
+  if (normalized === "PENDING_APPROVAL") {
+    return <Tag color="gold">Chờ duyệt</Tag>;
   }
 
-  if (
-    normalized === "REQUESTED"
-  ) {
-    return (
-      <Tag color="blue">
-        Requested
-      </Tag>
-    );
+  if (normalized === "REQUESTED") {
+    return <Tag color="blue">Requested</Tag>;
   }
 
   return <Tag>{status}</Tag>;
 };
 
-const getCapacityTag = (
-  status: CapacityStatus,
-) => {
+const getCapacityTag = (status: CapacityStatus) => {
   switch (status) {
     case "AVAILABLE":
-      return (
-        <Tag color="green">
-          Available
-        </Tag>
-      );
+      return <Tag color="green">Available</Tag>;
 
     case "NEAR_FULL":
-      return (
-        <Tag color="gold">
-          Sắp full
-        </Tag>
-      );
+      return <Tag color="gold">Sắp full</Tag>;
 
     case "FULL":
-      return (
-        <Tag color="red">
-          Full Capacity
-        </Tag>
-      );
+      return <Tag color="red">Full Capacity</Tag>;
 
     case "OVER_ALLOCATED":
-      return (
-        <Tag color="volcano">
-          Over Allocated
-        </Tag>
-      );
+      return <Tag color="volcano">Over Allocated</Tag>;
 
     default:
       return <Tag>-</Tag>;
   }
 };
 
-export const ResourcePlannerPage:
-  React.FC = () => {
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+export const ResourcePlannerPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
 
-  const [
-    plannerData,
-    setPlannerData,
-  ] =
-    useState<ResourcePlannerData | null>(
-      null,
-    );
+  const [plannerData, setPlannerData] = useState<ResourcePlannerData | null>(
+    null,
+  );
 
-  const [
-    keyword,
-    setKeyword,
-  ] = useState("");
+  const [keyword, setKeyword] = useState("");
 
-  const [
-    statusFilter,
-    setStatusFilter,
-  ] =
-    useState<
-      CapacityStatus | "ALL"
-    >("ALL");
+  const [statusFilter, setStatusFilter] = useState<CapacityStatus | "ALL">(
+    "ALL",
+  );
 
   // ==========================================
   // FETCH
   // ==========================================
 
-  const fetchPlanner =
-    useCallback(async () => {
-      try {
-        setLoading(true);
+  const fetchPlanner = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        const response =
-          await pmApi.getResourcePlanner();
+      const response = await pmApi.getResourcePlanner();
 
-        const data =
-          response?.data?.data ??
-          response?.data;
+      const data = response?.data?.data ?? response?.data;
 
-        setPlannerData(data);
-      } catch (error) {
-        console.error(
-          "Lỗi tải Resource Planner:",
-          error,
-        );
+      setPlannerData(data);
+    } catch (error) {
+      console.error("Lỗi tải Resource Planner:", error);
 
-        message.error(
-          "Không thể tải dữ liệu tài nguyên.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, []);
+      message.error("Không thể tải dữ liệu tài nguyên.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     void fetchPlanner();
@@ -280,54 +181,24 @@ export const ResourcePlannerPage:
   // FILTER
   // ==========================================
 
-  const filteredResources =
-    useMemo(() => {
-      const resources =
-        plannerData?.resources ??
-        [];
+  const filteredResources = useMemo(() => {
+    const resources = plannerData?.resources ?? [];
 
-      const normalizedKeyword =
-        keyword
-          .trim()
-          .toLowerCase();
+    const normalizedKeyword = keyword.trim().toLowerCase();
 
-      return resources.filter(
-        (resource) => {
-          const matchesKeyword =
-            !normalizedKeyword ||
-            resource.fullName
-              ?.toLowerCase()
-              .includes(
-                normalizedKeyword,
-              ) ||
-            resource.email
-              ?.toLowerCase()
-              .includes(
-                normalizedKeyword,
-              ) ||
-            resource.title
-              ?.toLowerCase()
-              .includes(
-                normalizedKeyword,
-              );
+    return resources.filter((resource) => {
+      const matchesKeyword =
+        !normalizedKeyword ||
+        resource.fullName?.toLowerCase().includes(normalizedKeyword) ||
+        resource.email?.toLowerCase().includes(normalizedKeyword) ||
+        resource.title?.toLowerCase().includes(normalizedKeyword);
 
-          const matchesStatus =
-            statusFilter ===
-              "ALL" ||
-            resource.capacityStatus ===
-              statusFilter;
+      const matchesStatus =
+        statusFilter === "ALL" || resource.capacityStatus === statusFilter;
 
-          return (
-            matchesKeyword &&
-            matchesStatus
-          );
-        },
-      );
-    }, [
-      plannerData,
-      keyword,
-      statusFilter,
-    ]);
+      return matchesKeyword && matchesStatus;
+    });
+  }, [plannerData, keyword, statusFilter]);
 
   // ==========================================
   // COLUMNS
@@ -339,18 +210,12 @@ export const ResourcePlannerPage:
       key: "resource",
       width: 260,
 
-      render: (
-        _: unknown,
-        record:
-          ResourcePlannerItem,
-      ) => (
+      render: (_: unknown, record: ResourcePlannerItem) => (
         <div>
           <Space size={8}>
             <TeamOutlined />
 
-            <Text strong>
-              {record.fullName}
-            </Text>
+            <Text strong>{record.fullName}</Text>
           </Space>
 
           <div
@@ -358,16 +223,12 @@ export const ResourcePlannerPage:
               marginTop: 4,
             }}
           >
-            <Text type="secondary">
-              {record.email}
-            </Text>
+            <Text type="secondary">{record.email}</Text>
           </div>
 
           {record.title && (
             <div>
-              <Text type="secondary">
-                {record.title}
-              </Text>
+              <Text type="secondary">{record.title}</Text>
             </div>
           )}
         </div>
@@ -379,11 +240,7 @@ export const ResourcePlannerPage:
       key: "capacity",
       width: 260,
 
-      render: (
-        _: unknown,
-        record:
-          ResourcePlannerItem,
-      ) => (
+      render: (_: unknown, record: ResourcePlannerItem) => (
         <div
           style={{
             width: 210,
@@ -392,62 +249,35 @@ export const ResourcePlannerPage:
           <div
             style={{
               display: "flex",
-              justifyContent:
-                "space-between",
+              justifyContent: "space-between",
               marginBottom: 4,
             }}
           >
-            <Text>
-              Used
-            </Text>
+            <Text>Used</Text>
 
-            <Text strong>
-              {
-                record.usedCapacity
-              }
-              %
-            </Text>
+            <Text strong>{record.usedCapacity}%</Text>
           </div>
 
           <Progress
-            percent={Math.min(
-              record.usedCapacity,
-              100,
-            )}
-            status={
-              record.usedCapacity >=
-              100
-                ? "exception"
-                : "active"
-            }
+            percent={Math.min(record.usedCapacity, 100)}
+            status={record.usedCapacity >= 100 ? "exception" : "active"}
             showInfo={false}
           />
 
           <div
             style={{
               display: "flex",
-              justifyContent:
-                "space-between",
+              justifyContent: "space-between",
               marginTop: 5,
             }}
           >
-            <Text type="secondary">
-              Available
-            </Text>
+            <Text type="secondary">Available</Text>
 
             <Text
               strong
-              type={
-                record.availableCapacity ===
-                0
-                  ? "danger"
-                  : undefined
-              }
+              type={record.availableCapacity === 0 ? "danger" : undefined}
             >
-              {
-                record.availableCapacity
-              }
-              %
+              {record.availableCapacity}%
             </Text>
           </div>
         </div>
@@ -455,65 +285,33 @@ export const ResourcePlannerPage:
     },
 
     {
-      title:
-        "Confirmed / Reserved",
+      title: "Confirmed / Reserved",
 
       key: "breakdown",
 
       width: 190,
 
-      render: (
-        _: unknown,
-        record:
-          ResourcePlannerItem,
-      ) => (
-        <Space
-          direction="vertical"
-          size={4}
-        >
+      render: (_: unknown, record: ResourcePlannerItem) => (
+        <Space direction="vertical" size={4}>
           <Text>
-            Assigned:{" "}
-            <strong>
-              {
-                record.assignedAllocation
-              }
-              %
-            </strong>
+            Assigned: <strong>{record.assignedAllocation}%</strong>
           </Text>
 
           <Text>
-            Pending:{" "}
-            <strong>
-              {
-                record.pendingAllocation
-              }
-              %
-            </strong>
+            Pending: <strong>{record.pendingAllocation}%</strong>
           </Text>
         </Space>
       ),
     },
 
     {
-      title:
-        "Allocation hiện tại",
+      title: "Allocation hiện tại",
 
       key: "allocations",
 
-      render: (
-        _: unknown,
-        record:
-          ResourcePlannerItem,
-      ) => {
-        if (
-          record.allocations
-            .length === 0
-        ) {
-          return (
-            <Text type="secondary">
-              Chưa có allocation
-            </Text>
-          );
+      render: (_: unknown, record: ResourcePlannerItem) => {
+        if (record.allocations.length === 0) {
+          return <Text type="secondary">Chưa có allocation</Text>;
         }
 
         return (
@@ -524,55 +322,33 @@ export const ResourcePlannerPage:
               width: "100%",
             }}
           >
-            {record.allocations.map(
-              (allocation) => (
-                <Card
-                  key={
-                    allocation.id
-                  }
-                  size="small"
-                  styles={{
-                    body: {
-                      padding: 10,
-                    },
-                  }}
-                >
-                  <Space
-                    direction="vertical"
-                    size={3}
-                  >
-                    <Space wrap>
-                      <Text strong>
-                        {allocation.projectName ??
-                          "Project"}
-                      </Text>
+            {record.allocations.map((allocation) => (
+              <Card
+                key={allocation.id}
+                size="small"
+                styles={{
+                  body: {
+                    padding: 10,
+                  },
+                }}
+              >
+                <Space direction="vertical" size={3}>
+                  <Space wrap>
+                    <Text strong>{allocation.projectName ?? "Project"}</Text>
 
-                      <Text type="secondary">
-                        /
-                      </Text>
+                    <Text type="secondary">/</Text>
 
-                      <Text>
-                        {allocation.sprintName ??
-                          "Sprint"}
-                      </Text>
-                    </Space>
-
-                    <Space wrap>
-                      <Tag color="blue">
-                        {
-                          allocation.percitant
-                        }
-                        %
-                      </Tag>
-
-                      {getAllocationStatusTag(
-                        allocation.status,
-                      )}
-                    </Space>
+                    <Text>{allocation.sprintName ?? "Sprint"}</Text>
                   </Space>
-                </Card>
-              ),
-            )}
+
+                  <Space wrap>
+                    <Tag color="blue">{allocation.percitant}%</Tag>
+
+                    {getAllocationStatusTag(allocation.status)}
+                  </Space>
+                </Space>
+              </Card>
+            ))}
           </Space>
         );
       },
@@ -583,19 +359,12 @@ export const ResourcePlannerPage:
       key: "status",
       width: 150,
 
-      render: (
-        _: unknown,
-        record:
-          ResourcePlannerItem,
-      ) =>
-        getCapacityTag(
-          record.capacityStatus,
-        ),
+      render: (_: unknown, record: ResourcePlannerItem) =>
+        getCapacityTag(record.capacityStatus),
     },
   ];
 
-  const summary =
-    plannerData?.summary;
+  const summary = plannerData?.summary;
 
   return (
     <div
@@ -622,10 +391,8 @@ export const ResourcePlannerPage:
         </Title>
 
         <Text type="secondary">
-          Theo dõi capacity hiện
-          tại của đội và các
-          allocation đang chiếm
-          tài nguyên.
+          Theo dõi capacity hiện tại của đội và các allocation đang chiếm tài
+          nguyên.
         </Text>
       </div>
 
@@ -638,72 +405,40 @@ export const ResourcePlannerPage:
             marginBottom: 24,
           }}
         >
-          <Col
-            xs={24}
-            sm={12}
-            xl={6}
-          >
+          <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
                 title="Tổng nhân sự"
-                value={
-                  summary
-                    ?.totalResources ??
-                  0
-                }
+                value={summary?.totalResources ?? 0}
               />
             </Card>
           </Col>
 
-          <Col
-            xs={24}
-            sm={12}
-            xl={6}
-          >
+          <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
                 title="Available"
-                value={
-                  summary
-                    ?.availableResources ??
-                  0
-                }
+                value={summary?.availableResources ?? 0}
                 suffix="người"
               />
             </Card>
           </Col>
 
-          <Col
-            xs={24}
-            sm={12}
-            xl={6}
-          >
+          <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
                 title="Sắp full"
-                value={
-                  summary
-                    ?.nearFullResources ??
-                  0
-                }
+                value={summary?.nearFullResources ?? 0}
                 suffix="người"
               />
             </Card>
           </Col>
 
-          <Col
-            xs={24}
-            sm={12}
-            xl={6}
-          >
+          <Col xs={24} sm={12} xl={6}>
             <Card>
               <Statistic
                 title="Full Capacity"
-                value={
-                  summary
-                    ?.fullResources ??
-                  0
-                }
+                value={summary?.fullResources ?? 0}
                 suffix="người"
               />
             </Card>
@@ -712,8 +447,7 @@ export const ResourcePlannerPage:
 
         {/* OVER ALLOCATION WARNING */}
 
-        {(summary?.overAllocatedResources ??
-          0) > 0 && (
+        {(summary?.overAllocatedResources ?? 0) > 0 && (
           <Alert
             type="error"
             showIcon
@@ -733,19 +467,9 @@ export const ResourcePlannerPage:
           }}
         >
           <Space>
-            <Text type="secondary">
-              Tổng capacity đang
-              được reserve:
-            </Text>
+            <Text type="secondary">Tổng capacity đang được reserve:</Text>
 
-            <Text strong>
-              {(
-                summary
-                  ?.totalUsedFte ??
-                0
-              ).toFixed(1)}{" "}
-              FTE
-            </Text>
+            <Text strong>{(summary?.totalUsedFte ?? 0).toFixed(1)} FTE</Text>
           </Space>
         </Card>
 
@@ -757,22 +481,13 @@ export const ResourcePlannerPage:
             marginBottom: 16,
           }}
         >
-          <Space
-            wrap
-            size="middle"
-          >
+          <Space wrap size="middle">
             <Input
               allowClear
-              prefix={
-                <SearchOutlined />
-              }
+              prefix={<SearchOutlined />}
               placeholder="Tìm tên, email, chức danh..."
               value={keyword}
-              onChange={(event) =>
-                setKeyword(
-                  event.target.value,
-                )
-              }
+              onChange={(event) => setKeyword(event.target.value)}
               style={{
                 width: 300,
               }}
@@ -780,44 +495,34 @@ export const ResourcePlannerPage:
 
             <Select
               value={statusFilter}
-              onChange={
-                setStatusFilter
-              }
+              onChange={setStatusFilter}
               style={{
                 width: 180,
               }}
               options={[
                 {
                   value: "ALL",
-                  label:
-                    "Tất cả capacity",
+                  label: "Tất cả capacity",
                 },
 
                 {
-                  value:
-                    "AVAILABLE",
-                  label:
-                    "Available",
+                  value: "AVAILABLE",
+                  label: "Available",
                 },
 
                 {
-                  value:
-                    "NEAR_FULL",
-                  label:
-                    "Sắp full",
+                  value: "NEAR_FULL",
+                  label: "Sắp full",
                 },
 
                 {
                   value: "FULL",
-                  label:
-                    "Full Capacity",
+                  label: "Full Capacity",
                 },
 
                 {
-                  value:
-                    "OVER_ALLOCATED",
-                  label:
-                    "Over Allocated",
+                  value: "OVER_ALLOCATED",
+                  label: "Over Allocated",
                 },
               ]}
             />
@@ -826,13 +531,10 @@ export const ResourcePlannerPage:
 
         {/* TABLE */}
 
-        {filteredResources.length >
-          0 ? (
+        {filteredResources.length > 0 ? (
           <Table
             columns={columns}
-            dataSource={
-              filteredResources
-            }
+            dataSource={filteredResources}
             rowKey="id"
             loading={loading}
             scroll={{
@@ -840,16 +542,11 @@ export const ResourcePlannerPage:
             }}
             pagination={{
               pageSize: 8,
-              showSizeChanger:
-                false,
+              showSizeChanger: false,
             }}
           />
         ) : (
-          !loading && (
-            <Empty
-              description="Không tìm thấy nhân sự phù hợp"
-            />
-          )
+          !loading && <Empty description="Không tìm thấy nhân sự phù hợp" />
         )}
       </Spin>
     </div>

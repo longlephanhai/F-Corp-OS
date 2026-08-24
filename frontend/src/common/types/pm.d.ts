@@ -22,6 +22,16 @@ export interface TaskItem {
   startDate?: string;
   endDate?: string;
   budgetRate?: number;
+
+  title?: string;
+
+  description?: string;
+
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+  status?: "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
+
+  progress?: number;
 }
 
 export interface TaskCandidate {

@@ -74,6 +74,21 @@ export const pmApi = {
   createTask: (data: Partial<TaskItem>) => {
     return axios.post<IBackendRes<TaskItem>>("/tasks", data);
   },
+  updateTaskLifecycle: (
+    taskId: string,
+    data: {
+      status?: "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
+
+      priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+      progress?: number;
+    },
+  ) => {
+    return axios.patch<IBackendRes<TaskItem>>(
+      `/tasks/${taskId}/lifecycle`,
+      data,
+    );
+  },
 
   // Giải phóng nhân sự kèm Đánh giá (Review)
   releaseUserSprint: (id: string, reviewData: any) => {

@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch } from '@nestjs/common';
 import { SkipCheckPermission } from 'decorator/customize';
 import { TasksService } from './task.service';
+import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 
 @SkipCheckPermission()
 @Controller('tasks')
@@ -32,5 +33,22 @@ export class TasksController {
   async createTask(@Body() body: any) {
     const data = await this.tasksService.createTask(body);
     return { statusCode: 201, message: 'Tạo Task mới thành công', data };
+  }
+
+  @Patch(':taskId/lifecycle')
+  async updateTaskLifecycle(
+    @Param('taskId')
+    taskId: string,
+
+    @Body()
+    body: UpdateTaskLifecycleDto,
+  ) {
+    const data = await this.tasksService.updateTaskLifecycle(taskId, body);
+
+    return {
+      statusCode: 200,
+      message: 'Cập nhật Task thành công',
+      data,
+    };
   }
 }

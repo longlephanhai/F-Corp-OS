@@ -27,6 +27,7 @@ import UserSkillPage from "./pages/dev/user-skill";
 import { ProjectsPage } from "./pages/pm/ProjectsPage";
 import { ProjectDetail } from "./pages/pm/ProjectDetail";
 import { ResourcePlannerPage } from "./pages/pm/ResourcePlannerPage";
+import { PMDashboardPage } from "./pages/pm/PMDashboardPage";
 
 import BenchForecast from "./pages/hr/BenchForecast";
 
@@ -81,7 +82,11 @@ function App() {
       children: [
         {
           index: true,
-          element: <ProjectsPage />, // Mặc định vào /pm sẽ văng ra Danh sách Dự án
+          element: <PMDashboardPage />,
+        },
+        {
+          path: "dashboard",
+          element: <PMDashboardPage />,
         },
         {
           path: "projects",

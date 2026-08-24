@@ -309,7 +309,7 @@ export const ProjectDetail: React.FC = () => {
         loading={loading}
         onOpenSprint={(id) => navigate(`/pm/sprints/${id}`)}
       />
-      
+
       {/* --- BẢNG DANH SÁCH SPRINT --- */}
       <Card
         title={
