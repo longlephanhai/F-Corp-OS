@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Param,
+  ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
 import { ResponseMessage } from 'decorator/customize';
@@ -11,7 +13,7 @@ import { HrTalentsService } from './hr-talents.service';
 export class HrTalentsController {
   constructor(
     private readonly hrTalentsService: HrTalentsService,
-  ) {}
+  ) { }
 
   /**
    * GET /api/v1/hr-talents
@@ -31,6 +33,24 @@ export class HrTalentsController {
   ) {
     return this.hrTalentsService.findAll(
       query,
+    );
+  }
+
+  @Get(':employeeId')
+  @ResponseMessage(
+    'Lấy hồ sơ năng lực nhân sự thành công',
+  )
+  findOne(
+    @Param(
+      'employeeId',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    employeeId: string,
+  ) {
+    return this.hrTalentsService.findOne(
+      employeeId,
     );
   }
 }
