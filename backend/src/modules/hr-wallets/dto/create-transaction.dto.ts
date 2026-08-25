@@ -1,5 +1,5 @@
 import {
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -31,9 +31,16 @@ export class CreateTransactionDto {
 
   /** Loại giao dịch: REWARD (thưởng) | PENALTY (phạt) | TRANSFER (chuyển) */
   @IsNotEmpty({ message: 'type is required' })
-  @IsEnum(TransactionType, {
-    message: `type must be one of: ${Object.values(TransactionType).join(', ')}`,
-  })
+  @IsIn(
+    [
+      TransactionType.REWARD,
+      TransactionType.PENALTY,
+    ],
+    {
+      message:
+        'type must be one of: REWARD, PENALTY',
+    },
+  )
   type: TransactionType;
 
   /** Lý do thực hiện giao dịch — bắt buộc */

@@ -46,6 +46,13 @@ export class HrWalletsService {
     dto: CreateTransactionDto,
     user: IUser,
   ): Promise<TransactionHistory> {
+
+     if (dto.type === TransactionType.TRANSFER) {
+        throw new BadRequestException(
+          'TRANSFER chưa được hỗ trợ. Giao dịch thủ công chỉ cho phép REWARD hoặc PENALTY.',
+        );
+      }
+    
     const queryRunner = this.dataSource.createQueryRunner();
 
     // Kết nối và bắt đầu DB transaction
@@ -85,7 +92,7 @@ export class HrWalletsService {
       const amount = Number(dto.amount);
       let newBalance: number;
 
-      if (dto.type === TransactionType.REWARD || dto.type === TransactionType.TRANSFER) {
+      if (dto.type === TransactionType.REWARD) {
         // REWARD / TRANSFER: cộng vào số dư
         newBalance = currentBalance + amount;
       } else {
