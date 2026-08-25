@@ -1,23 +1,58 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateSprintDto {
+  // ==========================================
+  // NAME
+  // ==========================================
+
   @IsNotEmpty()
   @IsString()
   name: string;
 
+  // ==========================================
+  // PROJECT
+  // ==========================================
+
   @IsNotEmpty()
-  @IsString()
+  @IsUUID()
   projectId: string;
 
+  // ==========================================
+  // START DATE
+  // ==========================================
+
   @IsNotEmpty()
-  @IsString()
+  @IsDateString()
   startDate: string;
 
+  // ==========================================
+  // END DATE
+  // ==========================================
+
   @IsNotEmpty()
-  @IsString()
+  @IsDateString()
   endDate: string;
 
+  // ==========================================
+  // ATTENDANT
+  //
+  // Hỗ trợ cả:
+  //
+  // ["Frontend", "Backend"]
+  //
+  // và JSON string cũ:
+  //
+  // '["Frontend","Backend"]'
+  //
+  // Service sẽ normalize về string[].
+  // ==========================================
+
   @IsOptional()
-  @IsString()
-  attendant: string;
+  attendant?: string | string[];
 }

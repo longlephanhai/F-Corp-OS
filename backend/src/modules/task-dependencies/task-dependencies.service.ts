@@ -12,6 +12,7 @@ import { Repository } from 'typeorm';
 import { TaskDependency } from './entities/task-dependency.entity';
 
 import { Task } from '../task/entities/task.entity';
+import { Sprint } from '../sprints/entities/sprint.entity';
 
 @Injectable()
 export class TaskDependenciesService {
@@ -21,6 +22,8 @@ export class TaskDependenciesService {
 
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
+    @InjectRepository(Sprint)
+    private readonly sprintRepo: Repository<Sprint>,
   ) {}
 
   // ==========================================
@@ -136,7 +139,28 @@ export class TaskDependenciesService {
     if (!dependsOnTask) {
       throw new NotFoundException('Không tìm thấy Task dependency.');
     }
+    // Không cho dependency xuyên Sprint.
+    if (task.sprintId !== dependsOnTask.sprintId) {
+      throw new ConflictException({
+        code: 'CROSS_SPRINT_DEPENDENCY',
 
+        message:
+          'Hai Task phải thuộc cùng một Sprint mới có thể tạo dependency.',
+
+        task: {
+          id: task.id,
+          sprintId: task.sprintId,
+        },
+
+        dependsOnTask: {
+          id: dependsOnTask.id,
+          sprintId: dependsOnTask.sprintId,
+        },
+      });
+    }
+
+    // Sprint terminal => Dependency read-only.
+    await this.assertSprintMutable(task.sprintId);
     const taskStatus = (task.status ?? 'TODO').toString().toUpperCase();
 
     const taskProgress = Number(task.progress ?? 0);
@@ -233,6 +257,17 @@ export class TaskDependenciesService {
         taskId,
       },
     });
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Không tìm thấy Task của dependency.');
+    }
+
+    await this.assertSprintMutable(task.sprintId);
 
     if (!dependency) {
       throw new NotFoundException('Không tìm thấy dependency.');
@@ -372,5 +407,34 @@ export class TaskDependenciesService {
     }
 
     return false;
+  }
+  private async assertSprintMutable(sprintId: string) {
+    const sprint = await this.sprintRepo.findOne({
+      where: {
+        id: sprintId,
+        isDeleted: false,
+      },
+    });
+
+    if (!sprint) {
+      throw new NotFoundException({
+        code: 'SPRINT_NOT_FOUND',
+        message: 'Không tìm thấy Sprint của Task.',
+      });
+    }
+
+    const status = (sprint.status ?? '').toString().toUpperCase();
+
+    if (status === 'COMPLETED' || status === 'CANCELLED') {
+      throw new ConflictException({
+        code: 'SPRINT_READ_ONLY',
+        message:
+          'Sprint đã hoàn thành hoặc đã hủy. Không thể thay đổi Task Dependency.',
+        sprintId: sprint.id,
+        sprintStatus: sprint.status,
+      });
+    }
+
+    return sprint;
   }
 }

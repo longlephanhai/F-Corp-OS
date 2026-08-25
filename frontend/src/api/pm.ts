@@ -127,11 +127,22 @@ export const pmApi = {
   getSprintsByProject: (projectId: string) => {
     return axios.get<IBackendRes<any[]>>(`/sprints/project/${projectId}`);
   },
+  getSprintById: (sprintId: string) => {
+    return axios.get<IBackendRes<any>>(`/sprints/${sprintId}`);
+  },
 
   // Khởi tạo Sprint mới (Có truyền mảng attendant)
   createSprint: (data: any) => {
-    console.log("tao la khanh o pmts", data);
     return axios.post<IBackendRes<any>>("/sprints", data);
+  },
+
+  updateSprintStatus: (
+    sprintId: string,
+    status: "active" | "completed" | "cancelled",
+  ) => {
+    return axios.patch<IBackendRes<any>>(`/sprints/${sprintId}/status`, {
+      status,
+    });
   },
 
   getMyProjects: () => {
@@ -167,6 +178,4 @@ export const pmApi = {
   removeTaskDependency: (taskId: string, dependencyId: string) => {
     return axios.delete(`/tasks/${taskId}/dependencies/${dependencyId}`);
   },
-
-  
 };

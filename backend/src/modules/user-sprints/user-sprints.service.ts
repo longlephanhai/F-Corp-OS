@@ -139,7 +139,7 @@ export class UserSprintService {
     if (!sprint) {
       throw new NotFoundException('Không tìm thấy Sprint.');
     }
-
+    this.assertSprintMutable(sprint);
     if (!sprint.startDate || !sprint.endDate) {
       throw new BadRequestException(
         'Sprint chưa có thời gian bắt đầu/kết thúc nên chưa thể phân bổ nhân sự.',
@@ -298,6 +298,11 @@ export class UserSprintService {
     if (!allocation) {
       throw new NotFoundException('Không tìm thấy yêu cầu phân bổ.');
     }
+    if (!allocation.sprint) {
+      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
+    }
+
+    this.assertSprintMutable(allocation.sprint);
 
     if (allocation.status !== UserSprintStatus.REQUESTED) {
       throw new ConflictException({
@@ -345,21 +350,46 @@ export class UserSprintService {
   }
   // 3. Cập nhật trạng thái (assigned / released)
   async updateStatus(id: string, status: UserSprintStatus) {
-    const record = await this.userSprintRepo.findOne({ where: { id } });
+    const record = await this.userSprintRepo.findOne({
+      where: {
+        id,
+      },
+
+      relations: {
+        sprint: true,
+      },
+    });
     if (!record)
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
+    if (!record.sprint) {
+      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
+    }
 
+    this.assertSprintMutable(record.sprint);
     record.status = status;
     return await this.userSprintRepo.save(record);
   }
 
   // Hàm Giải phóng & Lưu đánh giá
   async releaseUser(id: string, reviewData: any) {
-    const record = await this.userSprintRepo.findOne({ where: { id } });
+    const record = await this.userSprintRepo.findOne({
+      where: {
+        id,
+      },
+
+      relations: {
+        sprint: true,
+      },
+    });
     if (!record) {
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
     }
+    if (!record.sprint) {
+      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
+    }
 
+    this.assertSprintMutable(record.sprint);
+    
     if (record.status !== UserSprintStatus.ASSIGNED) {
       throw new ConflictException({
         code: 'INVALID_RELEASE',
@@ -600,5 +630,18 @@ export class UserSprintService {
 
       resources,
     };
+  }
+  private assertSprintMutable(sprint: Sprint) {
+    const status = (sprint.status ?? '').toString().toUpperCase();
+
+    if (status === 'COMPLETED' || status === 'CANCELLED') {
+      throw new ConflictException({
+        code: 'SPRINT_READ_ONLY',
+        message:
+          'Sprint đã hoàn thành hoặc đã hủy. Không thể thay đổi phân bổ nhân sự.',
+        sprintId: sprint.id,
+        sprintStatus: sprint.status,
+      });
+    }
   }
 }

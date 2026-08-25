@@ -50,6 +50,7 @@ interface Props {
   onRefresh: () => void | Promise<void>;
 
   dependencyStatusMap: Record<string, DependencyStatus>;
+  readOnly?: boolean;
 }
 
 // ==========================================
@@ -78,6 +79,7 @@ export const SprintTaskTable: React.FC<Props> = ({
   onManageDependencies,
 
   dependencyStatusMap,
+  readOnly = false,
 }) => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -243,7 +245,7 @@ export const SprintTaskTable: React.FC<Props> = ({
           <Select
             value={priority}
             loading={actionLoading === record.id}
-            disabled={actionLoading === record.id}
+            disabled={readOnly || actionLoading === record.id}
             style={{
               width: 125,
             }}
@@ -324,7 +326,7 @@ export const SprintTaskTable: React.FC<Props> = ({
               // QUAN TRỌNG:
               // dependency chưa hoàn thành
               // => không cho đổi lifecycle.
-              disabled={locked || actionLoading === record.id}
+              disabled={readOnly || locked || actionLoading === record.id}
               style={{
                 width: 145,
               }}
@@ -416,7 +418,7 @@ export const SprintTaskTable: React.FC<Props> = ({
                   min={0}
                   max={100}
                   // QUAN TRỌNG
-                  disabled={locked || actionLoading === record.id}
+                  disabled={readOnly || locked || actionLoading === record.id}
                   style={{
                     width: 80,
                   }}
@@ -529,6 +531,7 @@ export const SprintTaskTable: React.FC<Props> = ({
             <Button
               size="small"
               icon={locked ? <LockOutlined /> : undefined}
+              disabled={readOnly}
               onClick={() => onManageDependencies(record)}
             >
               Dependencies
@@ -540,6 +543,7 @@ export const SprintTaskTable: React.FC<Props> = ({
                 ghost
                 size="small"
                 onClick={() => onFindCandidate(record)}
+                disabled={readOnly}
               >
                 Tìm nhân sự
               </Button>
@@ -571,7 +575,7 @@ export const SprintTaskTable: React.FC<Props> = ({
           Theo dõi Task, priority, tiến độ, dependency và nhân sự thực hiện.
         </Text>
 
-        <Button type="primary" onClick={onCreateTask}>
+        <Button type="primary" disabled={readOnly} onClick={onCreateTask}>
           + Tạo Task mới
         </Button>
       </div>

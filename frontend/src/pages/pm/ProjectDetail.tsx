@@ -21,6 +21,9 @@ import {
   UserOutlined,
   CalendarOutlined,
   SettingOutlined,
+  PlayCircleOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
@@ -76,16 +79,27 @@ export const ProjectDetail: React.FC = () => {
 
   // 2. HÀM TÍNH % TIẾN ĐỘ DỰ ÁN DỰA TRÊN SPRINT
   const calculateProgress = () => {
-    if (!sprints || sprints.length === 0) return 0;
+    if (!sprints || sprints.length === 0) {
+      return 0;
+    }
 
-    // Đếm số Sprint đã hoàn thành (status = completed hoặc ngày endDate nhỏ hơn hôm nay)
-    const completedSprints = sprints.filter((s) => {
-      const isCompletedByDate = dayjs().isAfter(dayjs(s.end_date || s.endDate));
-      return s.status === "completed" || isCompletedByDate;
-    }).length;
+    // Sprint CANCELLED không tính vào tiến độ delivery.
+    const deliverySprints = sprints.filter(
+      (sprint) => (sprint.status ?? "").toLowerCase() !== "cancelled",
+    );
 
-    // Tính % (Làm tròn số)
-    return Math.round((completedSprints / sprints.length) * 100);
+    if (deliverySprints.length === 0) {
+      return 0;
+    }
+
+    // QUAN TRỌNG:
+    // Chỉ backend status = completed mới được tính hoàn thành.
+    // Không auto completed theo endDate.
+    const completedSprints = deliverySprints.filter(
+      (sprint) => (sprint.status ?? "").toLowerCase() === "completed",
+    ).length;
+
+    return Math.round((completedSprints / deliverySprints.length) * 100);
   };
 
   // 3. HÀM TẠO SPRINT MỚI BẮN XUỐNG DB
@@ -94,10 +108,10 @@ export const ProjectDetail: React.FC = () => {
       setLoading(true);
       const payload = {
         name: values.name,
-        projectId: projectId,
-        startDate: values.dateRange[0].format("YYYY-MM-DD 00:00:00"),
-        endDate: values.dateRange[1].format("YYYY-MM-DD 23:59:59"),
-        attendant: JSON.stringify(values.attendant),
+        projectId,
+        startDate: values.dateRange[0].format("YYYY-MM-DD"),
+        endDate: values.dateRange[1].format("YYYY-MM-DD"),
+        attendant: values.attendant ?? [],
       };
 
       await pmApi.createSprint(payload);
@@ -111,17 +125,190 @@ export const ProjectDetail: React.FC = () => {
       setLoading(false);
     }
   };
+  const handleSprintStatusChange = async (
+    sprint: any,
+    status: "active" | "completed" | "cancelled",
+  ) => {
+    try {
+      setLoading(true);
 
+      await pmApi.updateSprintStatus(sprint.id, status);
+
+      const successMessages = {
+        active: "Sprint đã bắt đầu.",
+
+        completed: "Sprint đã hoàn thành.",
+
+        cancelled: "Sprint đã được hủy.",
+      };
+
+      message.success(successMessages[status]);
+
+      await fetchProjectDetails();
+    } catch (error: any) {
+      console.error("Sprint lifecycle error:", error);
+
+      const response = error?.response?.data;
+
+      const backendMessage =
+        response?.message ??
+        response?.error?.message ??
+        "Không thể cập nhật trạng thái Sprint.";
+
+      const code = response?.code ?? response?.error?.code;
+
+      // ========================================
+      // COMPLETION GUARD DETAILS
+      // ========================================
+
+      if (
+        code === "SPRINT_HAS_UNFINISHED_TASKS" &&
+        Array.isArray(response?.unfinishedTasks)
+      ) {
+        Modal.warning({
+          title: "Sprint chưa thể hoàn thành",
+
+          content: (
+            <Space direction="vertical" size={4}>
+              <Text>{backendMessage}</Text>
+
+              {response.unfinishedTasks.map((task: any) => (
+                <Text key={task.id} type="danger">
+                  • {task.title} — {task.status} — {task.progress}%
+                </Text>
+              ))}
+            </Space>
+          ),
+        });
+
+        return;
+      }
+
+      if (code === "SPRINT_HAS_ACTIVE_ALLOCATIONS") {
+        Modal.warning({
+          title: "Còn nhân sự chưa Release",
+
+          content: backendMessage,
+        });
+
+        return;
+      }
+
+      if (code === "SPRINT_HAS_UNFINISHED_DEPENDENCIES") {
+        Modal.warning({
+          title: "Dependency chưa hoàn thành",
+
+          content: backendMessage,
+        });
+
+        return;
+      }
+
+      if (code === "SPRINT_HAS_ASSIGNED_RESOURCES") {
+        Modal.warning({
+          title: "Không thể hủy Sprint",
+
+          content: backendMessage,
+        });
+
+        return;
+      }
+
+      Modal.error({
+        title: "Không thể cập nhật Sprint",
+
+        content: backendMessage,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  const confirmStartSprint = (sprint: any) => {
+    Modal.confirm({
+      title: "Bắt đầu Sprint?",
+
+      content: `Sprint "${sprint.name}" sẽ chuyển sang trạng thái ACTIVE.`,
+
+      okText: "Bắt đầu",
+
+      cancelText: "Đóng",
+
+      onOk: async () => {
+        await handleSprintStatusChange(sprint, "active");
+      },
+    });
+  };
+
+  const confirmCompleteSprint = (sprint: any) => {
+    Modal.confirm({
+      title: "Hoàn thành Sprint?",
+
+      content:
+        "Hệ thống sẽ kiểm tra Task, Dependency và Allocation trước khi cho phép hoàn thành.",
+
+      okText: "Hoàn thành",
+
+      cancelText: "Đóng",
+
+      onOk: async () => {
+        await handleSprintStatusChange(sprint, "completed");
+      },
+    });
+  };
+
+  const confirmCancelSprint = (sprint: any) => {
+    Modal.confirm({
+      title: "Hủy Sprint?",
+
+      content: `Bạn có chắc muốn hủy "${sprint.name}"?`,
+
+      okText: "Hủy Sprint",
+
+      okButtonProps: {
+        danger: true,
+      },
+
+      cancelText: "Đóng",
+
+      onOk: async () => {
+        await handleSprintStatusChange(sprint, "cancelled");
+      },
+    });
+  };
   // Hàm tự động tính toán Status của Sprint
-  const getSprintStatus = (start: string, end: string) => {
-    const today = dayjs();
-    const startDate = dayjs(start);
-    const endDate = dayjs(end);
+  const getSprintStatus = (sprint: any) => {
+    const status = (sprint?.status ?? "").toString().toLowerCase();
+    switch (status) {
+      case "upcoming":
+        return {
+          text: "SẮP TỚI",
+          color: "blue",
+        };
 
-    if (today.isBefore(startDate)) return { text: "SẮP TỚI", color: "default" };
-    if (today.isAfter(endDate))
-      return { text: "ĐÃ HOÀN THÀNH", color: "green" };
-    return { text: "ĐANG CHẠY", color: "processing" };
+      case "active":
+        return {
+          text: "ĐANG CHẠY",
+          color: "processing",
+        };
+
+      case "completed":
+        return {
+          text: "ĐÃ HOÀN THÀNH",
+          color: "green",
+        };
+
+      case "cancelled":
+        return {
+          text: "ĐÃ HỦY",
+          color: "default",
+        };
+
+      default:
+        return {
+          text: "KHÔNG XÁC ĐỊNH",
+          color: "default",
+        };
+    }
   };
 
   // 4. CẤU HÌNH CỘT CHO BẢNG SPRINT
@@ -155,10 +342,8 @@ export const ProjectDetail: React.FC = () => {
       title: "TRẠNG THÁI",
       key: "status",
       render: (_: any, record: any) => {
-        const status = getSprintStatus(
-          record.start_date || record.startDate,
-          record.end_date || record.endDate,
-        );
+        const status = getSprintStatus(record);
+
         return <Tag color={status.color}>{status.text}</Tag>;
       },
     },
@@ -188,17 +373,85 @@ export const ProjectDetail: React.FC = () => {
     },
     {
       title: "THAO TÁC",
+
       key: "action",
+
       align: "right" as const,
-      render: (_: any, record: any) => (
-        <Button
-          type="default"
-          icon={<SettingOutlined />}
-          onClick={() => navigate(`/pm/sprints/${record.id}`)}
-        >
-          Quản lý Task
-        </Button>
-      ),
+
+      width: 360,
+
+      render: (_: any, record: any) => {
+        const status = (record.status ?? "").toString().toLowerCase();
+
+        return (
+          <Space wrap>
+            {/* ================================= */}
+            {/* UPCOMING */}
+            {/* ================================= */}
+
+            {status === "upcoming" && (
+              <>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => confirmStartSprint(record)}
+                >
+                  Bắt đầu
+                </Button>
+
+                <Button
+                  danger
+                  size="small"
+                  icon={<StopOutlined />}
+                  onClick={() => confirmCancelSprint(record)}
+                >
+                  Hủy
+                </Button>
+              </>
+            )}
+
+            {/* ================================= */}
+            {/* ACTIVE */}
+            {/* ================================= */}
+
+            {status === "active" && (
+              <>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => confirmCompleteSprint(record)}
+                >
+                  Hoàn thành
+                </Button>
+
+                <Button
+                  danger
+                  size="small"
+                  icon={<StopOutlined />}
+                  onClick={() => confirmCancelSprint(record)}
+                >
+                  Hủy
+                </Button>
+              </>
+            )}
+
+            {/* ================================= */}
+            {/* MANAGEMENT */}
+            {/* ================================= */}
+
+            <Button
+              type="default"
+              size="small"
+              icon={<SettingOutlined />}
+              onClick={() => navigate(`/pm/sprints/${record.id}`)}
+            >
+              Quản lý
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 

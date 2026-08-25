@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { Button, message, Segmented, Tabs, Typography } from "antd";
+import { Alert, Button, message, Segmented, Tabs, Tag, Typography } from "antd";
 
 import { useParams } from "react-router-dom";
 
@@ -49,6 +49,13 @@ export const SprintManagementPage: React.FC = () => {
   // ==========================================
 
   const [loading, setLoading] = useState(false);
+
+  const [sprintInfo, setSprintInfo] = useState<any>(null);
+
+  const sprintStatus = (sprintInfo?.status ?? "").toString().toLowerCase();
+
+  const isReadOnly =
+    sprintStatus === "completed" || sprintStatus === "cancelled";
 
   const [userSprints, setUserSprints] = useState<UserSprintItem[]>([]);
 
@@ -180,7 +187,7 @@ export const SprintManagementPage: React.FC = () => {
   const fetchSprintData = useCallback(async () => {
     if (!sprintId) {
       setUserSprints([]);
-
+      setSprintInfo(null);
       setTasks([]);
 
       setTeamMembers([]);
@@ -193,7 +200,9 @@ export const SprintManagementPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const [resUsers, resTasks, resTeam] = await Promise.all([
+      const [resSprint, resUsers, resTasks, resTeam] = await Promise.all([
+        pmApi.getSprintById(sprintId),
+
         pmApi.getSprintUsers(sprintId),
 
         pmApi.getSprintTasks(sprintId),
@@ -204,6 +213,7 @@ export const SprintManagementPage: React.FC = () => {
       // ==================================
       // NORMALIZE RESPONSE
       // ==================================
+      const sprintData = resSprint?.data?.data ?? resSprint?.data ?? null;
 
       const userSprintList = resUsers?.data?.data ?? resUsers?.data ?? [];
 
@@ -222,7 +232,7 @@ export const SprintManagementPage: React.FC = () => {
       // ==================================
       // SET DATA
       // ==================================
-
+      setSprintInfo(sprintData);
       setUserSprints(normalizedUserSprints);
 
       setTasks(normalizedTasks);
@@ -287,6 +297,25 @@ export const SprintManagementPage: React.FC = () => {
         <Title level={4}>Không tìm thấy Sprint</Title>
 
         <Text type="secondary">URL hiện tại không chứa Sprint ID.</Text>
+        <div
+          style={{
+            marginTop: 8,
+          }}
+        >
+          <Tag
+            color={
+              sprintStatus === "active"
+                ? "processing"
+                : sprintStatus === "upcoming"
+                  ? "blue"
+                  : sprintStatus === "completed"
+                    ? "green"
+                    : "default"
+            }
+          >
+            {(sprintInfo?.status ?? "UNKNOWN").toString().toUpperCase()}
+          </Tag>
+        </div>
       </div>
     );
   }
@@ -328,6 +357,22 @@ export const SprintManagementPage: React.FC = () => {
         </Text>
       </div>
 
+      {isReadOnly && (
+        <Alert
+          type={sprintStatus === "completed" ? "success" : "warning"}
+          showIcon
+          title={
+            sprintStatus === "completed"
+              ? "Sprint đã hoàn thành — chế độ chỉ đọc"
+              : "Sprint đã bị hủy — chế độ chỉ đọc"
+          }
+          description="Task, Dependency và Allocation của Sprint này không còn được phép thay đổi."
+          style={{
+            marginBottom: 20,
+          }}
+        />
+      )}
+
       {/* ====================================== */}
       {/* TABS */}
       {/* ====================================== */}
@@ -363,6 +408,7 @@ export const SprintManagementPage: React.FC = () => {
                 >
                   <Button
                     type="primary"
+                    disabled={isReadOnly}
                     onClick={() => setIsAssignModalOpen(true)}
                   >
                     + Gán nhân viên vào Sprint
@@ -374,6 +420,7 @@ export const SprintManagementPage: React.FC = () => {
                 <SprintAllocationTable
                   userSprints={userSprints}
                   loading={loading}
+                  readOnly={isReadOnly}
                   onRefresh={fetchSprintData}
                   onRelease={handleOpenRelease}
                 />
@@ -451,11 +498,14 @@ export const SprintManagementPage: React.FC = () => {
                     onFindCandidate={handleFindCandidate}
                     onManageDependencies={handleOpenDependencies}
                     onRefresh={fetchSprintData}
+                    readOnly={isReadOnly}
                   />
                 ) : (
                   <SprintTaskKanban
                     tasks={tasks}
                     loading={loading}
+                    readOnly={isReadOnly}
+                    dependencyStatusMap={dependencyStatusMap}
                     onCreateTask={() => setIsTaskModalOpen(true)}
                     onFindCandidate={handleFindCandidate}
                     onRefresh={fetchSprintData}
@@ -472,7 +522,7 @@ export const SprintManagementPage: React.FC = () => {
       {/* ====================================== */}
 
       <AssignResourceModal
-        open={isAssignModalOpen}
+        open={isAssignModalOpen && !isReadOnly}
         sprintId={sprintId}
         teamMembers={teamMembers}
         onClose={() => setIsAssignModalOpen(false)}
@@ -484,7 +534,7 @@ export const SprintManagementPage: React.FC = () => {
       {/* ====================================== */}
 
       <CreateTaskModal
-        open={isTaskModalOpen}
+        open={isTaskModalOpen && !isReadOnly}
         sprintId={sprintId}
         onClose={() => setIsTaskModalOpen(false)}
         onRefresh={() => {
@@ -497,7 +547,7 @@ export const SprintManagementPage: React.FC = () => {
       {/* ====================================== */}
 
       <TaskMatchingDrawer
-        open={isMatchingOpen}
+        open={isMatchingOpen && !isReadOnly}
         task={selectedTask}
         sprintId={sprintId}
         onClose={() => {
@@ -513,7 +563,7 @@ export const SprintManagementPage: React.FC = () => {
       {/* ====================================== */}
 
       <ReleaseReviewModal
-        open={isReleaseModalOpen}
+        open={isReleaseModalOpen && !isReadOnly}
         userSprintId={releaseUserSprintId}
         devName={releaseDevName}
         onClose={() => {
@@ -533,7 +583,7 @@ export const SprintManagementPage: React.FC = () => {
       {/* ====================================== */}
 
       <TaskDependenciesModal
-        open={isDependencyModalOpen}
+        open={isDependencyModalOpen && !isReadOnly}
         task={dependencyTask}
         tasks={tasks}
         // ====================================

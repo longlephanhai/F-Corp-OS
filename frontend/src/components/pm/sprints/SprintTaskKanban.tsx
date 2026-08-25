@@ -19,6 +19,7 @@ import {
 import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
+  LockOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 
@@ -28,6 +29,16 @@ import { pmApi } from "../../../api/pm";
 const { Text, Title } = Typography;
 
 type KanbanStatus = "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
+
+interface DependencyStatus {
+  taskId: string;
+
+  totalDependencies: number;
+
+  unfinishedDependencies: number;
+
+  isBlockedByDependency: boolean;
+}
 
 interface Props {
   tasks: TaskItem[];
@@ -39,6 +50,9 @@ interface Props {
   onFindCandidate: (task: TaskItem) => void;
 
   onRefresh: () => void | Promise<void>;
+  readOnly?: boolean;
+
+  dependencyStatusMap: Record<string, DependencyStatus>;
 }
 
 const STATUS_COLUMNS: Array<{
@@ -109,6 +123,8 @@ export const SprintTaskKanban: React.FC<Props> = ({
   onCreateTask,
   onFindCandidate,
   onRefresh,
+  readOnly = false,
+  dependencyStatusMap,
 }) => {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -141,6 +157,11 @@ export const SprintTaskKanban: React.FC<Props> = ({
 
   const handleChangeStatus = async (task: TaskItem, status: KanbanStatus) => {
     try {
+      if (readOnly) {
+        message.warning("Sprint đang ở chế độ chỉ đọc.");
+
+        return;
+      }
       setActionLoadingId(task.id);
 
       await pmApi.updateTaskLifecycle(task.id, {
@@ -179,7 +200,7 @@ export const SprintTaskKanban: React.FC<Props> = ({
       >
         <Text type="secondary">Theo dõi luồng công việc theo trạng thái.</Text>
 
-        <Button type="primary" onClick={onCreateTask}>
+        <Button type="primary" disabled={readOnly} onClick={onCreateTask}>
           + Tạo Task mới
         </Button>
       </div>
@@ -240,7 +261,10 @@ export const SprintTaskKanban: React.FC<Props> = ({
                           100,
                           Math.max(0, Number(task.progress ?? 0)),
                         );
+                        const dependencyStatus = dependencyStatusMap[task.id];
 
+                        const dependencyLocked =
+                          dependencyStatus?.isBlockedByDependency ?? false;
                         return (
                           <Card
                             key={task.id}
@@ -293,7 +317,12 @@ export const SprintTaskKanban: React.FC<Props> = ({
                                   </Tag>
                                 )}
                               </Space>
-
+                              {dependencyLocked && (
+                                <Tag color="orange" icon={<LockOutlined />}>
+                                  Chờ {dependencyStatus?.unfinishedDependencies}{" "}
+                                  dependency
+                                </Tag>
+                              )}
                               {/* TIME */}
 
                               <Space size={4}>
@@ -357,7 +386,11 @@ export const SprintTaskKanban: React.FC<Props> = ({
                                 <Select
                                   value={column.status}
                                   loading={actionLoadingId === task.id}
-                                  disabled={actionLoadingId === task.id}
+                                  disabled={
+                                    readOnly ||
+                                    dependencyLocked ||
+                                    actionLoadingId === task.id
+                                  }
                                   style={{
                                     width: "100%",
                                   }}

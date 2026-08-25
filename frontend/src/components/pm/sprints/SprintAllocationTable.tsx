@@ -22,6 +22,7 @@ interface Props {
   onRefresh: () => void | Promise<void>;
 
   onRelease: (record: UserSprintItem) => void;
+  readOnly?: boolean;
 }
 
 const normalizeStatus = (status?: string) => (status ?? "").toUpperCase();
@@ -57,6 +58,7 @@ const STATUS_CONFIG: Record<
 export const SprintAllocationTable: React.FC<Props> = ({
   userSprints,
   loading = false,
+  readOnly = false,
   onRefresh,
   onRelease,
 }) => {
@@ -225,6 +227,9 @@ export const SprintAllocationTable: React.FC<Props> = ({
       key: "action",
 
       render: (_: unknown, record: UserSprintItem) => {
+        if (readOnly) {
+          return <Text type="secondary">Chỉ đọc</Text>;
+        }
         const status = normalizeStatus(record.status);
 
         // ------------------------------------

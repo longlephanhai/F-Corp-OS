@@ -6,9 +6,10 @@ import { Task } from '../task/entities/task.entity';
 
 import { TaskDependenciesController } from './task-dependencies.controller';
 import { TaskDependenciesService } from './task-dependencies.service';
+import { Sprint } from '../sprints/entities/sprint.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TaskDependency, Task])],
+  imports: [TypeOrmModule.forFeature([TaskDependency, Task, Sprint])],
 
   controllers: [TaskDependenciesController],
 

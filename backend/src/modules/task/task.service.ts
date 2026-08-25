@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskPriority, TaskStatus } from './entities/task.entity';
@@ -6,12 +11,15 @@ import { Task, TaskPriority, TaskStatus } from './entities/task.entity';
 import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { User } from '../users/entities/user.entity';
 import { TaskDependenciesService } from '../task-dependencies/task-dependencies.service';
+import { Sprint } from '../sprints/entities/sprint.entity';
 
 @Injectable()
 export class TasksService {
   constructor(
     @InjectRepository(Task)
     private taskRepo: Repository<Task>,
+    @InjectRepository(Sprint)
+    private readonly sprintRepo: Repository<Sprint>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
 
@@ -28,6 +36,14 @@ export class TasksService {
   // 4. Tạo Task và gán kĩ năng yêu cầu (Required Skills JSON)
   async createTask(data: any) {
     Logger.debug('tao là khánh', data);
+    if (!data.sprintId) {
+      throw new NotFoundException({
+        code: 'SPRINT_REQUIRED',
+        message: 'Task phải thuộc một Sprint.',
+      });
+    }
+
+    await this.assertSprintMutable(data.sprintId);
     const newTask = this.taskRepo.create({
       sprintId: data.sprintId,
 
@@ -139,7 +155,7 @@ export class TasksService {
     if (!task) {
       throw new NotFoundException('Không tìm thấy Task');
     }
-
+    await this.assertSprintMutable(task.sprintId);
     // ==========================================
     // DEPENDENCY ENFORCEMENT
     // ==========================================
@@ -205,5 +221,34 @@ export class TasksService {
     }
 
     return await this.taskRepo.save(task);
+  }
+
+  private async assertSprintMutable(sprintId: string) {
+    const sprint = await this.sprintRepo.findOne({
+      where: {
+        id: sprintId,
+        isDeleted: false,
+      },
+    });
+
+    if (!sprint) {
+      throw new NotFoundException({
+        code: 'SPRINT_NOT_FOUND',
+        message: 'Không tìm thấy Sprint của Task.',
+      });
+    }
+
+    const status = (sprint.status ?? '').toString().toUpperCase();
+
+    if (status === 'COMPLETED' || status === 'CANCELLED') {
+      throw new ConflictException({
+        code: 'SPRINT_READ_ONLY',
+        message: 'Sprint đã hoàn thành hoặc đã hủy. Không thể thay đổi Task.',
+        sprintId: sprint.id,
+        sprintStatus: sprint.status,
+      });
+    }
+
+    return sprint;
   }
 }
