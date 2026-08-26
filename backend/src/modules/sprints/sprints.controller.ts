@@ -92,6 +92,22 @@ export class SprintsController {
   // GET /sprints/:id
   // ==========================================
 
+  @Get(':id/readiness')
+  async getStartReadiness(
+    @Param('id')
+    id: string,
+  ) {
+    const data = await this.sprintsService.getStartReadiness(id);
+
+    return {
+      statusCode: 200,
+
+      message: 'Kiểm tra Sprint readiness thành công',
+
+      data,
+    };
+  }
+
   @Get(':id')
   async findOne(
     @Param('id')

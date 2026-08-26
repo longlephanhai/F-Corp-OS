@@ -330,17 +330,31 @@ export class UserSprintService {
       where: {
         id,
       },
+
+      relations: {
+        sprint: true,
+      },
     });
 
     if (!allocation) {
       throw new NotFoundException('Không tìm thấy yêu cầu phân bổ.');
     }
 
+    if (!allocation.sprint) {
+      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
+    }
+
+    // Sprint COMPLETED / CANCELLED
+    // thì allocation phải read-only.
+    this.assertSprintMutable(allocation.sprint);
+
     if (allocation.status !== UserSprintStatus.REQUESTED) {
       throw new ForbiddenException({
         code: 'CANNOT_CANCEL_ALLOCATION',
 
-        message: 'Chỉ yêu cầu chưa gửi phê duyệt mới có thể hủy.',
+        message: 'Chỉ allocation ở trạng thái REQUESTED mới được hủy.',
+
+        currentStatus: allocation.status,
       });
     }
 
@@ -348,9 +362,87 @@ export class UserSprintService {
 
     return {
       success: true,
+
       id,
     };
   }
+  private async assertAllocationCapacityBeforeAssign(allocation: UserSprint) {
+    if (!allocation.sprint) {
+      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
+    }
+
+    const requestedPercentage = Number(allocation.percitant ?? 0);
+
+    const activeStatuses = [
+      UserSprintStatus.REQUESTED,
+      UserSprintStatus.PENDING_APPROVAL,
+      UserSprintStatus.ASSIGNED,
+    ];
+
+    const overlappingAllocations = await this.userSprintRepo
+      .createQueryBuilder('userSprint')
+      .innerJoinAndSelect('userSprint.sprint', 'sprint')
+      .where('userSprint.userId = :userId', {
+        userId: allocation.userId,
+      })
+      // Không tính chính allocation
+      // đang được approve.
+      .andWhere('userSprint.id != :allocationId', {
+        allocationId: allocation.id,
+      })
+      .andWhere('userSprint.status IN (:...activeStatuses)', {
+        activeStatuses,
+      })
+      .andWhere('sprint.startDate <= :targetEnd', {
+        targetEnd: allocation.sprint.endDate,
+      })
+      .andWhere('sprint.endDate >= :targetStart', {
+        targetStart: allocation.sprint.startDate,
+      })
+      .getMany();
+
+    const currentAllocation = overlappingAllocations.reduce(
+      (total, item) => total + Number(item.percitant ?? 0),
+      0,
+    );
+
+    const afterAllocation = currentAllocation + requestedPercentage;
+
+    if (afterAllocation > 100) {
+      const availableCapacity = Math.max(0, 100 - currentAllocation);
+
+      throw new ConflictException({
+        code: 'ALLOCATION_CAPACITY_CHANGED',
+
+        message: `Capacity của nhân sự đã thay đổi. Hiện chỉ còn ${availableCapacity}% nên không thể duyệt allocation ${requestedPercentage}%.`,
+
+        userId: allocation.userId,
+
+        currentAllocation,
+
+        requestedAllocation: requestedPercentage,
+
+        availableCapacity,
+
+        afterAllocation,
+
+        conflicts: overlappingAllocations.map((item) => ({
+          allocationId: item.id,
+
+          sprintId: item.sprintId,
+
+          sprintName: item.sprint?.name,
+
+          percentage: Number(item.percitant ?? 0),
+
+          status: item.status,
+        })),
+      });
+    }
+
+    return true;
+  }
+
   // 3. Cập nhật trạng thái (assigned / released)
   async updateStatus(id: string, status: UserSprintStatus) {
     const record = await this.userSprintRepo.findOne({
@@ -362,14 +454,119 @@ export class UserSprintService {
         sprint: true,
       },
     });
-    if (!record)
+
+    if (!record) {
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
+    }
+
     if (!record.sprint) {
       throw new NotFoundException('Không tìm thấy Sprint của allocation.');
     }
 
+    // ==========================================
+    // VALID TARGET STATUS
+    // ==========================================
+
+    const validStatuses = Object.values(UserSprintStatus);
+
+    if (!validStatuses.includes(status)) {
+      throw new BadRequestException({
+        code: 'INVALID_ALLOCATION_STATUS',
+
+        message: 'Trạng thái allocation không hợp lệ.',
+
+        requestedStatus: status,
+      });
+    }
+
+    // ==========================================
+    // TERMINAL SPRINT
+    // ==========================================
+
     this.assertSprintMutable(record.sprint);
-    record.status = status;
+
+    // ==========================================
+    // SAME STATUS
+    // ==========================================
+
+    if (record.status === status) {
+      return record;
+    }
+
+    // ==========================================
+    // RELEASE KHÔNG ĐƯỢC BYPASS
+    // ==========================================
+    //
+    // Release phải đi qua:
+    //
+    // PATCH /user-sprint/:id/release
+    //
+    // vì endpoint đó:
+    // - check unfinished Task
+    // - lưu hard skill
+    // - lưu soft skill
+    // - lưu review
+    // ==========================================
+
+    if (status === UserSprintStatus.RELEASED) {
+      throw new ConflictException({
+        code: 'USE_RELEASE_WORKFLOW',
+
+        message:
+          'Không thể chuyển trực tiếp allocation sang RELEASED. Hãy sử dụng quy trình Release & Review.',
+      });
+    }
+
+    // ==========================================
+    // STATE MACHINE
+    // ==========================================
+    //
+    // REQUESTED
+    //      ↓ dedicated endpoint submit-approval
+    //
+    // PENDING_APPROVAL
+    //      ↓
+    // ASSIGNED
+    //
+    // ASSIGNED
+    //      ↓ dedicated release endpoint
+    //
+    // RELEASED
+    //      terminal
+    // ==========================================
+
+    if (
+      record.status !== UserSprintStatus.PENDING_APPROVAL ||
+      status !== UserSprintStatus.ASSIGNED
+    ) {
+      throw new ConflictException({
+        code: 'INVALID_ALLOCATION_TRANSITION',
+
+        message: `Không thể chuyển allocation từ ${record.status} sang ${status}.`,
+
+        currentStatus: record.status,
+
+        requestedStatus: status,
+
+        allowedTransition:
+          record.status === UserSprintStatus.PENDING_APPROVAL
+            ? UserSprintStatus.ASSIGNED
+            : null,
+      });
+    }
+
+    // ==========================================
+    // RE-CHECK CAPACITY
+    // ==========================================
+
+    await this.assertAllocationCapacityBeforeAssign(record);
+
+    // ==========================================
+    // APPROVE
+    // ==========================================
+
+    record.status = UserSprintStatus.ASSIGNED;
+
     return await this.userSprintRepo.save(record);
   }
 

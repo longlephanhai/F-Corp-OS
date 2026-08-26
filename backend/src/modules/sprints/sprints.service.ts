@@ -352,7 +352,7 @@ export class SprintsService {
     // ========================================
 
     if (dto.status === SprintTargetStatus.ACTIVE) {
-      this.assertSprintCanStart(sprint);
+      await this.assertSprintCanStart(sprint);
     }
 
     // ========================================
@@ -380,40 +380,164 @@ export class SprintsService {
   // START GUARD
   // ==========================================
 
-  private assertSprintCanStart(sprint: Sprint) {
-    if (!sprint.startDate) {
-      throw new ConflictException({
-        code: 'SPRINT_START_DATE_REQUIRED',
+  async getStartReadiness(sprintId: string) {
+    const sprint = await this.findOne(sprintId);
 
-        message:
-          'Sprint chưa có ngày bắt đầu nên không thể chuyển sang ACTIVE.',
-      });
-    }
+    const tasks = await this.taskRepo.find({
+      where: {
+        sprintId: sprint.id,
+
+        isDeleted: false,
+      },
+    });
+
+    const allocations = await this.userSprintRepo.find({
+      where: {
+        sprintId: sprint.id,
+      },
+    });
+
+    // ==========================================
+    // ALLOCATION
+    // ==========================================
+
+    const assignedAllocations = allocations.filter(
+      (allocation) => allocation.status === UserSprintStatus.ASSIGNED,
+    );
+
+    const pendingAllocations = allocations.filter(
+      (allocation) =>
+        allocation.status === UserSprintStatus.REQUESTED ||
+        allocation.status === UserSprintStatus.PENDING_APPROVAL,
+    );
+
+    // ==========================================
+    // TASK OWNER
+    // ==========================================
+
+    const unassignedTasks = tasks.filter((task) => !task.userId);
+
+    // ==========================================
+    // DEPENDENCY
+    // ==========================================
+
+    const dependencyStatuses = await Promise.all(
+      tasks.map(async (task) => {
+        try {
+          return await this.taskDependenciesService.getDependencyStatus(
+            task.id,
+          );
+        } catch {
+          return {
+            taskId: task.id,
+
+            totalDependencies: 0,
+
+            unfinishedDependencies: 0,
+
+            isBlockedByDependency: false,
+          };
+        }
+      }),
+    );
+
+    const dependencyBlockedTasks = dependencyStatuses.filter(
+      (status) => status.isBlockedByDependency,
+    );
+
+    // ==========================================
+    // HARD BLOCKERS
+    // ==========================================
+
+    const blockers: string[] = [];
 
     const startDate = dayjs(sprint.startDate);
 
-    if (!startDate.isValid()) {
-      throw new ConflictException({
-        code: 'INVALID_SPRINT_START_DATE',
-
-        message: 'Ngày bắt đầu Sprint không hợp lệ.',
-      });
-    }
-
-    // Chỉ so sánh theo ngày.
-    //
-    // Ví dụ startDate là hôm nay:
-    // vẫn được phép Start.
     if (dayjs().isBefore(startDate, 'day')) {
+      blockers.push(
+        `Chưa đến ngày bắt đầu Sprint (${startDate.format('DD/MM/YYYY')}).`,
+      );
+    }
+
+    if (tasks.length === 0) {
+      blockers.push('Sprint chưa có Task.');
+    }
+
+    if (assignedAllocations.length === 0) {
+      blockers.push('Sprint chưa có nhân sự ASSIGNED.');
+    }
+
+    // ==========================================
+    // WARNINGS
+    // ==========================================
+
+    const warnings: string[] = [];
+
+    if (unassignedTasks.length > 0) {
+      warnings.push(`${unassignedTasks.length} Task chưa có owner.`);
+    }
+
+    if (pendingAllocations.length > 0) {
+      warnings.push(`${pendingAllocations.length} allocation đang chờ xử lý.`);
+    }
+
+    if (dependencyBlockedTasks.length > 0) {
+      warnings.push(
+        `${dependencyBlockedTasks.length} Task đang chờ dependency.`,
+      );
+    }
+
+    // ==========================================
+    // RESULT
+    // ==========================================
+
+    return {
+      sprintId: sprint.id,
+
+      sprintName: sprint.name,
+
+      sprintStatus: sprint.status,
+
+      canStart: blockers.length === 0,
+
+      blockers,
+
+      warnings,
+
+      summary: {
+        totalTasks: tasks.length,
+
+        assignedTasks: tasks.length - unassignedTasks.length,
+
+        unassignedTasks: unassignedTasks.length,
+
+        assignedResources: assignedAllocations.length,
+
+        pendingAllocations: pendingAllocations.length,
+
+        dependencyBlockedTasks: dependencyBlockedTasks.length,
+      },
+    };
+  }
+
+  private async assertSprintCanStart(sprint: Sprint) {
+    const readiness = await this.getStartReadiness(sprint.id);
+
+    if (!readiness.canStart) {
       throw new ConflictException({
-        code: 'SPRINT_NOT_STARTED_YET',
+        code: 'SPRINT_NOT_READY',
 
-        message:
-          'Chưa đến ngày bắt đầu Sprint nên chưa thể chuyển sang ACTIVE.',
+        message: 'Sprint chưa đủ điều kiện để bắt đầu.',
 
-        startDate: sprint.startDate,
+        blockers: readiness.blockers,
+
+        warnings: readiness.warnings,
+
+        summary: readiness.summary,
       });
     }
+
+    return readiness;
   }
 
   // ==========================================
@@ -800,14 +924,19 @@ export class SprintsService {
   // INITIAL STATUS
   // ==========================================
 
-  private determineInitialStatus(startDate: string | Date) {
-    const start = dayjs(startDate);
-
-    if (dayjs().isBefore(start, 'day')) {
-      return 'upcoming';
-    }
-
-    return 'active';
+  private determineInitialStatus(_startDate: string | Date) {
+    // Sprint luôn bắt đầu ở UPCOMING.
+    //
+    // Đến ngày bắt đầu KHÔNG có nghĩa
+    // Sprint tự động ACTIVE.
+    //
+    // PM phải chủ động Start Sprint
+    // thông qua:
+    //
+    // PATCH /sprints/:id/status
+    //
+    // Khi đó Readiness Guard mới chạy.
+    return 'upcoming';
   }
 
   // ==========================================
