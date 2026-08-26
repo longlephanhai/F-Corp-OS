@@ -205,6 +205,13 @@ export class SprintsService {
 
     this.validateSprintInsideProject(startDate, endDate, project);
     await this.assertNoSprintOverlap(project.id, startDate, endDate, sprint.id);
+    const timelineChanged =
+      updateSprintDto.startDate !== undefined ||
+      updateSprintDto.endDate !== undefined;
+
+    if (timelineChanged) {
+      await this.assertSprintTimelineChangeSafe(sprint, startDate, endDate);
+    }
 
     // ========================================
     // ACTIVE SPRINT CANNOT MOVE TO FUTURE
@@ -938,7 +945,220 @@ export class SprintsService {
     // Khi đó Readiness Guard mới chạy.
     return 'upcoming';
   }
+  private async assertTasksInsideNewSprintTimeline(
+    sprintId: string,
+    startDate: string | Date,
+    endDate: string | Date,
+  ) {
+    const tasks = await this.taskRepo.find({
+      where: {
+        sprintId,
+        isDeleted: false,
+      },
 
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    const newStart = dayjs(startDate);
+
+    const newEnd = dayjs(endDate);
+
+    const invalidTasks = tasks
+      .filter((task) => {
+        // Legacy Task chưa có timeline:
+        // không block việc edit Sprint ở bước này.
+        if (!task.startDate || !task.endDate) {
+          return false;
+        }
+
+        const taskStart = dayjs(task.startDate);
+
+        const taskEnd = dayjs(task.endDate);
+
+        return (
+          taskStart.isBefore(newStart, 'day') || taskEnd.isAfter(newEnd, 'day')
+        );
+      })
+      .map((task) => ({
+        id: task.id,
+
+        title: task.title ?? 'Task chưa đặt tên',
+
+        startDate: task.startDate,
+
+        endDate: task.endDate,
+
+        status: task.status,
+
+        progress: Number(task.progress ?? 0),
+      }));
+
+    if (invalidTasks.length > 0) {
+      throw new ConflictException({
+        code: 'SPRINT_TIMELINE_TASK_CONFLICT',
+
+        message: `Timeline mới làm ${invalidTasks.length} Task nằm ngoài Sprint.`,
+
+        requestedTimeline: {
+          startDate,
+          endDate,
+        },
+
+        invalidTasks,
+      });
+    }
+
+    return true;
+  }
+
+  private async assertAllocationsSafeForNewTimeline(
+    sprintId: string,
+    startDate: string | Date,
+    endDate: string | Date,
+  ) {
+    const activeStatuses = [
+      UserSprintStatus.REQUESTED,
+      UserSprintStatus.PENDING_APPROVAL,
+      UserSprintStatus.ASSIGNED,
+    ];
+
+    // ==========================================
+    // ALLOCATION CỦA SPRINT ĐANG ĐƯỢC SỬA
+    // ==========================================
+
+    const currentAllocations = await this.userSprintRepo
+      .createQueryBuilder('allocation')
+      .where('allocation.sprintId = :sprintId', {
+        sprintId,
+      })
+      .andWhere('allocation.status IN (:...statuses)', {
+        statuses: activeStatuses,
+      })
+      .getMany();
+
+    if (currentAllocations.length === 0) {
+      return true;
+    }
+
+    const userIds = [
+      ...new Set(currentAllocations.map((allocation) => allocation.userId)),
+    ];
+
+    // ==========================================
+    // CÁC ALLOCATION KHÁC CÓ THỂ OVERLAP
+    // VỚI TIMELINE MỚI
+    // ==========================================
+
+    const otherAllocations = await this.userSprintRepo
+      .createQueryBuilder('allocation')
+      .innerJoinAndSelect('allocation.sprint', 'otherSprint')
+      .where('allocation.userId IN (:...userIds)', {
+        userIds,
+      })
+      .andWhere('allocation.sprintId != :sprintId', {
+        sprintId,
+      })
+      .andWhere('allocation.status IN (:...statuses)', {
+        statuses: activeStatuses,
+      })
+      .andWhere('otherSprint.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+      .andWhere('otherSprint.status != :cancelledStatus', {
+        cancelledStatus: 'cancelled',
+      })
+      // Overlap với timeline MỚI:
+      //
+      // other.start <= new.end
+      // AND
+      // other.end >= new.start
+      .andWhere('otherSprint.startDate <= :newEndDate', {
+        newEndDate: endDate,
+      })
+      .andWhere('otherSprint.endDate >= :newStartDate', {
+        newStartDate: startDate,
+      })
+      .getMany();
+
+    // ==========================================
+    // CHECK TỪNG USER
+    // ==========================================
+
+    const conflicts = currentAllocations
+      .map((currentAllocation) => {
+        const userOtherAllocations = otherAllocations.filter(
+          (allocation) => allocation.userId === currentAllocation.userId,
+        );
+
+        const otherPercentage = userOtherAllocations.reduce(
+          (total, allocation) => total + Number(allocation.percitant ?? 0),
+          0,
+        );
+
+        const currentPercentage = Number(currentAllocation.percitant ?? 0);
+
+        const totalPercentage = currentPercentage + otherPercentage;
+
+        if (totalPercentage <= 100) {
+          return null;
+        }
+
+        return {
+          userId: currentAllocation.userId,
+
+          currentAllocation: {
+            allocationId: currentAllocation.id,
+
+            percentage: currentPercentage,
+
+            status: currentAllocation.status,
+          },
+
+          otherAllocation: otherPercentage,
+
+          totalAllocation: totalPercentage,
+
+          overBy: totalPercentage - 100,
+
+          conflicts: userOtherAllocations.map((allocation) => ({
+            allocationId: allocation.id,
+
+            sprintId: allocation.sprintId,
+
+            sprintName: allocation.sprint?.name ?? null,
+
+            percentage: Number(allocation.percitant ?? 0),
+
+            status: allocation.status,
+
+            startDate: allocation.sprint?.startDate ?? null,
+
+            endDate: allocation.sprint?.endDate ?? null,
+          })),
+        };
+      })
+      .filter((item) => item !== null);
+
+    if (conflicts.length > 0) {
+      throw new ConflictException({
+        code: 'SPRINT_TIMELINE_ALLOCATION_CONFLICT',
+
+        message:
+          'Timeline mới làm một hoặc nhiều nhân sự bị vượt quá 100% allocation.',
+
+        requestedTimeline: {
+          startDate,
+          endDate,
+        },
+
+        conflicts,
+      });
+    }
+
+    return true;
+  }
   // ==========================================
   // NORMALIZE STATUS
   // ==========================================
@@ -1001,6 +1221,34 @@ export class SprintsService {
         },
       });
     }
+
+    return true;
+  }
+
+  private async assertSprintTimelineChangeSafe(
+    sprint: Sprint,
+    startDate: string | Date,
+    endDate: string | Date,
+  ) {
+    // ==========================================
+    // TASK IMPACT
+    // ==========================================
+
+    await this.assertTasksInsideNewSprintTimeline(
+      sprint.id,
+      startDate,
+      endDate,
+    );
+
+    // ==========================================
+    // RESOURCE / CAPACITY IMPACT
+    // ==========================================
+
+    await this.assertAllocationsSafeForNewTimeline(
+      sprint.id,
+      startDate,
+      endDate,
+    );
 
     return true;
   }
