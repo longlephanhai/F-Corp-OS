@@ -108,6 +108,21 @@ export class SprintsController {
     };
   }
 
+  @Get(':id/completion-readiness')
+  async getCompletionReadiness(
+    @Param('id')
+    id: string,
+  ) {
+    const data = await this.sprintsService.getCompletionReadiness(id);
+
+    return {
+      statusCode: 200,
+
+      message: 'Kiểm tra điều kiện hoàn thành Sprint thành công',
+
+      data,
+    };
+  }
   @Get(':id')
   async findOne(
     @Param('id')

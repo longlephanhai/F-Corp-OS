@@ -64,6 +64,11 @@ export const pmApi = {
     >(`/user-sprint/${id}/request`);
   },
 
+  getSprintCompletionReadiness: (sprintId: string) => {
+    return axios.get<IBackendRes<any>>(
+      `/sprints/${sprintId}/completion-readiness`,
+    );
+  },
   getTaskCandidates: (taskId: string) => {
     return axios.get<IBackendRes<TaskCandidate[]>>(
       `/tasks/${taskId}/candidates`,

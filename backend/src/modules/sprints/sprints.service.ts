@@ -547,18 +547,13 @@ export class SprintsService {
     return readiness;
   }
 
-  // ==========================================
-  // COMPLETION GUARD
-  // ==========================================
-
-  private async assertSprintCanComplete(sprint: Sprint) {
-    // ========================================
-    // 1. TASKS
-    // ========================================
+  async getCompletionReadiness(sprintId: string) {
+    const sprint = await this.findOne(sprintId);
 
     const tasks = await this.taskRepo.find({
       where: {
         sprintId: sprint.id,
+
         isDeleted: false,
       },
 
@@ -567,24 +562,24 @@ export class SprintsService {
       },
     });
 
-    // ========================================
-    // NO TASK
-    // ========================================
+    const allocations = await this.userSprintRepo.find({
+      where: {
+        sprintId: sprint.id,
+      },
+    });
+
+    const blockers: string[] = [];
+
+    // ==========================================
+    // 1. TASK CHECK
+    // ==========================================
 
     if (tasks.length === 0) {
-      throw new ConflictException({
-        code: 'SPRINT_HAS_NO_TASKS',
-
-        message: 'Sprint chưa có Task nên không thể hoàn thành.',
-      });
+      blockers.push('Sprint chưa có Task.');
     }
 
-    // ========================================
-    // UNFINISHED TASKS
-    // ========================================
-
     const unfinishedTasks = tasks.filter((task) => {
-      const status = task.status?.toString().toUpperCase();
+      const status = (task.status ?? '').toString().toUpperCase();
 
       const progress = Number(task.progress ?? 0);
 
@@ -592,11 +587,100 @@ export class SprintsService {
     });
 
     if (unfinishedTasks.length > 0) {
-      throw new ConflictException({
-        code: 'SPRINT_HAS_UNFINISHED_TASKS',
+      blockers.push(`${unfinishedTasks.length} Task chưa hoàn thành.`);
+    }
 
-        message: `Sprint còn ${unfinishedTasks.length} Task chưa hoàn thành.`,
+    // ==========================================
+    // 2. DEPENDENCY CHECK
+    // ==========================================
 
+    const dependencyStatuses = await Promise.all(
+      tasks.map(async (task) => {
+        try {
+          const status = await this.taskDependenciesService.getDependencyStatus(
+            task.id,
+          );
+
+          return {
+            task,
+            status,
+          };
+        } catch {
+          return {
+            task,
+
+            status: {
+              taskId: task.id,
+
+              totalDependencies: 0,
+
+              unfinishedDependencies: 0,
+
+              isBlockedByDependency: false,
+            },
+          };
+        }
+      }),
+    );
+
+    const dependencyBlockedTasks = dependencyStatuses.filter(
+      (item) => item.status.isBlockedByDependency,
+    );
+
+    if (dependencyBlockedTasks.length > 0) {
+      blockers.push(
+        `${dependencyBlockedTasks.length} Task còn dependency chưa hoàn thành.`,
+      );
+    }
+
+    // ==========================================
+    // 3. ALLOCATION CHECK
+    // ==========================================
+
+    const unresolvedAllocations = allocations.filter(
+      (allocation) => allocation.status !== UserSprintStatus.RELEASED,
+    );
+
+    if (unresolvedAllocations.length > 0) {
+      blockers.push(
+        `${unresolvedAllocations.length} allocation chưa được RELEASED.`,
+      );
+    }
+
+    // ==========================================
+    // RESULT
+    // ==========================================
+
+    return {
+      sprintId: sprint.id,
+
+      sprintName: sprint.name,
+
+      sprintStatus: sprint.status,
+
+      canComplete: blockers.length === 0,
+
+      blockers,
+
+      summary: {
+        totalTasks: tasks.length,
+
+        completedTasks: tasks.length - unfinishedTasks.length,
+
+        unfinishedTasks: unfinishedTasks.length,
+
+        dependencyBlockedTasks: dependencyBlockedTasks.length,
+
+        totalAllocations: allocations.length,
+
+        releasedAllocations: allocations.filter(
+          (allocation) => allocation.status === UserSprintStatus.RELEASED,
+        ).length,
+
+        unresolvedAllocations: unresolvedAllocations.length,
+      },
+
+      details: {
         unfinishedTasks: unfinishedTasks.map((task) => ({
           id: task.id,
 
@@ -605,75 +689,19 @@ export class SprintsService {
           status: task.status,
 
           progress: Number(task.progress ?? 0),
+
+          userId: task.userId ?? null,
         })),
-      });
-    }
 
-    // ========================================
-    // 2. DEPENDENCY CHECK
-    // ========================================
-    //
-    // Dù Task đã DONE, vẫn kiểm tra dependency
-    // để bảo vệ dữ liệu legacy / dữ liệu bị sửa
-    // trực tiếp DB.
-    // ========================================
-
-    const dependencyStatuses = await Promise.all(
-      tasks.map(async (task) => {
-        const status = await this.taskDependenciesService.getDependencyStatus(
-          task.id,
-        );
-
-        return {
-          task,
-
-          status,
-        };
-      }),
-    );
-
-    const blockedByDependencies = dependencyStatuses.filter(
-      (item) => item.status.isBlockedByDependency,
-    );
-
-    if (blockedByDependencies.length > 0) {
-      throw new ConflictException({
-        code: 'SPRINT_HAS_UNFINISHED_DEPENDENCIES',
-
-        message:
-          'Sprint vẫn còn Task đang phụ thuộc vào prerequisite chưa hoàn thành.',
-
-        tasks: blockedByDependencies.map((item) => ({
+        dependencyBlockedTasks: dependencyBlockedTasks.map((item) => ({
           id: item.task.id,
 
           title: item.task.title ?? 'Task chưa đặt tên',
 
           unfinishedDependencies: item.status.unfinishedDependencies,
         })),
-      });
-    }
 
-    // ========================================
-    // 3. ALLOCATION CHECK
-    // ========================================
-
-    const allocations = await this.userSprintRepo.find({
-      where: {
-        sprintId: sprint.id,
-      },
-    });
-
-    const unresolvedAllocations = allocations.filter(
-      (allocation) => allocation.status !== UserSprintStatus.RELEASED,
-    );
-
-    if (unresolvedAllocations.length > 0) {
-      throw new ConflictException({
-        code: 'SPRINT_HAS_ACTIVE_ALLOCATIONS',
-
-        message: 'Sprint vẫn còn allocation chưa được RELEASED.',
-
-        allocations: unresolvedAllocations.map((allocation) => ({
+        unresolvedAllocations: unresolvedAllocations.map((allocation) => ({
           id: allocation.id,
 
           userId: allocation.userId,
@@ -682,10 +710,32 @@ export class SprintsService {
 
           percitant: Number(allocation.percitant ?? 0),
         })),
+      },
+    };
+  }
+
+  // ==========================================
+  // COMPLETION GUARD
+  // ==========================================
+
+  private async assertSprintCanComplete(sprint: Sprint) {
+    const readiness = await this.getCompletionReadiness(sprint.id);
+
+    if (!readiness.canComplete) {
+      throw new ConflictException({
+        code: 'SPRINT_NOT_READY_TO_COMPLETE',
+
+        message: 'Sprint chưa đủ điều kiện để hoàn thành.',
+
+        blockers: readiness.blockers,
+
+        summary: readiness.summary,
+
+        details: readiness.details,
       });
     }
 
-    return true;
+    return readiness;
   }
 
   // ==========================================

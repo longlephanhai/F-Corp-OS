@@ -239,21 +239,116 @@ export const ProjectDetail: React.FC = () => {
     });
   };
 
-  const confirmCompleteSprint = (sprint: any) => {
-    Modal.confirm({
-      title: "Hoàn thành Sprint?",
+  const confirmCompleteSprint = async (sprint: any) => {
+    try {
+      setLoading(true);
 
-      content:
-        "Hệ thống sẽ kiểm tra Task, Dependency và Allocation trước khi cho phép hoàn thành.",
+      const response = await pmApi.getSprintCompletionReadiness(sprint.id);
 
-      okText: "Hoàn thành",
+      const readiness = response?.data?.data ?? response?.data;
 
-      cancelText: "Đóng",
+      // ========================================
+      // BLOCKED
+      // ========================================
 
-      onOk: async () => {
-        await handleSprintStatusChange(sprint, "completed");
-      },
-    });
+      if (!readiness?.canComplete) {
+        Modal.warning({
+          title: "Sprint chưa thể hoàn thành",
+
+          width: 680,
+
+          content: (
+            <Space
+              direction="vertical"
+              size={8}
+              style={{
+                width: "100%",
+              }}
+            >
+              {(readiness?.blockers ?? []).map(
+                (blocker: string, index: number) => (
+                  <Text key={index} type="danger">
+                    • {blocker}
+                  </Text>
+                ),
+              )}
+
+              {readiness?.details?.unfinishedTasks?.length > 0 && (
+                <>
+                  <Divider />
+
+                  <Text strong>Task chưa hoàn thành</Text>
+
+                  {readiness.details.unfinishedTasks.map((task: any) => (
+                    <Text key={task.id}>
+                      {task.title}
+                      {" — "}
+                      {task.status}
+                      {" · "}
+                      {task.progress}%
+                    </Text>
+                  ))}
+                </>
+              )}
+
+              {readiness?.details?.unresolvedAllocations?.length > 0 && (
+                <>
+                  <Divider />
+
+                  <Text strong>Allocation chưa Release</Text>
+
+                  {readiness.details.unresolvedAllocations.map(
+                    (allocation: any) => (
+                      <Text key={allocation.id}>
+                        {allocation.userId}
+                        {" — "}
+                        {allocation.status}
+                        {" · "}
+                        {allocation.percitant}%
+                      </Text>
+                    ),
+                  )}
+                </>
+              )}
+            </Space>
+          ),
+        });
+
+        return;
+      }
+
+      // ========================================
+      // READY
+      // ========================================
+
+      Modal.confirm({
+        title: "Hoàn thành Sprint?",
+
+        content: (
+          <Text>
+            Tất cả Task, dependency và allocation đã được xử lý. Bạn có chắc
+            muốn hoàn thành <strong>{sprint.name}</strong>?
+          </Text>
+        ),
+
+        okText: "Hoàn thành Sprint",
+
+        cancelText: "Hủy",
+
+        onOk: async () => {
+          await handleSprintStatusChange(sprint, "completed");
+        },
+      });
+    } catch (error: any) {
+      console.error("Không kiểm tra được completion readiness:", error);
+
+      message.error(
+        error?.response?.data?.message ??
+          "Không thể kiểm tra điều kiện hoàn thành Sprint.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const confirmCancelSprint = (sprint: any) => {
