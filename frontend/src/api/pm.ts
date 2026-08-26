@@ -89,7 +89,11 @@ export const pmApi = {
       data,
     );
   },
-
+  updateTaskAssignee: (taskId: string, userId: string | null) => {
+    return axios.patch<IBackendRes<TaskItem>>(`/tasks/${taskId}/assignee`, {
+      userId,
+    });
+  },
   // Giải phóng nhân sự kèm Đánh giá (Review)
   releaseUserSprint: (id: string, reviewData: any) => {
     return axios.patch<IBackendRes<any>>(

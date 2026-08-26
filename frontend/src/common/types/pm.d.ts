@@ -43,6 +43,24 @@ export interface TaskCandidate {
   matchedSkills: string[];
   missingSkills: string[];
   costRate: number;
+
+  employeeStatus?: string;
+
+
+
+  currentSprintAllocationId: string | null;
+
+ 
+
+  currentSprintAllocationPercent: number;
+
+  isAssignedToSprint: boolean;
+
+
+
+  canAssignToTask: boolean;
+
+
 }
 
 export interface UserSprintItem {

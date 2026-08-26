@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -12,6 +13,10 @@ import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { User } from '../users/entities/user.entity';
 import { TaskDependenciesService } from '../task-dependencies/task-dependencies.service';
 import { Sprint } from '../sprints/entities/sprint.entity';
+import {
+  UserSprint,
+  UserSprintStatus,
+} from '../user-sprints/entities/user-sprint.entity';
 
 @Injectable()
 export class TasksService {
@@ -22,6 +27,8 @@ export class TasksService {
     private readonly sprintRepo: Repository<Sprint>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(UserSprint)
+    private readonly userSprintRepo: Repository<UserSprint>,
 
     private readonly taskDependenciesService: TaskDependenciesService,
   ) {}
@@ -37,13 +44,17 @@ export class TasksService {
   async createTask(data: any) {
     Logger.debug('tao là khánh', data);
     if (!data.sprintId) {
-      throw new NotFoundException({
+      throw new BadRequestException({
         code: 'SPRINT_REQUIRED',
         message: 'Task phải thuộc một Sprint.',
       });
     }
 
-    await this.assertSprintMutable(data.sprintId);
+    const sprint = await this.assertSprintMutable(data.sprintId);
+    this.validateTaskTimeline(data.startDate, data.endDate, sprint);
+    if (data.userId) {
+      await this.assertUserAssignedToSprint(data.sprintId, data.userId);
+    }
     const newTask = this.taskRepo.create({
       sprintId: data.sprintId,
 
@@ -72,12 +83,49 @@ export class TasksService {
   }
 
   async getMatchingCandidates(taskId: string) {
+    // ==========================================
+    // TASK
+    // ==========================================
+
     const task = await this.taskRepo.findOne({
-      where: { id: taskId, isDeleted: false },
+      where: {
+        id: taskId,
+        isDeleted: false,
+      },
     });
+
     if (!task) {
-      throw new NotFoundException('Không tìm thấy task');
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+        message: 'Không tìm thấy Task.',
+      });
     }
+
+    // ==========================================
+    // ASSIGNED USERS IN CURRENT SPRINT
+    // ==========================================
+
+    const assignedAllocations = await this.userSprintRepo.find({
+      where: {
+        sprintId: task.sprintId,
+        status: UserSprintStatus.ASSIGNED,
+      },
+    });
+
+    // Sprint chưa có ai được ASSIGNED
+    // => không có candidate để gán Task
+    if (assignedAllocations.length === 0) {
+      return [];
+    }
+
+    const assignedUserIds = assignedAllocations.map(
+      (allocation) => allocation.userId,
+    );
+
+    // ==========================================
+    // USERS + SKILLS
+    // Chỉ lấy user đã ASSIGNED vào Sprint
+    // ==========================================
 
     const users = await this.userRepo
       .createQueryBuilder('user')
@@ -85,63 +133,197 @@ export class TasksService {
         'user.userSkills',
         'userSkill',
         'userSkill.isDeleted = :isDeleted',
-        { isDeleted: false },
+        {
+          isDeleted: false,
+        },
       )
       .leftJoinAndSelect('userSkill.skill', 'skill')
-      .where('user.isDeleted = :isDeleted', { isDeleted: false })
+      .where('user.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+      .andWhere('user.id IN (:...assignedUserIds)', {
+        assignedUserIds,
+      })
       .select([
         'user.id',
         'user.fullName',
         'user.title',
         'user.status',
         'user.costRate',
+
         'userSkill.id',
         'userSkill.skillId',
         'userSkill.level',
+
         'skill.id',
         'skill.name',
       ])
       .getMany();
 
+    if (users.length === 0) {
+      return [];
+    }
+
+    // ==========================================
+    // TASK SKILL REQUIREMENTS
+    // ==========================================
+
     const requirements = (task.requiredSkills ?? []).map(
       (requirement: any) => ({
         identifier: requirement.skill_id ?? requirement.skill,
+
         label: requirement.skill ?? requirement.skill_id ?? 'Chưa xác định',
-        minLevel: requirement.min_level ?? requirement.level ?? 1,
+
+        minLevel: Number(requirement.min_level ?? requirement.level ?? 1),
       }),
     );
 
+    // ==========================================
+    // BUILD CANDIDATES
+    // ==========================================
+
     return users
       .map((user) => {
+        // ======================================
+        // SKILL MATCHING
+        // ======================================
+
         const matchedSkills = requirements
           .filter((requirement) =>
             user.userSkills.some(
               (userSkill) =>
                 (userSkill.skillId === requirement.identifier ||
                   userSkill.skill?.name === requirement.identifier) &&
-                userSkill.level >= requirement.minLevel,
+                Number(userSkill.level ?? 0) >= requirement.minLevel,
             ),
           )
           .map((requirement) => requirement.label);
+
         const missingSkills = requirements
           .filter((requirement) => !matchedSkills.includes(requirement.label))
           .map((requirement) => requirement.label);
-        const matchScore = requirements.length
-          ? Math.round((matchedSkills.length / requirements.length) * 100)
-          : 0;
+
+        const matchScore =
+          requirements.length > 0
+            ? Math.round((matchedSkills.length / requirements.length) * 100)
+            : 0;
+
+        // ======================================
+        // SPRINT ALLOCATION
+        // ======================================
+
+        const sprintAllocation = assignedAllocations.find(
+          (allocation) => allocation.userId === user.id,
+        );
+
+        // ======================================
+        // RESULT
+        // ======================================
 
         return {
           id: user.id,
+
           fullName: user.fullName,
+
           title: user.title ?? 'Chưa cập nhật vị trí',
-          status: user.status === 'AVAILABLE' ? 'available' : 'on_project',
+
+          // Giữ employee status nếu FE cần hiển thị
+          employeeStatus: user.status,
+
+          // Giữ status cũ nếu TaskCandidate FE đang dùng field này
+          status:
+            user.status === 'AVAILABLE'
+              ? 'available'
+              : user.status === 'BENCH'
+                ? 'bench'
+                : 'on_project',
+
           matchScore,
+
           matchedSkills,
+
           missingSkills,
+
           costRate: Number(user.costRate ?? 0),
+
+          // ====================================
+          // CURRENT SPRINT ALLOCATION
+          // ====================================
+
+          sprintAllocationId: sprintAllocation?.id ?? null,
+
+          sprintAllocationPercent: Number(sprintAllocation?.percitant ?? 0),
+
+          isAssignedToSprint: true,
         };
       })
-      .sort((left, right) => right.matchScore - left.matchScore);
+      .sort((left, right) => {
+        // Ưu tiên skill match cao nhất
+        if (right.matchScore !== left.matchScore) {
+          return right.matchScore - left.matchScore;
+        }
+
+        // Nếu match bằng nhau,
+        // ưu tiên người có allocation cao hơn
+        return right.sprintAllocationPercent - left.sprintAllocationPercent;
+      });
+  }
+  async updateTaskAssignee(taskId: string, userId: string | null) {
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    // Sprint completed/cancelled
+    // thì không được đổi owner.
+    await this.assertSprintMutable(task.sprintId);
+
+    // ========================================
+    // DONE TASK
+    // ========================================
+
+    if (task.status === TaskStatus.DONE) {
+      throw new ConflictException({
+        code: 'DONE_TASK_ASSIGNEE_LOCKED',
+
+        message: 'Task đã DONE nên không thể thay đổi owner.',
+      });
+    }
+
+    // ========================================
+    // UNASSIGN
+    // ========================================
+
+    if (!userId) {
+      task.userId = null;
+
+      return await this.taskRepo.save(task);
+    }
+
+    // ========================================
+    // VALIDATE SPRINT MEMBERSHIP
+    // ========================================
+
+    await this.assertUserAssignedToSprint(task.sprintId, userId);
+
+    // ========================================
+    // ASSIGN
+    // ========================================
+
+    task.userId = userId;
+
+    return await this.taskRepo.save(task);
   }
 
   async updateTaskLifecycle(taskId: string, data: UpdateTaskLifecycleDto) {
@@ -156,6 +338,43 @@ export class TasksService {
       throw new NotFoundException('Không tìm thấy Task');
     }
     await this.assertSprintMutable(task.sprintId);
+
+    // ==========================================
+    // STATUS / PROGRESS CONSISTENCY
+    // ==========================================
+
+    if (
+      data.status === TaskStatus.DONE &&
+      data.progress !== undefined &&
+      data.progress !== 100
+    ) {
+      throw new BadRequestException({
+        code: 'INVALID_TASK_LIFECYCLE',
+        message: 'Task DONE bắt buộc phải có progress = 100%.',
+      });
+    }
+
+    if (
+      data.status === TaskStatus.TODO &&
+      data.progress !== undefined &&
+      data.progress !== 0
+    ) {
+      throw new BadRequestException({
+        code: 'INVALID_TASK_LIFECYCLE',
+        message: 'Task TODO phải có progress = 0%.',
+      });
+    }
+
+    if (
+      (data.status === TaskStatus.IN_PROGRESS ||
+        data.status === TaskStatus.BLOCKED) &&
+      data.progress === 100
+    ) {
+      throw new BadRequestException({
+        code: 'INVALID_TASK_LIFECYCLE',
+        message: 'Task có progress = 100% phải ở trạng thái DONE.',
+      });
+    }
     // ==========================================
     // DEPENDENCY ENFORCEMENT
     // ==========================================
@@ -199,8 +418,14 @@ export class TasksService {
     if (data.status !== undefined) {
       task.status = data.status;
 
+      // DONE luôn = 100%.
       if (data.status === TaskStatus.DONE) {
         task.progress = 100;
+      }
+
+      // Reset TODO luôn = 0%.
+      if (data.status === TaskStatus.TODO) {
+        task.progress = 0;
       }
     }
 
@@ -211,16 +436,116 @@ export class TasksService {
     if (data.progress !== undefined) {
       task.progress = data.progress;
 
+      // 100% luôn đồng nghĩa DONE.
       if (data.progress === 100) {
         task.status = TaskStatus.DONE;
       }
 
+      // Nếu Task từng DONE nhưng progress
+      // bị giảm xuống thì không được giữ DONE.
       if (data.progress < 100 && task.status === TaskStatus.DONE) {
-        task.status = TaskStatus.IN_PROGRESS;
+        task.status =
+          data.progress === 0 ? TaskStatus.TODO : TaskStatus.IN_PROGRESS;
       }
     }
 
     return await this.taskRepo.save(task);
+  }
+
+  private validateTaskTimeline(
+    startDate: string | Date | null | undefined,
+    endDate: string | Date | null | undefined,
+    sprint: Sprint,
+  ) {
+    // Task mới bắt buộc phải có timeline.
+    if (!startDate || !endDate) {
+      throw new BadRequestException({
+        code: 'TASK_TIMELINE_REQUIRED',
+        message: 'Task phải có ngày bắt đầu và ngày kết thúc.',
+      });
+    }
+
+    const taskStart = new Date(startDate);
+
+    const taskEnd = new Date(endDate);
+
+    const sprintStart = new Date(sprint.startDate);
+
+    const sprintEnd = new Date(sprint.endDate);
+
+    if (Number.isNaN(taskStart.getTime()) || Number.isNaN(taskEnd.getTime())) {
+      throw new BadRequestException({
+        code: 'INVALID_TASK_DATE',
+        message: 'Ngày bắt đầu hoặc ngày kết thúc Task không hợp lệ.',
+      });
+    }
+
+    // Cho phép Task làm trong cùng một ngày.
+    if (taskStart.getTime() > taskEnd.getTime()) {
+      throw new BadRequestException({
+        code: 'INVALID_TASK_TIMELINE',
+        message: 'Ngày bắt đầu Task không được lớn hơn ngày kết thúc.',
+      });
+    }
+
+    if (taskStart.getTime() < sprintStart.getTime()) {
+      throw new ConflictException({
+        code: 'TASK_OUTSIDE_SPRINT_TIMELINE',
+        message: 'Task không được bắt đầu trước ngày bắt đầu Sprint.',
+        sprintStartDate: sprint.startDate,
+        taskStartDate: startDate,
+      });
+    }
+
+    if (taskEnd.getTime() > sprintEnd.getTime()) {
+      throw new ConflictException({
+        code: 'TASK_OUTSIDE_SPRINT_TIMELINE',
+        message: 'Task không được kết thúc sau ngày kết thúc Sprint.',
+        sprintEndDate: sprint.endDate,
+        taskEndDate: endDate,
+      });
+    }
+  }
+  private async assertUserAssignedToSprint(sprintId: string, userId: string) {
+    const user = await this.userRepo.findOne({
+      where: {
+        id: userId,
+        isDeleted: false,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+
+        message: 'Không tìm thấy nhân sự.',
+      });
+    }
+
+    const allocation = await this.userSprintRepo.findOne({
+      where: {
+        sprintId,
+
+        userId,
+
+        status: UserSprintStatus.ASSIGNED,
+      },
+    });
+
+    if (!allocation) {
+      throw new ConflictException({
+        code: 'USER_NOT_ASSIGNED_TO_SPRINT',
+
+        message:
+          'Nhân sự phải ở trạng thái ASSIGNED trong Sprint trước khi được giao Task.',
+
+        sprintId,
+
+        userId,
+      });
+    }
+
+    return allocation;
   }
 
   private async assertSprintMutable(sprintId: string) {

@@ -86,21 +86,113 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     };
   }, [fetchMatchingCandidates, open, task]);
 
-  const handleAssign = (devId: string) => {
+  const handleCandidateAction = async (devId: string) => {
     const candidate = candidates.find((item) => item.id === devId);
 
     if (!candidate) {
       message.error("Không tìm thấy thông tin ứng viên.");
+
       return;
     }
 
-    // Chưa gọi API ngay.
-    // Mở modal để PM chọn % allocation trước.
+    // ==========================================
+    // CASE 1:
+    // USER ĐÃ ASSIGNED VÀO SPRINT
+    //
+    // => GÁN TASK THẬT
+    // ==========================================
+
+    if (candidate.canAssignToTask) {
+      if (!task) {
+        return;
+      }
+
+      try {
+        setAssignLoading(true);
+
+        await pmApi.updateTaskAssignee(task.id, candidate.id);
+
+        message.success(`Đã giao Task cho ${candidate.fullName}.`);
+
+        setIsCompareOpen(false);
+
+        await onAssigned();
+
+        onClose();
+      } catch (error: any) {
+        console.error("Không thể gán Task:", error);
+
+        const errorData = error?.response?.data;
+
+        message.error(errorData?.message ?? "Không thể giao Task cho nhân sự.");
+      } finally {
+        setAssignLoading(false);
+      }
+
+      return;
+    }
+
+    // ==========================================
+    // CASE 2:
+    // ĐANG CÓ REQUEST/PENDING
+    // ==========================================
+
+    if (candidate.hasPendingRequest) {
+      message.info("Nhân sự này đang có yêu cầu phân bổ trong Sprint.");
+
+      return;
+    }
+
+    // ==========================================
+    // CASE 3:
+    // HẾT CAPACITY
+    // ==========================================
+
+    if (!candidate.canRequestAllocation) {
+      message.warning("Nhân sự hiện không còn capacity để phân bổ vào Sprint.");
+
+      return;
+    }
+
+    // ==========================================
+    // CASE 4:
+    // CHƯA THUỘC SPRINT
+    //
+    // => MỞ MODAL REQUEST ALLOCATION
+    // ==========================================
+
     setSelectedCandidate(candidate);
-    setAllocationPercent(100);
+
+    setAllocationPercent(Math.min(100, candidate.availableCapacity));
+
     setIsAllocationModalOpen(true);
   };
 
+  const handleAssignTask = async (candidateId: string) => {
+    if (!task) {
+      return;
+    }
+
+    try {
+      setAssignLoading(true);
+
+      await pmApi.updateTaskAssignee(task.id, candidateId);
+
+      message.success("Đã giao Task cho nhân sự.");
+
+      setIsCompareOpen(false);
+
+      await onAssigned();
+
+      onClose();
+    } catch (error: any) {
+      console.error("Không thể gán Task:", error);
+
+      message.error(error?.response?.data?.message ?? "Không thể giao Task.");
+    } finally {
+      setAssignLoading(false);
+    }
+  };
   const handleSubmitAllocation = async () => {
     if (!selectedCandidate) {
       message.error("Chưa chọn nhân sự.");
@@ -115,7 +207,13 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
       message.warning("Công suất tham gia phải từ 1% đến 100%.");
       return;
     }
+    if (allocationPercent > selectedCandidate.availableCapacity) {
+      message.warning(
+        `Nhân sự chỉ còn ${selectedCandidate.availableCapacity}% capacity.`,
+      );
 
+      return;
+    }
     try {
       setAssignLoading(true);
 
@@ -236,6 +334,59 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
       ),
     },
     {
+      title: "Capacity",
+
+      key: "capacity",
+
+      width: 140,
+
+      render: (_: unknown, record: TaskCandidate) => (
+        <div>
+          <Progress
+            percent={record.usedCapacity}
+            size="small"
+            showInfo={false}
+            status={record.usedCapacity >= 100 ? "exception" : "active"}
+          />
+
+          <div
+            style={{
+              fontSize: 12,
+            }}
+          >
+            Còn <strong>{record.availableCapacity}%</strong>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Trong Sprint",
+
+      key: "sprintAllocation",
+
+      width: 150,
+
+      render: (_: unknown, record: TaskCandidate) => {
+        switch (record.currentSprintAllocationStatus) {
+          case "assigned":
+            return (
+              <Tag color="green">
+                Assigned {record.currentSprintAllocationPercent}%
+              </Tag>
+            );
+
+          case "requested":
+            return <Tag color="blue">Requested</Tag>;
+
+          case "pending_approval":
+            return <Tag color="gold">Chờ duyệt</Tag>;
+
+          default:
+            return <Tag>Chưa tham gia</Tag>;
+        }
+      },
+    },
+    {
       title: "Phân tích Kỹ năng",
       key: "skills",
       render: (_: unknown, record: TaskCandidate) => (
@@ -255,35 +406,30 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
     },
     {
       title: "Hành động",
+
       key: "action",
-      render: (_: unknown, record: TaskCandidate) => (
-        // --- ĐÃ CẬP NHẬT TOOLTIP VÀ UI CHO NÚT ASSIGN THEO YÊU CẦU ---
-        <Tooltip
-          title={
-            record.status === "on_project"
-              ? "Dev này đang vướng dự án khác chưa xong 100%. Không thể điều động!"
-              : ""
-          }
-          color="red"
-          placement="top"
-        >
+
+      width: 170,
+
+      render: (_: unknown, record: TaskCandidate) => {
+        const isCurrentOwner = task?.userId === record.id;
+
+        return (
           <Button
             type="primary"
             size="small"
-            disabled={record.status === "on_project"} // Khóa nút nếu đang bận
-            className={
-              record.status === "on_project"
-                ? "bg-gray-300 text-gray-500"
-                : "bg-green-600 hover:bg-green-700 border-none"
-            }
-            onClick={() => handleAssign(record.id)}
+            loading={assignLoading}
+            disabled={isCurrentOwner}
+            onClick={() => void handleAssignTask(record.id)}
           >
-            {record.status === "on_project"
-              ? "Đang kẹt dự án"
-              : "Yêu cầu phân bổ"}
+            {isCurrentOwner
+              ? "Owner hiện tại"
+              : task?.userId
+                ? "Đổi Owner"
+                : "Gán vào Task"}
           </Button>
-        </Tooltip>
-      ),
+        );
+      },
     },
   ];
 
@@ -372,7 +518,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
         open={isCompareOpen}
         candidates={selectedCandidatesData}
         onClose={() => setIsCompareOpen(false)}
-        onAssign={handleAssign}
+        onAssign={handleAssignTask}
       />
 
       <Modal
@@ -416,12 +562,22 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
 
               <InputNumber
                 min={1}
-                max={100}
+                max={selectedCandidate?.availableCapacity ?? 100}
                 value={allocationPercent}
                 onChange={(value) => setAllocationPercent(value ?? 100)}
                 addonAfter="%"
                 className="w-full"
               />
+              <div
+                style={{
+                  marginTop: 8,
+                }}
+              >
+                <span>
+                  Capacity khả dụng:{" "}
+                  <strong>{selectedCandidate?.availableCapacity ?? 0}%</strong>
+                </span>
+              </div>
 
               <div className="mt-2 text-xs text-gray-500">
                 Ví dụ: 50% nghĩa là nhân sự dành khoảng một nửa công suất cho

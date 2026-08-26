@@ -1,7 +1,16 @@
-import { Controller, Post, Body, Get, Param, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Patch,
+  BadRequestException,
+} from '@nestjs/common';
 import { SkipCheckPermission } from 'decorator/customize';
 import { TasksService } from './task.service';
 import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
+import { UpdateTaskAssigneeDto } from './dto/update-task-assignee.dto';
 
 @SkipCheckPermission()
 @Controller('tasks')
@@ -35,6 +44,39 @@ export class TasksController {
     return { statusCode: 201, message: 'Tạo Task mới thành công', data };
   }
 
+  @Patch(':taskId/assignee')
+  async updateTaskAssignee(
+    @Param('taskId')
+    taskId: string,
+
+    @Body()
+    body: UpdateTaskAssigneeDto,
+  ) {
+    // Phải gửi field userId,
+    // kể cả khi muốn unassign bằng null.
+    if (!Object.prototype.hasOwnProperty.call(body, 'userId')) {
+      throw new BadRequestException({
+        code: 'USER_ID_REQUIRED',
+
+        message: 'Payload phải chứa userId.',
+      });
+    }
+
+    const data = await this.tasksService.updateTaskAssignee(
+      taskId,
+      body.userId ?? null,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: body.userId
+        ? 'Gán owner cho Task thành công'
+        : 'Đã bỏ owner khỏi Task',
+
+      data,
+    };
+  }
   @Patch(':taskId/lifecycle')
   async updateTaskLifecycle(
     @Param('taskId')

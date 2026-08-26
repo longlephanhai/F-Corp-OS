@@ -149,6 +149,7 @@ export class SprintsService {
     this.validateSprintDates(data.startDate, data.endDate);
 
     this.validateSprintInsideProject(data.startDate, data.endDate, project);
+    await this.assertNoSprintOverlap(project.id, data.startDate, data.endDate);
 
     const status = this.determineInitialStatus(data.startDate);
 
@@ -203,6 +204,7 @@ export class SprintsService {
     this.validateSprintDates(startDate, endDate);
 
     this.validateSprintInsideProject(startDate, endDate, project);
+    await this.assertNoSprintOverlap(project.id, startDate, endDate, sprint.id);
 
     // ========================================
     // ACTIVE SPRINT CANNOT MOVE TO FUTURE
@@ -811,7 +813,68 @@ export class SprintsService {
   // ==========================================
   // NORMALIZE STATUS
   // ==========================================
+  private async assertNoSprintOverlap(
+    projectId: string,
+    startDate: string | Date,
+    endDate: string | Date,
+    excludeSprintId?: string,
+  ) {
+    const query = this.sprintRepo
+      .createQueryBuilder('sprint')
+      .where('sprint.projectId = :projectId', {
+        projectId,
+      })
+      .andWhere('sprint.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+      // Sprint đã CANCELLED không còn chiếm timeline.
+      .andWhere('sprint.status != :cancelledStatus', {
+        cancelledStatus: 'cancelled',
+      })
+      // Hai khoảng thời gian overlap khi:
+      //
+      // existing.start <= new.end
+      // AND
+      // existing.end >= new.start
+      .andWhere('sprint.startDate <= :endDate', {
+        endDate,
+      })
+      .andWhere('sprint.endDate >= :startDate', {
+        startDate,
+      });
 
+    if (excludeSprintId) {
+      query.andWhere('sprint.id != :excludeSprintId', {
+        excludeSprintId,
+      });
+    }
+
+    const conflictingSprint = await query
+      .orderBy('sprint.startDate', 'ASC')
+      .getOne();
+
+    if (conflictingSprint) {
+      throw new ConflictException({
+        code: 'SPRINT_TIMELINE_OVERLAP',
+
+        message: `Sprint bị trùng thời gian với "${conflictingSprint.name}".`,
+
+        conflict: {
+          sprintId: conflictingSprint.id,
+
+          sprintName: conflictingSprint.name,
+
+          startDate: conflictingSprint.startDate,
+
+          endDate: conflictingSprint.endDate,
+
+          status: conflictingSprint.status,
+        },
+      });
+    }
+
+    return true;
+  }
   private normalizeStatus(status?: string) {
     return (status ?? '').toString().toUpperCase();
   }

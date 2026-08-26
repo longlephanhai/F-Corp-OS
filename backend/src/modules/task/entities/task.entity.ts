@@ -35,9 +35,11 @@ export enum TaskStatus {
 export class Task {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column({ name: 'user_id', nullable: true })
-  userId: string;
+  @Column({
+    name: 'user_id',
+    nullable: true,
+  })
+  userId: string | null;
 
   @Column({ name: 'sprint_id' })
   sprintId: string;

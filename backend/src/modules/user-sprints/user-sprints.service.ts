@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { UserSprint, UserSprintStatus } from './entities/user-sprint.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { User } from '../users/entities/user.entity';
+import { Task, TaskStatus } from '../task/entities/task.entity';
 
 @Injectable()
 export class UserSprintService {
@@ -22,6 +23,8 @@ export class UserSprintService {
 
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Task)
+    private readonly taskRepo: Repository<Task>,
   ) {}
 
   // 1. Lấy danh sách nhân sự tham gia Sprint (Có JOIN với bảng User để lấy Tên, Email)
@@ -370,6 +373,61 @@ export class UserSprintService {
     return await this.userSprintRepo.save(record);
   }
 
+  private async assertUserCanBeReleasedFromSprint(
+    sprintId: string,
+    userId: string,
+  ) {
+    const ownedTasks = await this.taskRepo.find({
+      where: {
+        sprintId,
+        userId,
+        isDeleted: false,
+      },
+
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    if (ownedTasks.length === 0) {
+      return true;
+    }
+
+    const unfinishedTasks = ownedTasks.filter((task) => {
+      const status = (task.status ?? '').toString().toUpperCase();
+
+      const progress = Number(task.progress ?? 0);
+
+      return status !== TaskStatus.DONE || progress < 100;
+    });
+
+    if (unfinishedTasks.length > 0) {
+      throw new ConflictException({
+        code: 'USER_HAS_UNFINISHED_TASKS',
+
+        message: `Nhân sự vẫn đang phụ trách ${unfinishedTasks.length} Task chưa hoàn thành. Hãy hoàn thành, đổi owner hoặc bỏ owner trước khi Release.`,
+
+        sprintId,
+
+        userId,
+
+        unfinishedTasks: unfinishedTasks.map((task) => ({
+          id: task.id,
+
+          title: task.title ?? 'Task chưa đặt tên',
+
+          status: task.status,
+
+          progress: Number(task.progress ?? 0),
+
+          priority: task.priority,
+        })),
+      });
+    }
+
+    return true;
+  }
+
   // Hàm Giải phóng & Lưu đánh giá
   async releaseUser(id: string, reviewData: any) {
     const record = await this.userSprintRepo.findOne({
@@ -389,7 +447,7 @@ export class UserSprintService {
     }
 
     this.assertSprintMutable(record.sprint);
-    
+
     if (record.status !== UserSprintStatus.ASSIGNED) {
       throw new ConflictException({
         code: 'INVALID_RELEASE',
@@ -399,6 +457,32 @@ export class UserSprintService {
         currentStatus: record.status,
       });
     }
+
+    // ==========================================
+    // TASK OWNERSHIP GUARD
+    // ==========================================
+    //
+    // Chỉ khi allocation đang ASSIGNED
+    // mới kiểm tra xem nhân sự còn đang
+    // sở hữu Task chưa DONE hay không.
+    //
+    // Nếu còn:
+    // → chặn Release
+    //
+    // Nếu không:
+    // → cho Release
+    // ==========================================
+
+    await this.assertUserCanBeReleasedFromSprint(
+      record.sprintId,
+      record.userId,
+    );
+
+    // Cập nhật trạng thái và thông tin đánh giá
+    record.status = UserSprintStatus.RELEASED;
+
+    // Cập nhật trạng thái và thông tin đánh giá
+    record.status = UserSprintStatus.RELEASED;
 
     // Cập nhật trạng thái và thông tin đánh giá
     record.status = UserSprintStatus.RELEASED;
