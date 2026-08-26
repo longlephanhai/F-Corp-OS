@@ -123,6 +123,34 @@ export class TasksService {
     );
 
     // ==========================================
+    // CURRENT TASK WORKLOAD
+    // ==========================================
+    //
+    // Chỉ tính Task trong chính Sprint này
+    // và chưa DONE.
+    // ==========================================
+
+    const assignedTasks = await this.taskRepo
+      .createQueryBuilder('task')
+      .where('task.sprintId = :sprintId', {
+        sprintId: task.sprintId,
+      })
+      .andWhere('task.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+      .andWhere('task.userId IN (:...assignedUserIds)', {
+        assignedUserIds,
+      })
+      .getMany();
+
+    const unfinishedAssignedTasks = assignedTasks.filter((assignedTask) => {
+      const status = (assignedTask.status ?? '').toString().toUpperCase();
+
+      const progress = Number(assignedTask.progress ?? 0);
+
+      return status !== TaskStatus.DONE || progress < 100;
+    });
+    // ==========================================
     // USERS + SKILLS
     // Chỉ lấy user đã ASSIGNED vào Sprint
     // ==========================================
@@ -216,6 +244,32 @@ export class TasksService {
           (allocation) => allocation.userId === user.id,
         );
 
+        // ==========================================
+        // WORKLOAD
+        // ==========================================
+
+        const userOwnedTasks = unfinishedAssignedTasks.filter(
+          (ownedTask) =>
+            ownedTask.userId === user.id && ownedTask.id !== task.id,
+        );
+
+        const activeTaskCount = userOwnedTasks.length;
+
+        const allocationPercent = Number(sprintAllocation?.percitant ?? 0);
+
+        const workloadLimit =
+          this.calculateTaskWorkloadLimit(allocationPercent);
+
+        const remainingTaskSlots = Math.max(0, workloadLimit - activeTaskCount);
+
+        const workloadPercent =
+          workloadLimit > 0
+            ? Math.round((activeTaskCount / workloadLimit) * 100)
+            : 0;
+
+        const isAtTaskCapacity = activeTaskCount >= workloadLimit;
+
+        const isTaskOverloaded = activeTaskCount > workloadLimit;
         // ======================================
         // RESULT
         // ======================================
@@ -252,7 +306,31 @@ export class TasksService {
 
           sprintAllocationId: sprintAllocation?.id ?? null,
 
-          sprintAllocationPercent: Number(sprintAllocation?.percitant ?? 0),
+          sprintAllocationPercent: allocationPercent,
+
+          activeTaskCount,
+
+          workloadLimit,
+
+          remainingTaskSlots,
+
+          workloadPercent,
+
+          isAtTaskCapacity,
+
+          isTaskOverloaded,
+
+          activeTasks: userOwnedTasks.map((ownedTask) => ({
+            id: ownedTask.id,
+
+            title: ownedTask.title ?? 'Task chưa đặt tên',
+
+            status: ownedTask.status,
+
+            progress: Number(ownedTask.progress ?? 0),
+
+            priority: ownedTask.priority,
+          })),
 
           isAssignedToSprint: true,
         };
@@ -261,6 +339,19 @@ export class TasksService {
         // Ưu tiên skill match cao nhất
         if (right.matchScore !== left.matchScore) {
           return right.matchScore - left.matchScore;
+        }
+        // Nếu skill bằng nhau,
+        // ưu tiên người còn workload slot.
+
+        if (left.isAtTaskCapacity !== right.isAtTaskCapacity) {
+          return left.isAtTaskCapacity ? 1 : -1;
+        }
+
+        // Sau đó ưu tiên người
+        // đang có ít Task hơn.
+
+        if (left.activeTaskCount !== right.activeTaskCount) {
+          return left.activeTaskCount - right.activeTaskCount;
         }
 
         // Nếu match bằng nhau,
@@ -575,5 +666,16 @@ export class TasksService {
     }
 
     return sprint;
+  }
+  private calculateTaskWorkloadLimit(allocationPercent: number) {
+    const normalizedAllocation = Math.max(
+      1,
+      Math.min(100, Number(allocationPercent ?? 0)),
+    );
+
+    // MVP heuristic:
+    // mỗi 25% allocation tương ứng
+    // khoảng 1 concurrent unfinished Task.
+    return Math.max(1, Math.ceil(normalizedAllocation / 25));
   }
 }

@@ -1,6 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { Avatar, Button, Drawer, message, Progress, Table, Tag } from "antd";
+import {
+  Avatar,
+  Button,
+  Drawer,
+  message,
+  Modal,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 
 import type { TaskCandidate, TaskItem } from "../../../common/types/pm";
 
@@ -8,6 +19,7 @@ import { CandidateCompareModal } from "../CandidateCompareModal";
 
 import { pmApi } from "../../../api/pm";
 
+const { Text } = Typography;
 interface Props {
   open: boolean;
 
@@ -85,52 +97,112 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
   // ASSIGN TASK
   // ==========================================
 
-  const handleAssignTask = async (candidateId: string) => {
+  const performAssignTask = async (candidateId: string) => {
     if (!task) {
-      return;
-    }
-
-    const candidate = candidates.find((item) => item.id === candidateId);
-
-    if (!candidate) {
-      message.error("Không tìm thấy thông tin nhân sự.");
-
-      return;
-    }
-
-    // Backend candidate matching hiện chỉ
-    // trả user ASSIGNED trong đúng Sprint.
-    //
-    // Check này chỉ để frontend phòng thủ.
-    if (candidate.isAssignedToSprint === false) {
-      message.warning("Nhân sự chưa được ASSIGNED vào Sprint này.");
-
       return;
     }
 
     try {
       setAssignLoading(true);
 
-      await pmApi.updateTaskAssignee(task.id, candidate.id);
+      await pmApi.updateTaskAssignee(task.id, candidateId);
 
-      message.success(`Đã giao Task cho ${candidate.fullName}.`);
+      message.success("Đã giao Task cho nhân sự.");
 
       setIsCompareOpen(false);
-
       setSelectedRowKeys([]);
-
       await onAssigned();
 
       onClose();
     } catch (error: any) {
       console.error("Không thể gán Task:", error);
 
-      const errorData = error?.response?.data;
-
-      message.error(errorData?.message ?? "Không thể giao Task cho nhân sự.");
+      message.error(error?.response?.data?.message ?? "Không thể giao Task.");
     } finally {
       setAssignLoading(false);
     }
+  };
+  const handleAssignTask = async (candidateId: string) => {
+    const candidate = candidates.find((item) => item.id === candidateId);
+
+    if (!candidate) {
+      message.error("Không tìm thấy nhân sự.");
+
+      return;
+    }
+
+    // ==========================================
+    // FRONTEND DEFENSIVE CHECK
+    // ==========================================
+
+    if (candidate.isAssignedToSprint === false) {
+      message.warning("Nhân sự chưa được ASSIGNED vào Sprint này.");
+
+      return;
+    }
+
+    // ==========================================
+    // CURRENT OWNER
+    // ==========================================
+
+    if (task?.userId === candidate.id) {
+      message.info("Nhân sự này đang là owner của Task.");
+
+      return;
+    }
+
+    // ==========================================
+    // WORKLOAD WARNING
+    // ==========================================
+
+    if (candidate.isAtTaskCapacity) {
+      Modal.confirm({
+        title: candidate.isTaskOverloaded
+          ? "Nhân sự đang quá tải"
+          : "Nhân sự đã đạt workload khuyến nghị",
+
+        width: 600,
+
+        content: (
+          <Space direction="vertical" size={6}>
+            <Text>
+              <strong>{candidate.fullName}</strong> hiện đang phụ trách{" "}
+              {candidate.activeTaskCount} Task chưa hoàn thành.
+            </Text>
+
+            <Text>
+              Allocation trong Sprint:{" "}
+              <strong>{candidate.sprintAllocationPercent}%</strong>
+            </Text>
+
+            <Text>
+              Workload khuyến nghị:{" "}
+              <strong>{candidate.workloadLimit} Task</strong>
+            </Text>
+
+            <Text type="warning">
+              Việc giao thêm Task có thể làm nhân sự quá tải.
+            </Text>
+          </Space>
+        ),
+
+        okText: "Vẫn giao Task",
+
+        cancelText: "Chọn người khác",
+
+        onOk: async () => {
+          await performAssignTask(candidate.id);
+        },
+      });
+
+      return;
+    }
+
+    // ==========================================
+    // NORMAL ASSIGN
+    // ==========================================
+
+    await performAssignTask(candidate.id);
   };
 
   // ==========================================
@@ -224,6 +296,72 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
           </div>
         </div>
       ),
+    },
+    {
+      title: "Workload",
+
+      key: "workload",
+
+      width: 190,
+
+      render: (_: unknown, record: TaskCandidate) => {
+        const percent = Math.min(record.workloadPercent, 100);
+
+        return (
+          <Space
+            direction="vertical"
+            size={2}
+            style={{
+              width: "100%",
+            }}
+          >
+            <Progress
+              percent={percent}
+              size="small"
+              showInfo={false}
+              status={
+                record.isTaskOverloaded
+                  ? "exception"
+                  : record.isAtTaskCapacity
+                    ? "exception"
+                    : "active"
+              }
+            />
+
+            <Text type={record.isAtTaskCapacity ? "danger" : "secondary"}>
+              {record.activeTaskCount}/{record.workloadLimit} Task
+            </Text>
+
+            <Text
+              type="secondary"
+              style={{
+                fontSize: 12,
+              }}
+            >
+              Allocation {record.sprintAllocationPercent}%
+            </Text>
+          </Space>
+        );
+      },
+    },
+    {
+      title: "Tải hiện tại",
+
+      key: "workloadStatus",
+
+      width: 130,
+
+      render: (_: unknown, record: TaskCandidate) => {
+        if (record.isTaskOverloaded) {
+          return <Tag color="red">Quá tải</Tag>;
+        }
+
+        if (record.isAtTaskCapacity) {
+          return <Tag color="orange">Đã đầy tải</Tag>;
+        }
+
+        return <Tag color="green">Còn {record.remainingTaskSlots} slot</Tag>;
+      },
     },
 
     // ========================================

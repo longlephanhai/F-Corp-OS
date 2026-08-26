@@ -46,21 +46,38 @@ export interface TaskCandidate {
 
   employeeStatus?: string;
 
-
-
   currentSprintAllocationId: string | null;
-
- 
 
   currentSprintAllocationPercent: number;
 
   isAssignedToSprint: boolean;
 
-
-
   canAssignToTask: boolean;
+  sprintAllocationPercent: number;
 
+  activeTaskCount: number;
 
+  workloadLimit: number;
+
+  remainingTaskSlots: number;
+
+  workloadPercent: number;
+
+  isAtTaskCapacity: boolean;
+
+  isTaskOverloaded: boolean;
+
+  activeTasks: Array<{
+    id: string;
+
+    title: string;
+
+    status: string;
+
+    progress: number;
+
+    priority?: string;
+  }>;
 }
 
 export interface UserSprintItem {
