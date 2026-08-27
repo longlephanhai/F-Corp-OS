@@ -13,6 +13,7 @@ import { TaskDependency } from './entities/task-dependency.entity';
 
 import { Task } from '../task/entities/task.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class TaskDependenciesService {
@@ -158,6 +159,11 @@ export class TaskDependenciesService {
         },
       });
     }
+    // ==========================================
+    // DEPENDENCY TIMELINE
+    // ==========================================
+
+    this.assertDependencyTimelineValid(task, dependsOnTask);
 
     // Sprint terminal => Dependency read-only.
     await this.assertSprintMutable(task.sprintId);
@@ -345,6 +351,102 @@ export class TaskDependenciesService {
 
             progress: dependency.dependsOnTask?.progress ?? 0,
           })),
+      });
+    }
+
+    return true;
+  }
+  private assertDependencyTimelineValid(task: Task, dependsOnTask: Task) {
+    // ==========================================
+    // REQUIRE TIMELINE
+    // ==========================================
+
+    if (
+      !task.startDate ||
+      !task.endDate ||
+      !dependsOnTask.startDate ||
+      !dependsOnTask.endDate
+    ) {
+      throw new ConflictException({
+        code: 'DEPENDENCY_TIMELINE_REQUIRED',
+
+        message:
+          'Cả Task và prerequisite phải có timeline hợp lệ trước khi tạo dependency.',
+
+        task: {
+          id: task.id,
+          title: task.title,
+          startDate: task.startDate,
+          endDate: task.endDate,
+        },
+
+        dependency: {
+          id: dependsOnTask.id,
+          title: dependsOnTask.title,
+          startDate: dependsOnTask.startDate,
+          endDate: dependsOnTask.endDate,
+        },
+      });
+    }
+
+    const taskStart = dayjs(task.startDate);
+
+    const taskEnd = dayjs(task.endDate);
+
+    const dependencyStart = dayjs(dependsOnTask.startDate);
+
+    const dependencyEnd = dayjs(dependsOnTask.endDate);
+
+    // ==========================================
+    // INVALID LEGACY DATE
+    // ==========================================
+
+    if (
+      !taskStart.isValid() ||
+      !taskEnd.isValid() ||
+      !dependencyStart.isValid() ||
+      !dependencyEnd.isValid()
+    ) {
+      throw new ConflictException({
+        code: 'INVALID_DEPENDENCY_TIMELINE',
+
+        message: 'Timeline của Task hoặc prerequisite không hợp lệ.',
+      });
+    }
+
+    // ==========================================
+    // FINISH-TO-START
+    //
+    // prerequisite phải kết thúc
+    // trước hoặc đúng ngày Task bắt đầu.
+    // ==========================================
+
+    if (dependencyEnd.isAfter(taskStart, 'day')) {
+      throw new ConflictException({
+        code: 'DEPENDENCY_TIMELINE_CONFLICT',
+
+        message:
+          'Prerequisite phải kết thúc trước hoặc đúng ngày Task phụ thuộc bắt đầu.',
+
+        task: {
+          id: task.id,
+
+          title: task.title ?? 'Task chưa đặt tên',
+
+          startDate: task.startDate,
+
+          endDate: task.endDate,
+        },
+
+        dependency: {
+          id: dependsOnTask.id,
+
+          title: dependsOnTask.title ?? 'Task prerequisite',
+
+          startDate: dependsOnTask.startDate,
+
+          endDate: dependsOnTask.endDate,
+        },
       });
     }
 

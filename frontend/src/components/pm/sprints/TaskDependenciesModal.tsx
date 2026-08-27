@@ -115,6 +115,30 @@ export const TaskDependenciesModal: React.FC<Props> = ({
     [dependencies],
   );
 
+  const isTimelineCompatible = (candidate: TaskItem) => {
+    if (!task?.startDate || !candidate.endDate) {
+      return false;
+    }
+
+    const currentStart = new Date(task.startDate).getTime();
+
+    const candidateEnd = new Date(candidate.endDate).getTime();
+
+    if (Number.isNaN(currentStart) || Number.isNaN(candidateEnd)) {
+      return false;
+    }
+
+    // Cùng ngày vẫn hợp lệ.
+    const currentStartDate = new Date(
+      new Date(task.startDate).toDateString(),
+    ).getTime();
+
+    const candidateEndDate = new Date(
+      new Date(candidate.endDate).toDateString(),
+    ).getTime();
+
+    return candidateEndDate <= currentStartDate;
+  };
   const availableTasks = useMemo(
     () =>
       tasks.filter(
@@ -159,6 +183,49 @@ export const TaskDependenciesModal: React.FC<Props> = ({
           title: "Không thể tạo Dependency",
 
           content: "Dependency này sẽ tạo vòng lặp giữa các Task.",
+        });
+
+        return;
+      }
+
+      if (errorData?.code === "DEPENDENCY_TIMELINE_CONFLICT") {
+        const dependency = errorData?.dependency;
+
+        const currentTask = errorData?.task;
+
+        Modal.warning({
+          title: "Timeline Dependency không hợp lệ",
+
+          width: 620,
+
+          content: (
+            <Space direction="vertical" size={8}>
+              <Text>
+                Task prerequisite phải kết thúc trước hoặc đúng ngày Task hiện
+                tại bắt đầu.
+              </Text>
+
+              <Text>
+                Prerequisite: <strong>{dependency?.title ?? "Task"}</strong>
+              </Text>
+
+              <Text type="secondary">
+                {dependency?.startDate ?? "?"}
+                {" → "}
+                {dependency?.endDate ?? "?"}
+              </Text>
+
+              <Text>
+                Task hiện tại: <strong>{currentTask?.title ?? "Task"}</strong>
+              </Text>
+
+              <Text type="secondary">
+                {currentTask?.startDate ?? "?"}
+                {" → "}
+                {currentTask?.endDate ?? "?"}
+              </Text>
+            </Space>
+          ),
         });
 
         return;
@@ -299,13 +366,19 @@ export const TaskDependenciesModal: React.FC<Props> = ({
                 width: 480,
               }}
               onChange={setSelectedTaskId}
-              options={availableTasks.map((candidate) => ({
-                value: candidate.id,
+              options={availableTasks.map((candidate) => {
+                const timelineCompatible = isTimelineCompatible(candidate);
 
-                label:
-                  `${candidate.title ?? "Task"} · ` +
-                  `${candidate.status ?? "TODO"}`,
-              }))}
+                return {
+                  value: candidate.id,
+
+                  disabled: !timelineCompatible,
+
+                  label: timelineCompatible
+                    ? `${candidate.title ?? "Task"} · ${candidate.status ?? "TODO"}`
+                    : `${candidate.title ?? "Task"} · Timeline không phù hợp`,
+                };
+              })}
             />
 
             <Button
