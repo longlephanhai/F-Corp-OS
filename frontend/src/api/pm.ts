@@ -79,6 +79,19 @@ export const pmApi = {
   createTask: (data: Partial<TaskItem>) => {
     return axios.post<IBackendRes<TaskItem>>("/tasks", data);
   },
+  updateTaskTimeline: (
+    taskId: string,
+    data: {
+      startDate?: string;
+      endDate?: string;
+    },
+  ) => {
+    return axios.patch<IBackendRes<TaskItem>>(
+      `/tasks/${taskId}/timeline`,
+      data,
+    );
+  },
+
   updateTaskLifecycle: (
     taskId: string,
     data: {

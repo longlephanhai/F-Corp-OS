@@ -11,6 +11,7 @@ import { SkipCheckPermission } from 'decorator/customize';
 import { TasksService } from './task.service';
 import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { UpdateTaskAssigneeDto } from './dto/update-task-assignee.dto';
+import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
 
 @SkipCheckPermission()
 @Controller('tasks')
@@ -77,6 +78,27 @@ export class TasksController {
       data,
     };
   }
+
+  @Patch(':taskId/timeline')
+  async updateTaskTimeline(
+    @Param('taskId')
+    taskId: string,
+
+    @Body()
+    body: UpdateTaskTimelineDto,
+  ) {
+    const data = await this.tasksService.updateTaskTimeline(taskId, body);
+
+    return {
+      statusCode: 200,
+
+      message: 'Cập nhật timeline Task thành công',
+
+      data,
+    };
+  }
+
+  
   @Patch(':taskId/lifecycle')
   async updateTaskLifecycle(
     @Param('taskId')

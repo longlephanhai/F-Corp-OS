@@ -13,6 +13,7 @@ import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { User } from '../users/entities/user.entity';
 import { TaskDependenciesService } from '../task-dependencies/task-dependencies.service';
 import { Sprint } from '../sprints/entities/sprint.entity';
+import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
 import {
   UserSprint,
   UserSprintStatus,
@@ -413,6 +414,96 @@ export class TasksService {
     // ========================================
 
     task.userId = userId;
+
+    return await this.taskRepo.save(task);
+  }
+
+  async updateTaskTimeline(taskId: string, data: UpdateTaskTimelineDto) {
+    // ==========================================
+    // TASK
+    // ==========================================
+
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    // ==========================================
+    // EMPTY PAYLOAD
+    // ==========================================
+
+    if (data.startDate === undefined && data.endDate === undefined) {
+      throw new BadRequestException({
+        code: 'EMPTY_TASK_TIMELINE_UPDATE',
+
+        message: 'Phải truyền startDate hoặc endDate.',
+      });
+    }
+
+    // ==========================================
+    // SPRINT MUTABLE
+    // ==========================================
+
+    const sprint = await this.assertSprintMutable(task.sprintId);
+
+    // ==========================================
+    // DONE TASK LOCK
+    // ==========================================
+
+    if (task.status === TaskStatus.DONE) {
+      throw new ConflictException({
+        code: 'DONE_TASK_TIMELINE_LOCKED',
+
+        message: 'Task đã DONE nên không thể chỉnh sửa timeline.',
+      });
+    }
+
+    // ==========================================
+    // BUILD NEW TIMELINE
+    // ==========================================
+
+    const newStartDate = data.startDate ?? task.startDate;
+
+    const newEndDate = data.endDate ?? task.endDate;
+
+    // ==========================================
+    // TASK MUST STAY INSIDE SPRINT
+    // ==========================================
+
+    this.validateTaskTimeline(newStartDate, newEndDate, sprint);
+
+    // ==========================================
+    // DEPENDENCY IMPACT
+    // ==========================================
+
+    await this.taskDependenciesService.assertTaskTimelineChangeSafe(
+      task.id,
+      newStartDate,
+      newEndDate,
+    );
+
+    // ==========================================
+    // SAVE
+    // ==========================================
+
+    if (data.startDate !== undefined) {
+      task.startDate = new Date(data.startDate);
+    }
+
+    if (data.endDate !== undefined) {
+      task.endDate = new Date(data.endDate);
+    }
 
     return await this.taskRepo.save(task);
   }

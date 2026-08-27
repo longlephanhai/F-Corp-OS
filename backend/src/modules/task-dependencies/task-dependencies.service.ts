@@ -7,7 +7,7 @@ import {
 
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { TaskDependency } from './entities/task-dependency.entity';
 
@@ -314,6 +314,199 @@ export class TaskDependenciesService {
 
       dependencies,
     };
+  }
+
+  async assertTaskTimelineChangeSafe(
+    taskId: string,
+    newStartDate: string | Date,
+    newEndDate: string | Date,
+  ) {
+    // ==========================================
+    // ALL RELATIONS INVOLVING THIS TASK
+    // ==========================================
+
+    const relations = await this.dependencyRepo
+      .createQueryBuilder('dependency')
+      .where('dependency.taskId = :taskId', {
+        taskId,
+      })
+      .orWhere('dependency.dependsOnTaskId = :taskId', {
+        taskId,
+      })
+      .getMany();
+
+    if (relations.length === 0) {
+      return true;
+    }
+
+    // ==========================================
+    // LOAD RELATED TASKS
+    // ==========================================
+
+    const relatedTaskIds = [
+      ...new Set(
+        relations.flatMap((dependency) => [
+          dependency.taskId,
+          dependency.dependsOnTaskId,
+        ]),
+      ),
+    ].filter((id) => id !== taskId);
+
+    const relatedTasks =
+      relatedTaskIds.length > 0
+        ? await this.taskRepo.find({
+            where: {
+              id: In(relatedTaskIds),
+
+              isDeleted: false,
+            },
+          })
+        : [];
+
+    const taskMap = new Map(relatedTasks.map((task) => [task.id, task]));
+
+    const newStart = dayjs(newStartDate);
+
+    const newEnd = dayjs(newEndDate);
+
+    const conflicts: any[] = [];
+
+    // ==========================================
+    // CHECK EVERY DEPENDENCY
+    // ==========================================
+
+    for (const dependency of relations) {
+      // ========================================
+      // CASE A
+      //
+      // CURRENT TASK DEPENDS ON ANOTHER TASK
+      //
+      // taskId = CURRENT
+      // dependsOnTaskId = PREREQUISITE
+      //
+      // prerequisite.end <= current.start
+      // ========================================
+
+      if (dependency.taskId === taskId) {
+        const prerequisite = taskMap.get(dependency.dependsOnTaskId);
+
+        if (!prerequisite) {
+          continue;
+        }
+
+        if (!prerequisite.endDate) {
+          conflicts.push({
+            type: 'PREREQUISITE_TIMELINE_MISSING',
+
+            dependencyId: dependency.id,
+
+            taskId: prerequisite.id,
+
+            taskTitle: prerequisite.title,
+          });
+
+          continue;
+        }
+
+        const prerequisiteEnd = dayjs(prerequisite.endDate);
+
+        if (prerequisiteEnd.isAfter(newStart, 'day')) {
+          conflicts.push({
+            type: 'PREREQUISITE_ENDS_TOO_LATE',
+
+            dependencyId: dependency.id,
+
+            prerequisite: {
+              id: prerequisite.id,
+
+              title: prerequisite.title,
+
+              endDate: prerequisite.endDate,
+            },
+
+            currentTask: {
+              id: taskId,
+
+              newStartDate,
+            },
+          });
+        }
+      }
+
+      // ========================================
+      // CASE B
+      //
+      // ANOTHER TASK DEPENDS ON CURRENT TASK
+      //
+      // current.end <= dependent.start
+      // ========================================
+
+      if (dependency.dependsOnTaskId === taskId) {
+        const dependentTask = taskMap.get(dependency.taskId);
+
+        if (!dependentTask) {
+          continue;
+        }
+
+        if (!dependentTask.startDate) {
+          conflicts.push({
+            type: 'DEPENDENT_TIMELINE_MISSING',
+
+            dependencyId: dependency.id,
+
+            taskId: dependentTask.id,
+
+            taskTitle: dependentTask.title,
+          });
+
+          continue;
+        }
+
+        const dependentStart = dayjs(dependentTask.startDate);
+
+        if (newEnd.isAfter(dependentStart, 'day')) {
+          conflicts.push({
+            type: 'CURRENT_TASK_ENDS_TOO_LATE',
+
+            dependencyId: dependency.id,
+
+            currentTask: {
+              id: taskId,
+
+              newEndDate,
+            },
+
+            dependentTask: {
+              id: dependentTask.id,
+
+              title: dependentTask.title,
+
+              startDate: dependentTask.startDate,
+            },
+          });
+        }
+      }
+    }
+
+    if (conflicts.length > 0) {
+      throw new ConflictException({
+        code: 'TASK_TIMELINE_DEPENDENCY_CONFLICT',
+
+        message: `Timeline mới xung đột với ${conflicts.length} dependency hiện có.`,
+
+        taskId,
+
+        requestedTimeline: {
+          startDate: newStartDate,
+
+          endDate: newEndDate,
+        },
+
+        conflicts,
+      });
+    }
+
+    return true;
   }
 
   // ==========================================
