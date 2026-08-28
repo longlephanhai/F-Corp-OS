@@ -13,7 +13,12 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { DeleteOutlined, EditOutlined, LockOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  LockOutlined,
+  SwapOutlined,
+} from "@ant-design/icons";
 
 import type { TaskItem } from "../../../common/types/pm";
 
@@ -52,6 +57,9 @@ interface Props {
   readOnly?: boolean;
   onEditTask: (task: TaskItem) => void;
   onDeleteTask: (task: TaskItem) => void;
+  canCarryOver?: boolean;
+
+  onCarryOverTask: (task: TaskItem) => void;
 }
 
 // ==========================================
@@ -83,6 +91,9 @@ export const SprintTaskTable: React.FC<Props> = ({
   readOnly = false,
   onEditTask,
   onDeleteTask,
+  canCarryOver = false,
+
+  onCarryOverTask,
 }) => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -539,6 +550,17 @@ export const SprintTaskTable: React.FC<Props> = ({
             >
               Sửa
             </Button>
+
+            {canCarryOver && record.status !== "DONE" && (
+              <Button
+                size="small"
+                icon={<SwapOutlined />}
+                disabled={readOnly}
+                onClick={() => onCarryOverTask(record)}
+              >
+                Carry-over
+              </Button>
+            )}
 
             <Button
               danger

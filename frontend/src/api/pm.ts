@@ -151,6 +151,19 @@ export const pmApi = {
       }>
     >(`/tasks/${taskId}`);
   },
+
+  carryOverTask: (
+    taskId: string,
+    data: {
+      targetSprintId: string;
+
+      startDate: string;
+
+      endDate: string;
+    },
+  ) => {
+    return axios.post<IBackendRes<any>>(`/tasks/${taskId}/carry-over`, data);
+  },
   // Giải phóng nhân sự kèm Đánh giá (Review)
   releaseUserSprint: (id: string, reviewData: any) => {
     return axios.patch<IBackendRes<any>>(

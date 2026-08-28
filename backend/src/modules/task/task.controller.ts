@@ -14,6 +14,7 @@ import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { UpdateTaskAssigneeDto } from './dto/update-task-assignee.dto';
 import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { CarryOverTaskDto } from './dto/carry-over-task.dto';
 
 @SkipCheckPermission()
 @Controller('tasks')
@@ -113,6 +114,24 @@ export class TasksController {
     return {
       statusCode: 200,
       message: 'Cập nhật Task thành công',
+      data,
+    };
+  }
+  @Post(':taskId/carry-over')
+  async carryOverTask(
+    @Param('taskId')
+    taskId: string,
+
+    @Body()
+    body: CarryOverTaskDto,
+  ) {
+    const data = await this.tasksService.carryOverTask(taskId, body);
+
+    return {
+      statusCode: 201,
+
+      message: 'Carry-over Task thành công',
+
       data,
     };
   }

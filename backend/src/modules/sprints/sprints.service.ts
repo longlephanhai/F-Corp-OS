@@ -561,6 +561,17 @@ export class SprintsService {
         createdAt: 'ASC',
       },
     });
+    const archivedTasks = await this.taskRepo.find({
+      where: {
+        sprintId: sprint.id,
+
+        isDeleted: true,
+      },
+    });
+
+    const carriedOverTasks = archivedTasks.filter(
+      (task) => task.carryOverMeta?.direction === 'SOURCE',
+    );
 
     const allocations = await this.userSprintRepo.find({
       where: {
@@ -574,7 +585,7 @@ export class SprintsService {
     // 1. TASK CHECK
     // ==========================================
 
-    if (tasks.length === 0) {
+    if (tasks.length === 0 && carriedOverTasks.length === 0) {
       blockers.push('Sprint chưa có Task.');
     }
 
@@ -678,6 +689,7 @@ export class SprintsService {
         ).length,
 
         unresolvedAllocations: unresolvedAllocations.length,
+        carriedOverTasks: carriedOverTasks.length,
       },
 
       details: {

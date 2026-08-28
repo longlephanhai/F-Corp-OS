@@ -32,6 +32,15 @@ export interface TaskItem {
   status?: "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
 
   progress?: number;
+  carryOverMeta?: {
+    direction: "SOURCE" | "TARGET";
+
+    linkedTaskId: string;
+
+    linkedSprintId: string;
+
+    carriedAt: string;
+  } | null;
 }
 
 export interface TaskCandidate {

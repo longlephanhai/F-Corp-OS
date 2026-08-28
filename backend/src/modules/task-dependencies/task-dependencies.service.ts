@@ -10,8 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
 import { TaskDependency } from './entities/task-dependency.entity';
-
-import { Task } from '../task/entities/task.entity';
+import { Task, TaskStatus } from '../task/entities/task.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import dayjs from 'dayjs';
 
@@ -714,6 +713,103 @@ export class TaskDependenciesService {
 
     return true;
   }
+  async assertTaskCanCarryOver(taskId: string) {
+    const relations = await this.dependencyRepo
+      .createQueryBuilder('dependency')
+      .where('dependency.taskId = :taskId', {
+        taskId,
+      })
+      .orWhere('dependency.dependsOnTaskId = :taskId', {
+        taskId,
+      })
+      .getMany();
+
+    if (relations.length === 0) {
+      return true;
+    }
+
+    const relatedIds = [
+      ...new Set(
+        relations.flatMap((relation) => [
+          relation.taskId,
+          relation.dependsOnTaskId,
+        ]),
+      ),
+    ].filter((id) => id !== taskId);
+
+    const relatedTasks =
+      relatedIds.length > 0
+        ? await this.taskRepo.find({
+            where: {
+              id: In(relatedIds),
+
+              isDeleted: false,
+            },
+          })
+        : [];
+
+    const taskMap = new Map(relatedTasks.map((task) => [task.id, task]));
+
+    const isDone = (task: Task) => {
+      const status = (task.status ?? '').toString().toUpperCase();
+
+      const progress = Number(task.progress ?? 0);
+
+      return status === TaskStatus.DONE && progress >= 100;
+    };
+
+    // ========================================
+    // TASK NÀY ĐANG CHỜ PREREQUISITE
+    // ========================================
+
+    const unfinishedPrerequisites = relations
+      .filter((relation) => relation.taskId === taskId)
+      .map((relation) => taskMap.get(relation.dependsOnTaskId))
+      .filter((task): task is Task => Boolean(task))
+      .filter((task) => !isDone(task));
+
+    // ========================================
+    // TASK KHÁC ĐANG PHỤ THUỘC TASK NÀY
+    // ========================================
+
+    const unfinishedDependents = relations
+      .filter((relation) => relation.dependsOnTaskId === taskId)
+      .map((relation) => taskMap.get(relation.taskId))
+      .filter((task): task is Task => Boolean(task))
+      .filter((task) => !isDone(task));
+
+    if (unfinishedPrerequisites.length > 0 || unfinishedDependents.length > 0) {
+      throw new ConflictException({
+        code: 'TASK_CARRY_OVER_DEPENDENCY_CONFLICT',
+
+        message:
+          'Task còn dependency chưa hoàn tất nên chưa thể Carry-over riêng lẻ.',
+
+        unfinishedPrerequisites: unfinishedPrerequisites.map((task) => ({
+          id: task.id,
+
+          title: task.title,
+
+          status: task.status,
+
+          progress: Number(task.progress ?? 0),
+        })),
+
+        unfinishedDependents: unfinishedDependents.map((task) => ({
+          id: task.id,
+
+          title: task.title,
+
+          status: task.status,
+
+          progress: Number(task.progress ?? 0),
+        })),
+      });
+    }
+
+    return true;
+  }
+
   private async wouldCreateCycle(taskId: string, dependsOnTaskId: string) {
     const dependencies = await this.dependencyRepo.find();
 

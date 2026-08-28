@@ -15,6 +15,7 @@ import { TaskDependenciesService } from '../task-dependencies/task-dependencies.
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { CarryOverTaskDto } from './dto/carry-over-task.dto';
 import {
   UserSprint,
   UserSprintStatus,
@@ -240,6 +241,282 @@ export class TasksService {
     // ==========================================
 
     return await this.taskRepo.save(task);
+  }
+  async carryOverTask(taskId: string, data: CarryOverTaskDto) {
+    // ==========================================
+    // SOURCE TASK
+    // ==========================================
+
+    const sourceTask = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!sourceTask) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    // ==========================================
+    // SOURCE SPRINT
+    // ==========================================
+
+    const sourceSprint = await this.sprintRepo.findOne({
+      where: {
+        id: sourceTask.sprintId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!sourceSprint) {
+      throw new NotFoundException({
+        code: 'SPRINT_NOT_FOUND',
+
+        message: 'Không tìm thấy Sprint nguồn.',
+      });
+    }
+
+    const sourceSprintStatus = (sourceSprint.status ?? '')
+      .toString()
+      .toUpperCase();
+
+    if (sourceSprintStatus !== 'ACTIVE') {
+      throw new ConflictException({
+        code: 'CARRY_OVER_SOURCE_NOT_ACTIVE',
+
+        message: 'Chỉ Task của Sprint ACTIVE mới được Carry-over.',
+
+        sprintStatus: sourceSprint.status,
+      });
+    }
+
+    // ==========================================
+    // TASK DONE
+    // ==========================================
+
+    const taskStatus = (sourceTask.status ?? '').toString().toUpperCase();
+
+    const progress = Number(sourceTask.progress ?? 0);
+
+    if (taskStatus === TaskStatus.DONE || progress >= 100) {
+      throw new ConflictException({
+        code: 'DONE_TASK_CANNOT_CARRY_OVER',
+
+        message: 'Task đã hoàn thành không cần Carry-over.',
+      });
+    }
+
+    // ==========================================
+    // TARGET SPRINT
+    // ==========================================
+
+    if (data.targetSprintId === sourceSprint.id) {
+      throw new BadRequestException({
+        code: 'INVALID_CARRY_OVER_TARGET',
+
+        message: 'Sprint đích phải khác Sprint hiện tại.',
+      });
+    }
+
+    const targetSprint = await this.sprintRepo.findOne({
+      where: {
+        id: data.targetSprintId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!targetSprint) {
+      throw new NotFoundException({
+        code: 'TARGET_SPRINT_NOT_FOUND',
+
+        message: 'Không tìm thấy Sprint đích.',
+      });
+    }
+
+    // ==========================================
+    // SAME PROJECT
+    // ==========================================
+
+    if (sourceSprint.projectId !== targetSprint.projectId) {
+      throw new ConflictException({
+        code: 'CROSS_PROJECT_CARRY_OVER',
+
+        message:
+          'Chỉ được Carry-over Task sang Sprint khác trong cùng Project.',
+      });
+    }
+
+    // ==========================================
+    // TARGET MUST BE UPCOMING
+    // ==========================================
+
+    const targetStatus = (targetSprint.status ?? '').toString().toUpperCase();
+
+    if (targetStatus !== 'UPCOMING') {
+      throw new ConflictException({
+        code: 'CARRY_OVER_TARGET_NOT_UPCOMING',
+
+        message: 'Sprint đích phải ở trạng thái UPCOMING.',
+
+        targetSprintStatus: targetSprint.status,
+      });
+    }
+
+    // ==========================================
+    // MUST ACTUALLY BE A NEXT SPRINT
+    // ==========================================
+
+    const sourceEnd = new Date(sourceSprint.endDate).getTime();
+
+    const targetStart = new Date(targetSprint.startDate).getTime();
+
+    if (targetStart <= sourceEnd) {
+      throw new ConflictException({
+        code: 'INVALID_NEXT_SPRINT',
+
+        message: 'Sprint đích phải bắt đầu sau Sprint hiện tại.',
+      });
+    }
+
+    // ==========================================
+    // NEW TASK TIMELINE
+    // ==========================================
+
+    this.validateTaskTimeline(data.startDate, data.endDate, targetSprint);
+
+    // ==========================================
+    // DEPENDENCY IMPACT
+    // ==========================================
+
+    await this.taskDependenciesService.assertTaskCanCarryOver(sourceTask.id);
+
+    // ==========================================
+    // OWNER
+    //
+    // Chỉ giữ owner nếu user đã ASSIGNED
+    // trong Sprint đích.
+    // ==========================================
+
+    let targetUserId: string | null = null;
+
+    if (sourceTask.userId) {
+      const targetAllocation = await this.userSprintRepo.findOne({
+        where: {
+          sprintId: targetSprint.id,
+
+          userId: sourceTask.userId,
+
+          status: UserSprintStatus.ASSIGNED,
+        },
+      });
+
+      if (targetAllocation) {
+        targetUserId = sourceTask.userId;
+      }
+    }
+
+    const carriedAt = new Date();
+
+    // ==========================================
+    // TRANSACTION
+    // ==========================================
+
+    return await this.taskRepo.manager.transaction(async (manager) => {
+      const taskRepo = manager.getRepository(Task);
+
+      // ======================================
+      // CREATE TARGET TASK
+      // ======================================
+
+      const targetTask = taskRepo.create({
+        sprintId: targetSprint.id,
+
+        userId: targetUserId,
+
+        title: sourceTask.title,
+
+        description: sourceTask.description,
+
+        priority: sourceTask.priority,
+
+        // New Sprint = new execution cycle.
+        status: TaskStatus.TODO,
+
+        progress: 0,
+
+        requiredSkills: sourceTask.requiredSkills
+          ? [...sourceTask.requiredSkills]
+          : [],
+
+        startDate: new Date(data.startDate),
+
+        endDate: new Date(data.endDate),
+
+        budgetRate: sourceTask.budgetRate,
+
+        isDeleted: false,
+      });
+
+      const savedTarget = await taskRepo.save(targetTask);
+
+      // ======================================
+      // LINK TARGET → SOURCE
+      // ======================================
+
+      savedTarget.carryOverMeta = {
+        direction: 'TARGET',
+
+        linkedTaskId: sourceTask.id,
+
+        linkedSprintId: sourceSprint.id,
+
+        carriedAt: carriedAt.toISOString(),
+      };
+
+      await taskRepo.save(savedTarget);
+
+      // ======================================
+      // ARCHIVE SOURCE
+      // ======================================
+
+      sourceTask.carryOverMeta = {
+        direction: 'SOURCE',
+
+        linkedTaskId: savedTarget.id,
+
+        linkedSprintId: targetSprint.id,
+
+        carriedAt: carriedAt.toISOString(),
+      };
+
+      sourceTask.isDeleted = true;
+
+      sourceTask.deletedAt = carriedAt;
+
+      await taskRepo.save(sourceTask);
+
+      return {
+        sourceTaskId: sourceTask.id,
+
+        sourceSprintId: sourceSprint.id,
+
+        targetSprintId: targetSprint.id,
+
+        targetTask: savedTarget,
+
+        ownerPreserved: Boolean(targetUserId),
+
+        previousOwnerId: sourceTask.userId ?? null,
+      };
+    });
   }
   async removeTask(taskId: string) {
     // ==========================================

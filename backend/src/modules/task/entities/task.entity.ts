@@ -16,6 +16,15 @@ export interface RequiredSkillItem {
   min_level: number;
   weight: number;
 }
+export interface TaskCarryOverMeta {
+  direction: 'SOURCE' | 'TARGET';
+
+  linkedTaskId: string;
+
+  linkedSprintId: string;
+
+  carriedAt: string;
+}
 
 export enum TaskPriority {
   LOW = 'LOW',
@@ -89,6 +98,13 @@ export class Task {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   budgetRate: number | null;
+
+  @Column({
+    name: 'carry_over_meta',
+    type: 'json',
+    nullable: true,
+  })
+  carryOverMeta: TaskCarryOverMeta | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })

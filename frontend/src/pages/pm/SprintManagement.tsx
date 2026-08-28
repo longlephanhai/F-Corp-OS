@@ -43,6 +43,7 @@ import { SprintRiskPanel } from "../../components/pm/sprints/SprintRiskPanel";
 
 import { TaskDependenciesModal } from "../../components/pm/sprints/TaskDependenciesModal";
 import { EditTaskModal } from "../../components/pm/sprints/EditTaskModal";
+import { CarryOverTaskModal } from "../../components/pm/sprints/CarryOverTaskModal";
 
 const { Title, Text } = Typography;
 
@@ -101,6 +102,9 @@ export const SprintManagementPage: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
   const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+  const [carryOverTask, setCarryOverTask] = useState<TaskItem | null>(null);
+
+  const [isCarryOverOpen, setIsCarryOverOpen] = useState(false);
   const [editTask, setEditTask] = useState<TaskItem | null>(null);
 
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
@@ -130,6 +134,12 @@ export const SprintManagementPage: React.FC = () => {
   // ==========================================
 
   const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
+
+  const handleCarryOverTask = (task: TaskItem) => {
+    setCarryOverTask(task);
+
+    setIsCarryOverOpen(true);
+  };
   const handleDeleteTask = (task: TaskItem) => {
     Modal.confirm({
       title: "Xóa Task?",
@@ -633,6 +643,8 @@ export const SprintManagementPage: React.FC = () => {
                     readOnly={isReadOnly}
                     onEditTask={handleEditTask}
                     onDeleteTask={handleDeleteTask}
+                    canCarryOver={sprintStatus === "active"}
+                    onCarryOverTask={handleCarryOverTask}
                   />
                 ) : (
                   <SprintTaskKanban
@@ -684,6 +696,18 @@ export const SprintManagementPage: React.FC = () => {
           setEditTask(null);
         }}
         onRefresh={fetchSprintData}
+      />
+
+      <CarryOverTaskModal
+        open={isCarryOverOpen && !isReadOnly}
+        task={carryOverTask}
+        currentSprint={sprintInfo}
+        onClose={() => {
+          setIsCarryOverOpen(false);
+
+          setCarryOverTask(null);
+        }}
+        onSuccess={fetchSprintData}
       />
 
       {/* ====================================== */}
