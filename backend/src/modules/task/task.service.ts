@@ -241,6 +241,77 @@ export class TasksService {
 
     return await this.taskRepo.save(task);
   }
+  async removeTask(taskId: string) {
+    // ==========================================
+    // 1. TASK
+    // ==========================================
+
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    // ==========================================
+    // 2. SPRINT
+    // ==========================================
+
+    await this.assertSprintMutable(task.sprintId);
+
+    // ==========================================
+    // 3. DONE TASK
+    // ==========================================
+
+    const status = (task.status ?? '').toString().toUpperCase();
+
+    const progress = Number(task.progress ?? 0);
+
+    if (status === TaskStatus.DONE || progress >= 100) {
+      throw new ConflictException({
+        code: 'DONE_TASK_CANNOT_DELETE',
+
+        message: 'Task đã hoàn thành không thể bị xóa.',
+
+        taskId: task.id,
+
+        status: task.status,
+
+        progress,
+      });
+    }
+
+    // ==========================================
+    // 4. DEPENDENCY IMPACT
+    // ==========================================
+
+    await this.taskDependenciesService.prepareTaskDeletion(task.id);
+
+    // ==========================================
+    // 5. SOFT DELETE
+    // ==========================================
+
+    task.isDeleted = true;
+
+    await this.taskRepo.save(task);
+
+    return {
+      success: true,
+
+      id: task.id,
+
+      message: 'Đã lưu trữ Task.',
+    };
+  }
   async getMatchingCandidates(taskId: string) {
     // ==========================================
     // TASK

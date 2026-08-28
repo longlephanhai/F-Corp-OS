@@ -646,6 +646,74 @@ export class TaskDependenciesService {
     return true;
   }
 
+  async prepareTaskDeletion(taskId: string) {
+    // ==========================================
+    // 1. CHECK DOWNSTREAM DEPENDENCIES
+    //
+    // Những Task khác đang phụ thuộc Task này.
+    // ==========================================
+
+    const dependentRelations = await this.dependencyRepo.find({
+      where: {
+        dependsOnTaskId: taskId,
+      },
+    });
+
+    if (dependentRelations.length > 0) {
+      const dependentTaskIds = dependentRelations.map(
+        (dependency) => dependency.taskId,
+      );
+
+      const dependentTasks = await this.taskRepo.find({
+        where: {
+          id: In(dependentTaskIds),
+
+          isDeleted: false,
+        },
+      });
+
+      throw new ConflictException({
+        code: 'TASK_HAS_DEPENDENTS',
+
+        message: `Không thể xóa Task vì còn ${dependentRelations.length} Task đang phụ thuộc vào Task này.`,
+
+        taskId,
+
+        dependentTasks: dependentRelations.map((relation) => {
+          const dependentTask = dependentTasks.find(
+            (task) => task.id === relation.taskId,
+          );
+
+          return {
+            dependencyId: relation.id,
+
+            taskId: relation.taskId,
+
+            title: dependentTask?.title ?? 'Task chưa đặt tên',
+
+            status: dependentTask?.status ?? null,
+
+            progress: Number(dependentTask?.progress ?? 0),
+          };
+        }),
+      });
+    }
+
+    // ==========================================
+    // 2. CLEAN OUTGOING DEPENDENCIES
+    //
+    // Task này đang phụ thuộc Task khác.
+    //
+    // Vì Task sắp bị archive nên các relation
+    // của chính nó không còn giá trị.
+    // ==========================================
+
+    await this.dependencyRepo.delete({
+      taskId,
+    });
+
+    return true;
+  }
   private async wouldCreateCycle(taskId: string, dependsOnTaskId: string) {
     const dependencies = await this.dependencyRepo.find();
 

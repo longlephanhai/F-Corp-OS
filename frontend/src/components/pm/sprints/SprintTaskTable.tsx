@@ -13,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { EditOutlined, LockOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, LockOutlined } from "@ant-design/icons";
 
 import type { TaskItem } from "../../../common/types/pm";
 
@@ -51,6 +51,7 @@ interface Props {
   dependencyStatusMap: Record<string, DependencyStatus>;
   readOnly?: boolean;
   onEditTask: (task: TaskItem) => void;
+  onDeleteTask: (task: TaskItem) => void;
 }
 
 // ==========================================
@@ -81,6 +82,7 @@ export const SprintTaskTable: React.FC<Props> = ({
   dependencyStatusMap,
   readOnly = false,
   onEditTask,
+  onDeleteTask,
 }) => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -536,6 +538,20 @@ export const SprintTaskTable: React.FC<Props> = ({
               onClick={() => onEditTask(record)}
             >
               Sửa
+            </Button>
+
+            <Button
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              disabled={
+                readOnly ||
+                record.status === "DONE" ||
+                Number(record.progress ?? 0) >= 100
+              }
+              onClick={() => onDeleteTask(record)}
+            >
+              Xóa
             </Button>
             <Button
               size="small"

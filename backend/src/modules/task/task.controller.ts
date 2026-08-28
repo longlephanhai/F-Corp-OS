@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   BadRequestException,
+  Delete,
 } from '@nestjs/common';
 import { SkipCheckPermission } from 'decorator/customize';
 import { TasksService } from './task.service';
@@ -130,6 +131,21 @@ export class TasksController {
       statusCode: 200,
 
       message: 'Cập nhật thông tin Task thành công',
+
+      data,
+    };
+  }
+  @Delete(':taskId')
+  async removeTask(
+    @Param('taskId')
+    taskId: string,
+  ) {
+    const data = await this.tasksService.removeTask(taskId);
+
+    return {
+      statusCode: 200,
+
+      message: 'Lưu trữ Task thành công',
 
       data,
     };

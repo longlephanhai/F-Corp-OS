@@ -139,6 +139,18 @@ export const pmApi = {
       userId,
     });
   },
+
+  deleteTask: (taskId: string) => {
+    return axios.delete<
+      IBackendRes<{
+        success: boolean;
+
+        id: string;
+
+        message: string;
+      }>
+    >(`/tasks/${taskId}`);
+  },
   // Giải phóng nhân sự kèm Đánh giá (Review)
   releaseUserSprint: (id: string, reviewData: any) => {
     return axios.patch<IBackendRes<any>>(

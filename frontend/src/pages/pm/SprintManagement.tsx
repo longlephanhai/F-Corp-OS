@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { Alert, Button, message, Segmented, Tabs, Tag, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  message,
+  Modal,
+  Segmented,
+  Space,
+  Tabs,
+  Tag,
+  Typography,
+} from "antd";
 
 import { useParams } from "react-router-dom";
 
@@ -120,7 +130,120 @@ export const SprintManagementPage: React.FC = () => {
   // ==========================================
 
   const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
+  const handleDeleteTask = (task: TaskItem) => {
+    Modal.confirm({
+      title: "Xóa Task?",
 
+      width: 620,
+
+      content: (
+        <div>
+          <p>
+            Bạn có chắc muốn lưu trữ Task <strong>{task.title}</strong>?
+          </p>
+
+          <p
+            style={{
+              marginBottom: 0,
+            }}
+          >
+            Task sẽ không còn xuất hiện trong Sprint nhưng dữ liệu vẫn được giữ
+            trong hệ thống.
+          </p>
+        </div>
+      ),
+
+      okText: "Xóa Task",
+
+      okButtonProps: {
+        danger: true,
+      },
+
+      cancelText: "Hủy",
+
+      onOk: async () => {
+        try {
+          await pmApi.deleteTask(task.id);
+
+          message.success("Đã lưu trữ Task.");
+
+          await fetchSprintData();
+        } catch (error: any) {
+          console.error("Không thể xóa Task:", error);
+
+          const errorData = error?.response?.data;
+
+          const code = errorData?.code ?? errorData?.error?.code;
+
+          // ==================================
+          // DOWNSTREAM DEPENDENCY
+          // ==================================
+
+          if (code === "TASK_HAS_DEPENDENTS") {
+            const dependentTasks = errorData?.dependentTasks ?? [];
+
+            Modal.warning({
+              title: "Không thể xóa Task",
+
+              width: 650,
+
+              content: (
+                <Space
+                  direction="vertical"
+                  size={6}
+                  style={{
+                    width: "100%",
+                  }}
+                >
+                  <Text>Task này đang là prerequisite của Task khác.</Text>
+
+                  {dependentTasks.map((dependent: any) => (
+                    <Text key={dependent.taskId}>
+                      • <strong>{dependent.title}</strong>
+                      {" — "}
+                      {dependent.status}
+                      {" · "}
+                      {dependent.progress}%
+                    </Text>
+                  ))}
+
+                  <Text type="secondary">
+                    Hãy xóa dependency trước rồi mới xóa Task.
+                  </Text>
+                </Space>
+              ),
+            });
+
+            return;
+          }
+
+          if (code === "DONE_TASK_CANNOT_DELETE") {
+            Modal.warning({
+              title: "Task đã hoàn thành",
+
+              content:
+                "Task DONE được giữ lại làm lịch sử và không thể bị xóa.",
+            });
+
+            return;
+          }
+
+          if (code === "SPRINT_READ_ONLY") {
+            Modal.warning({
+              title: "Sprint chỉ đọc",
+
+              content:
+                "Sprint đã hoàn thành hoặc đã hủy nên không thể xóa Task.",
+            });
+
+            return;
+          }
+
+          message.error(errorData?.message ?? "Không thể xóa Task.");
+        }
+      },
+    });
+  };
   const handleEditTask = (task: TaskItem) => {
     setEditTask(task);
 
@@ -509,6 +632,7 @@ export const SprintManagementPage: React.FC = () => {
                     onRefresh={fetchSprintData}
                     readOnly={isReadOnly}
                     onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteTask}
                   />
                 ) : (
                   <SprintTaskKanban
