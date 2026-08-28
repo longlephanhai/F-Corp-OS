@@ -12,6 +12,7 @@ import { TasksService } from './task.service';
 import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { UpdateTaskAssigneeDto } from './dto/update-task-assignee.dto';
 import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @SkipCheckPermission()
 @Controller('tasks')
@@ -98,7 +99,6 @@ export class TasksController {
     };
   }
 
-  
   @Patch(':taskId/lifecycle')
   async updateTaskLifecycle(
     @Param('taskId')
@@ -112,6 +112,25 @@ export class TasksController {
     return {
       statusCode: 200,
       message: 'Cập nhật Task thành công',
+      data,
+    };
+  }
+
+  @Patch(':taskId')
+  async updateTask(
+    @Param('taskId')
+    taskId: string,
+
+    @Body()
+    body: UpdateTaskDto,
+  ) {
+    const data = await this.tasksService.updateTask(taskId, body);
+
+    return {
+      statusCode: 200,
+
+      message: 'Cập nhật thông tin Task thành công',
+
       data,
     };
   }

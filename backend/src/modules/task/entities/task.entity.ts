@@ -55,7 +55,7 @@ export class Task {
     type: 'text',
     nullable: true,
   })
-  description: string;
+  description: string | null;
 
   @Column({
     type: 'enum',
@@ -88,7 +88,7 @@ export class Task {
   endDate: Date;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  budgetRate: number;
+  budgetRate: number | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })

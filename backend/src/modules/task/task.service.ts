@@ -14,6 +14,7 @@ import { User } from '../users/entities/user.entity';
 import { TaskDependenciesService } from '../task-dependencies/task-dependencies.service';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import {
   UserSprint,
   UserSprintStatus,
@@ -83,6 +84,163 @@ export class TasksService {
     return await this.taskRepo.save(newTask);
   }
 
+  async updateTask(taskId: string, data: UpdateTaskDto) {
+    // ==========================================
+    // 1. TASK
+    // ==========================================
+
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+        isDeleted: false,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    // ==========================================
+    // 2. EMPTY UPDATE
+    // ==========================================
+
+    const hasUpdate =
+      data.title !== undefined ||
+      data.description !== undefined ||
+      data.priority !== undefined ||
+      data.budgetRate !== undefined ||
+      data.startDate !== undefined ||
+      data.endDate !== undefined ||
+      data.requiredSkills !== undefined;
+
+    if (!hasUpdate) {
+      throw new BadRequestException({
+        code: 'EMPTY_TASK_UPDATE',
+        message: 'Không có dữ liệu Task cần cập nhật.',
+      });
+    }
+
+    // ==========================================
+    // 3. SPRINT READ-ONLY
+    // ==========================================
+
+    const sprint = await this.assertSprintMutable(task.sprintId);
+
+    // ==========================================
+    // 4. DONE TASK
+    // ==========================================
+
+    if (task.status === TaskStatus.DONE) {
+      throw new ConflictException({
+        code: 'DONE_TASK_EDIT_LOCKED',
+
+        message: 'Task đã hoàn thành nên không thể chỉnh sửa thông tin.',
+      });
+    }
+
+    // ==========================================
+    // 5. TITLE
+    // ==========================================
+
+    let normalizedTitle: string | undefined;
+
+    if (data.title !== undefined) {
+      normalizedTitle = data.title.trim();
+
+      if (!normalizedTitle) {
+        throw new BadRequestException({
+          code: 'INVALID_TASK_TITLE',
+
+          message: 'Tên Task không được để trống.',
+        });
+      }
+    }
+
+    // ==========================================
+    // 6. REQUIRED SKILLS
+    // ==========================================
+
+    if (data.requiredSkills !== undefined) {
+      const skillIds = data.requiredSkills.map((skill) => skill.skill_id);
+
+      const uniqueSkillIds = new Set(skillIds);
+
+      if (uniqueSkillIds.size !== skillIds.length) {
+        throw new ConflictException({
+          code: 'DUPLICATE_REQUIRED_SKILL',
+
+          message:
+            'Một kỹ năng không được xuất hiện nhiều lần trong Required Skills.',
+        });
+      }
+    }
+
+    // ==========================================
+    // 7. TIMELINE
+    // ==========================================
+
+    const timelineChanged =
+      data.startDate !== undefined || data.endDate !== undefined;
+
+    const nextStartDate = data.startDate ?? task.startDate;
+
+    const nextEndDate = data.endDate ?? task.endDate;
+
+    if (timelineChanged) {
+      // Task phải tiếp tục nằm trong Sprint.
+      this.validateTaskTimeline(nextStartDate, nextEndDate, sprint);
+
+      // Không được phá dependency hiện tại.
+      await this.taskDependenciesService.assertTaskTimelineChangeSafe(
+        task.id,
+        nextStartDate,
+        nextEndDate,
+      );
+    }
+
+    // ==========================================
+    // 8. APPLY UPDATE
+    //
+    // Chỉ mutate entity SAU KHI mọi validation pass.
+    // ==========================================
+
+    if (normalizedTitle !== undefined) {
+      task.title = normalizedTitle;
+    }
+
+    if (data.description !== undefined) {
+      task.description = data.description?.trim() || null;
+    }
+
+    if (data.priority !== undefined) {
+      task.priority = data.priority;
+    }
+
+    if (data.budgetRate !== undefined) {
+      task.budgetRate = data.budgetRate;
+    }
+
+    if (data.requiredSkills !== undefined) {
+      task.requiredSkills = data.requiredSkills;
+    }
+
+    if (data.startDate !== undefined) {
+      task.startDate = new Date(data.startDate);
+    }
+
+    if (data.endDate !== undefined) {
+      task.endDate = new Date(data.endDate);
+    }
+
+    // ==========================================
+    // 9. SAVE ONCE
+    // ==========================================
+
+    return await this.taskRepo.save(task);
+  }
   async getMatchingCandidates(taskId: string) {
     // ==========================================
     // TASK

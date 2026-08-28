@@ -32,6 +32,7 @@ import { SprintTaskKanban } from "../../components/pm/sprints/SprintTaskKanban";
 import { SprintRiskPanel } from "../../components/pm/sprints/SprintRiskPanel";
 
 import { TaskDependenciesModal } from "../../components/pm/sprints/TaskDependenciesModal";
+import { EditTaskModal } from "../../components/pm/sprints/EditTaskModal";
 
 const { Title, Text } = Typography;
 
@@ -90,6 +91,9 @@ export const SprintManagementPage: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
   const [isMatchingOpen, setIsMatchingOpen] = useState(false);
+  const [editTask, setEditTask] = useState<TaskItem | null>(null);
+
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
 
   // ==========================================
   // DEPENDENCY MODAL
@@ -117,6 +121,11 @@ export const SprintManagementPage: React.FC = () => {
 
   const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
 
+  const handleEditTask = (task: TaskItem) => {
+    setEditTask(task);
+
+    setIsEditTaskModalOpen(true);
+  };
   // ==========================================
   // OPEN DEPENDENCY
   // ==========================================
@@ -499,6 +508,7 @@ export const SprintManagementPage: React.FC = () => {
                     onManageDependencies={handleOpenDependencies}
                     onRefresh={fetchSprintData}
                     readOnly={isReadOnly}
+                    onEditTask={handleEditTask}
                   />
                 ) : (
                   <SprintTaskKanban
@@ -540,6 +550,16 @@ export const SprintManagementPage: React.FC = () => {
         onRefresh={() => {
           void fetchSprintData();
         }}
+      />
+      <EditTaskModal
+        open={isEditTaskModalOpen && !isReadOnly}
+        task={editTask}
+        onClose={() => {
+          setIsEditTaskModalOpen(false);
+
+          setEditTask(null);
+        }}
+        onRefresh={fetchSprintData}
       />
 
       {/* ====================================== */}

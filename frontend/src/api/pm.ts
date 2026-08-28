@@ -79,6 +79,33 @@ export const pmApi = {
   createTask: (data: Partial<TaskItem>) => {
     return axios.post<IBackendRes<TaskItem>>("/tasks", data);
   },
+
+  updateTask: (
+    taskId: string,
+    data: {
+      title?: string;
+
+      description?: string | null;
+
+      priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+      budgetRate?: number | null;
+
+      startDate?: string;
+
+      endDate?: string;
+
+      requiredSkills?: Array<{
+        skill_id: string;
+
+        min_level: number;
+
+        weight: number;
+      }>;
+    },
+  ) => {
+    return axios.patch<IBackendRes<TaskItem>>(`/tasks/${taskId}`, data);
+  },
   updateTaskTimeline: (
     taskId: string,
     data: {

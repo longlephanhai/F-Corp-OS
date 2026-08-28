@@ -13,8 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-
-import { LockOutlined } from "@ant-design/icons";
+import { EditOutlined, LockOutlined } from "@ant-design/icons";
 
 import type { TaskItem } from "../../../common/types/pm";
 
@@ -51,6 +50,7 @@ interface Props {
 
   dependencyStatusMap: Record<string, DependencyStatus>;
   readOnly?: boolean;
+  onEditTask: (task: TaskItem) => void;
 }
 
 // ==========================================
@@ -80,6 +80,7 @@ export const SprintTaskTable: React.FC<Props> = ({
 
   dependencyStatusMap,
   readOnly = false,
+  onEditTask,
 }) => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -528,6 +529,14 @@ export const SprintTaskTable: React.FC<Props> = ({
 
         return (
           <Space wrap>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              disabled={readOnly || record.status === "DONE"}
+              onClick={() => onEditTask(record)}
+            >
+              Sửa
+            </Button>
             <Button
               size="small"
               icon={locked ? <LockOutlined /> : undefined}
