@@ -17,6 +17,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   LockOutlined,
+  HistoryOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
 
@@ -60,6 +61,7 @@ interface Props {
   canCarryOver?: boolean;
 
   onCarryOverTask: (task: TaskItem) => void;
+  onViewCarryOverHistory: (task: TaskItem) => void;
 }
 
 // ==========================================
@@ -92,6 +94,7 @@ export const SprintTaskTable: React.FC<Props> = ({
   onEditTask,
   onDeleteTask,
   canCarryOver = false,
+  onViewCarryOverHistory,
 
   onCarryOverTask,
 }) => {
@@ -195,6 +198,16 @@ export const SprintTaskTable: React.FC<Props> = ({
                 </Tooltip>
               )}
             </Space>
+
+            {record.carryOverMeta && (
+              <div
+                style={{
+                  marginTop: 4,
+                }}
+              >
+                <Tag color="blue">Carry-over</Tag>
+              </div>
+            )}
 
             {record.description && (
               <Text
@@ -550,7 +563,15 @@ export const SprintTaskTable: React.FC<Props> = ({
             >
               Sửa
             </Button>
-
+            {record.carryOverMeta && (
+              <Button
+                size="small"
+                icon={<HistoryOutlined />}
+                onClick={() => onViewCarryOverHistory(record)}
+              >
+                Lịch sử
+              </Button>
+            )}
             {canCarryOver && record.status !== "DONE" && (
               <Button
                 size="small"

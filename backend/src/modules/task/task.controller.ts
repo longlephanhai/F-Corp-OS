@@ -135,6 +135,21 @@ export class TasksController {
       data,
     };
   }
+  @Get(':taskId/carry-over-history')
+  async getTaskCarryOverHistory(
+    @Param('taskId')
+    taskId: string,
+  ) {
+    const data = await this.tasksService.getTaskCarryOverHistory(taskId);
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy lịch sử Carry-over Task thành công',
+
+      data,
+    };
+  }
 
   @Patch(':taskId')
   async updateTask(

@@ -151,7 +151,9 @@ export const pmApi = {
       }>
     >(`/tasks/${taskId}`);
   },
-
+  getTaskCarryOverHistory: (taskId: string) => {
+    return axios.get<IBackendRes<any>>(`/tasks/${taskId}/carry-over-history`);
+  },
   carryOverTask: (
     taskId: string,
     data: {

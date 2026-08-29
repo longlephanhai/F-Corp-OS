@@ -472,13 +472,11 @@ export class TasksService {
       // ======================================
 
       savedTarget.carryOverMeta = {
-        direction: 'TARGET',
+        sourceTaskId: sourceTask.id,
 
-        linkedTaskId: sourceTask.id,
+        sourceSprintId: sourceSprint.id,
 
-        linkedSprintId: sourceSprint.id,
-
-        carriedAt: carriedAt.toISOString(),
+        carriedInAt: carriedAt.toISOString(),
       };
 
       await taskRepo.save(savedTarget);
@@ -488,13 +486,13 @@ export class TasksService {
       // ======================================
 
       sourceTask.carryOverMeta = {
-        direction: 'SOURCE',
+        ...(sourceTask.carryOverMeta ?? {}),
 
-        linkedTaskId: savedTarget.id,
+        targetTaskId: savedTarget.id,
 
-        linkedSprintId: targetSprint.id,
+        targetSprintId: targetSprint.id,
 
-        carriedAt: carriedAt.toISOString(),
+        carriedOutAt: carriedAt.toISOString(),
       };
 
       sourceTask.isDeleted = true;
@@ -517,6 +515,191 @@ export class TasksService {
         previousOwnerId: sourceTask.userId ?? null,
       };
     });
+  }
+  async getTaskCarryOverHistory(taskId: string) {
+    // ==========================================
+    // CURRENT TASK
+    //
+    // Không filter isDeleted vì Task source
+    // có thể đã archived.
+    // ==========================================
+
+    const currentTask = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+      },
+    });
+
+    if (!currentTask) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    // ==========================================
+    // FIND ROOT
+    // ==========================================
+
+    let rootTask = currentTask;
+
+    const visited = new Set<string>();
+
+    for (let depth = 0; depth < 50; depth++) {
+      if (visited.has(rootTask.id)) {
+        break;
+      }
+
+      visited.add(rootTask.id);
+
+      const meta = rootTask.carryOverMeta;
+
+      if (!meta) {
+        break;
+      }
+
+      let sourceTaskId = meta.sourceTaskId;
+
+      // ========================================
+      // LEGACY TARGET FORMAT
+      // ========================================
+
+      if (!sourceTaskId && meta.direction === 'TARGET') {
+        sourceTaskId = meta.linkedTaskId;
+      }
+
+      if (!sourceTaskId) {
+        break;
+      }
+
+      const sourceTask = await this.taskRepo.findOne({
+        where: {
+          id: sourceTaskId,
+        },
+      });
+
+      if (!sourceTask) {
+        break;
+      }
+
+      rootTask = sourceTask;
+    }
+
+    // ==========================================
+    // WALK ROOT → LATEST
+    // ==========================================
+
+    const history: Array<{
+      taskId: string;
+
+      sprintId: string;
+
+      sprintName: string | null;
+
+      title: string | null;
+
+      status: string | null;
+
+      progress: number;
+
+      userId: string | null;
+
+      isDeleted: boolean;
+
+      startDate: Date | null;
+
+      endDate: Date | null;
+
+      carriedInAt: string | null;
+
+      carriedOutAt: string | null;
+
+      isCurrent: boolean;
+    }> = [];
+
+    let task: Task | null = rootTask;
+
+    const chainVisited = new Set<string>();
+
+    for (let depth = 0; task && depth < 50; depth++) {
+      if (chainVisited.has(task.id)) {
+        break;
+      }
+
+      chainVisited.add(task.id);
+
+      const sprint = await this.sprintRepo.findOne({
+        where: {
+          id: task.sprintId,
+        },
+      });
+
+      const meta = task.carryOverMeta;
+
+      history.push({
+        taskId: task.id,
+
+        sprintId: task.sprintId,
+
+        sprintName: sprint?.name ?? null,
+
+        title: task.title ?? null,
+
+        status: task.status ?? null,
+
+        progress: Number(task.progress ?? 0),
+
+        userId: task.userId ?? null,
+
+        isDeleted: Boolean(task.isDeleted),
+
+        startDate: task.startDate ?? null,
+
+        endDate: task.endDate ?? null,
+
+        carriedInAt:
+          meta?.carriedInAt ??
+          (meta?.direction === 'TARGET' ? (meta.carriedAt ?? null) : null),
+
+        carriedOutAt:
+          meta?.carriedOutAt ??
+          (meta?.direction === 'SOURCE' ? (meta.carriedAt ?? null) : null),
+
+        isCurrent: task.id === currentTask.id,
+      });
+
+      let nextTaskId = meta?.targetTaskId;
+
+      // ========================================
+      // LEGACY SOURCE FORMAT
+      // ========================================
+
+      if (!nextTaskId && meta?.direction === 'SOURCE') {
+        nextTaskId = meta.linkedTaskId;
+      }
+
+      if (!nextTaskId) {
+        break;
+      }
+
+      task = await this.taskRepo.findOne({
+        where: {
+          id: nextTaskId,
+        },
+      });
+    }
+
+    return {
+      taskId: currentTask.id,
+
+      hasCarryOverHistory:
+        history.length > 1 || Boolean(currentTask.carryOverMeta),
+
+      totalVersions: history.length,
+
+      history,
+    };
   }
   async removeTask(taskId: string) {
     // ==========================================

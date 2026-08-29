@@ -17,13 +17,36 @@ export interface RequiredSkillItem {
   weight: number;
 }
 export interface TaskCarryOverMeta {
-  direction: 'SOURCE' | 'TARGET';
+  // ==========================================
+  // LEGACY
+  //
+  // Giữ để đọc được dữ liệu Carry-over
+  // đã tạo trước feature này.
+  // ==========================================
 
-  linkedTaskId: string;
+  direction?: 'SOURCE' | 'TARGET';
 
-  linkedSprintId: string;
+  linkedTaskId?: string;
 
-  carriedAt: string;
+  linkedSprintId?: string;
+
+  carriedAt?: string;
+
+  // ==========================================
+  // NEW CHAIN MODEL
+  // ==========================================
+
+  sourceTaskId?: string;
+
+  sourceSprintId?: string;
+
+  carriedInAt?: string;
+
+  targetTaskId?: string;
+
+  targetSprintId?: string;
+
+  carriedOutAt?: string;
 }
 
 export enum TaskPriority {

@@ -24,6 +24,7 @@ import type {
 import { pmApi } from "../../api/pm";
 
 import { SprintResourceSummary } from "../../components/pm/sprints/SprintResourceSummary";
+import { TaskCarryOverHistoryModal } from "../../components/pm/sprints/TaskCarryOverHistoryModal";
 
 import { SprintAllocationTable } from "../../components/pm/sprints/SprintAllocationTable";
 
@@ -74,6 +75,9 @@ export const SprintManagementPage: React.FC = () => {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [historyTask, setHistoryTask] = useState<TaskItem | null>(null);
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // ==========================================
   // DEPENDENCY STATUS
@@ -134,6 +138,11 @@ export const SprintManagementPage: React.FC = () => {
   // ==========================================
 
   const [taskViewMode, setTaskViewMode] = useState<"TABLE" | "KANBAN">("TABLE");
+  const handleViewCarryOverHistory = (task: TaskItem) => {
+    setHistoryTask(task);
+
+    setIsHistoryOpen(true);
+  };
 
   const handleCarryOverTask = (task: TaskItem) => {
     setCarryOverTask(task);
@@ -645,6 +654,7 @@ export const SprintManagementPage: React.FC = () => {
                     onDeleteTask={handleDeleteTask}
                     canCarryOver={sprintStatus === "active"}
                     onCarryOverTask={handleCarryOverTask}
+                    onViewCarryOverHistory={handleViewCarryOverHistory}
                   />
                 ) : (
                   <SprintTaskKanban
@@ -708,6 +718,16 @@ export const SprintManagementPage: React.FC = () => {
           setCarryOverTask(null);
         }}
         onSuccess={fetchSprintData}
+      />
+
+      <TaskCarryOverHistoryModal
+        open={isHistoryOpen}
+        task={historyTask}
+        onClose={() => {
+          setIsHistoryOpen(false);
+
+          setHistoryTask(null);
+        }}
       />
 
       {/* ====================================== */}

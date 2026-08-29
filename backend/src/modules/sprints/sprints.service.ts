@@ -569,10 +569,21 @@ export class SprintsService {
       },
     });
 
-    const carriedOverTasks = archivedTasks.filter(
-      (task) => task.carryOverMeta?.direction === 'SOURCE',
-    );
+    const carriedOverTasks = archivedTasks.filter((task) => {
+      const meta = task.carryOverMeta;
 
+      if (!meta) {
+        return false;
+      }
+
+      // NEW FORMAT
+      if (meta.targetTaskId) {
+        return true;
+      }
+
+      // LEGACY FORMAT
+      return meta.direction === 'SOURCE';
+    });
     const allocations = await this.userSprintRepo.find({
       where: {
         sprintId: sprint.id,

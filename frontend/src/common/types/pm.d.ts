@@ -33,13 +33,27 @@ export interface TaskItem {
 
   progress?: number;
   carryOverMeta?: {
-    direction: "SOURCE" | "TARGET";
+    // Legacy
+    direction?: "SOURCE" | "TARGET";
 
-    linkedTaskId: string;
+    linkedTaskId?: string;
 
-    linkedSprintId: string;
+    linkedSprintId?: string;
 
-    carriedAt: string;
+    carriedAt?: string;
+
+    // New
+    sourceTaskId?: string;
+
+    sourceSprintId?: string;
+
+    carriedInAt?: string;
+
+    targetTaskId?: string;
+
+    targetSprintId?: string;
+
+    carriedOutAt?: string;
   } | null;
 }
 
