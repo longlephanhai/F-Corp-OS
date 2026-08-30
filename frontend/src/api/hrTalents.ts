@@ -312,6 +312,42 @@ export interface GetHrSkillEmployeesParams {
   status?: TalentWorkforceStatus;
 }
 
+
+export interface HrSkillSupplySummary {
+  catalog: {
+    totalSkills: number;
+    skillsWithSupply: number;
+    zeroSupplySkills: number;
+    skillsWithBenchSupply: number;
+  };
+
+  coverage: {
+    employeeSkillPairs: number;
+    verifiedEmployeeSkillPairs: number;
+    verificationRate: number;
+  };
+
+  workforce: {
+    availableSkillPairs: number;
+    inProjectSkillPairs: number;
+    benchSkillPairs: number;
+  };
+
+  topSupplySkills: Array<{
+    skillId: string;
+    name: string;
+    totalEmployees: number;
+    level4Plus: number;
+  }>;
+
+  topBenchSkills: Array<{
+    skillId: string;
+    name: string;
+    totalEmployees: number;
+    benchEmployees: number;
+  }>;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API
 // ─────────────────────────────────────────────────────────────────────────────
@@ -375,6 +411,19 @@ export const hrTalentsApi = {
       },
     ) as unknown as Promise<
       IBackendRes<HrSkillEmployeesResponse>
+    >;
+  },
+
+  getSkillSupplySummary:
+  (): Promise<
+    IBackendRes<HrSkillSupplySummary>
+  > => {
+    return axios.get<
+      IBackendRes<HrSkillSupplySummary>
+    >(
+      '/hr-talents/analytics/skill-supply-summary',
+    ) as unknown as Promise<
+      IBackendRes<HrSkillSupplySummary>
     >;
   },
 };

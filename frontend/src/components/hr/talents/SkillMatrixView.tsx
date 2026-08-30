@@ -23,11 +23,15 @@ import {
 import SkillMatrixTable from './SkillMatrixTable';
 import SkillEmployeesDrawer from './SkillEmployeesDrawer';
 import TalentProfileDrawer from './TalentProfileDrawer';
+import SkillSupplyInsights from './SkillSupplyInsights';
 
 const { Text } = Typography;
 
 const PAGE_SIZE = 20;
-
+interface SelectedSkill {
+  skillId: string;
+  name: string;
+}
 const SkillMatrixView: React.FC =
   () => {
     const [
@@ -66,7 +70,7 @@ const SkillMatrixView: React.FC =
       selectedSkill,
       setSelectedSkill,
     ] = useState<
-      HrSkillMatrixItem | null
+      SelectedSkill | null
     >(null);
 
     const [
@@ -155,9 +159,11 @@ const SkillMatrixView: React.FC =
       };
 
     const handleViewEmployees = (
-      skill: HrSkillMatrixItem,
+      skill: SelectedSkill,
     ) => {
-      setSelectedSkill(skill);
+      setSelectedSkill(
+        skill,
+      );
 
       setEmployeesDrawerOpen(
         true,
@@ -202,6 +208,12 @@ const SkillMatrixView: React.FC =
 
     return (
       <>
+        <SkillSupplyInsights
+          onViewSkill={
+            handleViewEmployees
+          }
+        />
+        
         <Card
           bordered={false}
           style={{
