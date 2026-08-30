@@ -9,6 +9,7 @@ import { HrTalentDirectoryService } from './services/hr-talent-directory.service
 import { HrTalentProfileService } from './services/hr-talent-profile.service';
 import { HrSkillMatrixService } from './services/hr-skill-matrix.service';
 import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
+import { HrSkillSupplyInsightService } from './services/hr-skill-supply-insight.service';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
     HrTalentDirectoryService,
     HrTalentProfileService,
     HrSkillMatrixService,
+    HrSkillSupplyInsightService,
   ],
 
   exports: [

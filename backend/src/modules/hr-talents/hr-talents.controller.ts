@@ -38,6 +38,14 @@ export class HrTalentsController {
     );
   }
 
+  @Get('analytics/skill-supply-summary')
+  @ResponseMessage(
+    'Lấy tổng quan nguồn cung kỹ năng thành công',
+  )
+  getSkillSupplySummary() {
+    return this.hrTalentsService.getSkillSupplySummary();
+  }
+
   @Get('analytics/skill-matrix')
   @ResponseMessage(
     'Lấy ma trận kỹ năng nhân sự thành công',
