@@ -8,6 +8,7 @@ import { Skill } from 'modules/skills/entities/skill.entity';
 import { HrTalentDirectoryService } from './services/hr-talent-directory.service';
 import { HrTalentProfileService } from './services/hr-talent-profile.service';
 import { HrSkillMatrixService } from './services/hr-skill-matrix.service';
+import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HrSkillMatrixService } from './services/hr-skill-matrix.service';
       User,
       ReviewRecord,
       Skill,
+      UserSkill,
     ]),
   ],
 

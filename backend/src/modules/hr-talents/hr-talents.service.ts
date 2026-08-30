@@ -4,6 +4,7 @@ import { GetHrTalentsDto } from './dto/get-hr-talents.dto';
 import { HrSkillMatrixService } from './services/hr-skill-matrix.service';
 import { HrTalentDirectoryService } from './services/hr-talent-directory.service';
 import { HrTalentProfileService } from './services/hr-talent-profile.service';
+import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
 
 @Injectable()
 export class HrTalentsService {
@@ -38,6 +39,16 @@ export class HrTalentsService {
     query: GetHrSkillMatrixDto,
   ) {
     return this.skillMatrixService.getSkillMatrix(
+      query,
+    );
+  }
+
+  getSkillEmployees(
+    skillId: string,
+    query: GetHrSkillEmployeesDto,
+  ) {
+    return this.skillMatrixService.getSkillEmployees(
+      skillId,
       query,
     );
   }

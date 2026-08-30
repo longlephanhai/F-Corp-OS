@@ -9,6 +9,7 @@ import { ResponseMessage } from 'decorator/customize';
 import { GetHrTalentsDto } from './dto/get-hr-talents.dto';
 import { HrTalentsService } from './hr-talents.service';
 import { GetHrSkillMatrixDto } from './dto/get-hr-skill-matrix.dto';
+import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
 
 @Controller('hr-talents')
 export class HrTalentsController {
@@ -49,7 +50,27 @@ export class HrTalentsController {
       query,
     );
   }
-  
+
+  @Get('analytics/skills/:skillId/employees')
+  @ResponseMessage(
+    'Lấy danh sách nhân sự theo kỹ năng thành công',
+  )
+  getSkillEmployees(
+    @Param(
+      'skillId',
+      new ParseUUIDPipe(),
+    )
+    skillId: string,
+
+    @Query()
+    query: GetHrSkillEmployeesDto,
+  ) {
+    return this.hrTalentsService.getSkillEmployees(
+      skillId,
+      query,
+    );
+  }
+
   @Get(':employeeId')
   @ResponseMessage(
     'Lấy hồ sơ năng lực nhân sự thành công',
