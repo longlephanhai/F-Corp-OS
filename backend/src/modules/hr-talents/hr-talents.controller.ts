@@ -8,6 +8,7 @@ import {
 import { ResponseMessage } from 'decorator/customize';
 import { GetHrTalentsDto } from './dto/get-hr-talents.dto';
 import { HrTalentsService } from './hr-talents.service';
+import { GetHrSkillMatrixDto } from './dto/get-hr-skill-matrix.dto';
 
 @Controller('hr-talents')
 export class HrTalentsController {
@@ -36,6 +37,19 @@ export class HrTalentsController {
     );
   }
 
+  @Get('analytics/skill-matrix')
+  @ResponseMessage(
+    'Lấy ma trận kỹ năng nhân sự thành công',
+  )
+  getSkillMatrix(
+    @Query()
+    query: GetHrSkillMatrixDto,
+  ) {
+    return this.hrTalentsService.getSkillMatrix(
+      query,
+    );
+  }
+  
   @Get(':employeeId')
   @ResponseMessage(
     'Lấy hồ sơ năng lực nhân sự thành công',

@@ -4,12 +4,14 @@ import { User } from 'modules/users/entities/user.entity';
 import { HrTalentsController } from './hr-talents.controller';
 import { HrTalentsService } from './hr-talents.service';
 import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
+import { Skill } from 'modules/skills/entities/skill.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       User,
       ReviewRecord,
+      Skill,
     ]),
   ],
 
@@ -25,4 +27,4 @@ import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
     HrTalentsService,
   ],
 })
-export class HrTalentsModule {}
+export class HrTalentsModule { }
