@@ -199,6 +199,57 @@ export interface EmployeeTalentProfile {
   performanceHistory: TalentPerformanceHistoryItem[];
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Skill Matrix
+// GET /hr-talents/analytics/skill-matrix
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface HrSkillMatrixWorkforce {
+  available: number;
+  inProject: number;
+  bench: number;
+}
+
+export interface HrSkillMatrixEvidence {
+  approved: number;
+  pending: number;
+}
+
+export interface HrSkillMatrixItem {
+  skillId: string;
+  name: string;
+  description: string | null;
+
+  totalEmployees: number;
+  level3Plus: number;
+  level4Plus: number;
+
+  employeesWithApprovedEvidence: number;
+  verificationRate: number;
+
+  evidence: HrSkillMatrixEvidence;
+
+  workforce: HrSkillMatrixWorkforce;
+}
+
+export interface HrSkillMatrixResponse {
+  meta: {
+    currentPage: number;
+    pageSize: number;
+    pages: number;
+    total: number;
+  };
+
+  result: HrSkillMatrixItem[];
+}
+
+export interface GetHrSkillMatrixParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,6 +282,21 @@ export const hrTalentsApi = {
       `/hr-talents/${employeeId}`,
     ) as unknown as Promise<
       IBackendRes<EmployeeTalentProfile>
+    >;
+  },
+
+  getSkillMatrix: (
+    params?: GetHrSkillMatrixParams,
+  ): Promise<IBackendRes<HrSkillMatrixResponse>> => {
+    return axios.get<
+      IBackendRes<HrSkillMatrixResponse>
+    >(
+      '/hr-talents/analytics/skill-matrix',
+      {
+        params,
+      },
+    ) as unknown as Promise<
+      IBackendRes<HrSkillMatrixResponse>
     >;
   },
 };
