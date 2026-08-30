@@ -5,6 +5,9 @@ import { HrTalentsController } from './hr-talents.controller';
 import { HrTalentsService } from './hr-talents.service';
 import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
 import { Skill } from 'modules/skills/entities/skill.entity';
+import { HrTalentDirectoryService } from './services/hr-talent-directory.service';
+import { HrTalentProfileService } from './services/hr-talent-profile.service';
+import { HrSkillMatrixService } from './services/hr-skill-matrix.service';
 
 @Module({
   imports: [
@@ -21,6 +24,9 @@ import { Skill } from 'modules/skills/entities/skill.entity';
 
   providers: [
     HrTalentsService,
+    HrTalentDirectoryService,
+    HrTalentProfileService,
+    HrSkillMatrixService,
   ],
 
   exports: [
