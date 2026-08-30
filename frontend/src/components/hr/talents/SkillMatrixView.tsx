@@ -16,13 +16,13 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-
 import {
   hrTalentsApi,
   type HrSkillMatrixItem,
 } from '../../../api/hrTalents';
-
 import SkillMatrixTable from './SkillMatrixTable';
+import SkillEmployeesDrawer from './SkillEmployeesDrawer';
+import TalentProfileDrawer from './TalentProfileDrawer';
 
 const { Text } = Typography;
 
@@ -62,6 +62,30 @@ const SkillMatrixView: React.FC =
       setSearch,
     ] = useState('');
 
+    const [
+      selectedSkill,
+      setSelectedSkill,
+    ] = useState<
+      HrSkillMatrixItem | null
+    >(null);
+
+    const [
+      employeesDrawerOpen,
+      setEmployeesDrawerOpen,
+    ] = useState(false);
+
+    const [
+      selectedEmployeeId,
+      setSelectedEmployeeId,
+    ] = useState<string | null>(
+      null,
+    );
+
+    const [
+      profileOpen,
+      setProfileOpen,
+    ] = useState(false);
+
     const loadSkillMatrix =
       useCallback(async () => {
         setLoading(true);
@@ -88,7 +112,7 @@ const SkillMatrixView: React.FC =
 
           setTotal(
             data?.meta?.total ??
-              0,
+            0,
           );
         } catch (error) {
           console.error(
@@ -128,6 +152,52 @@ const SkillMatrixView: React.FC =
         setSearchInput('');
         setSearch('');
         setPage(1);
+      };
+
+    const handleViewEmployees = (
+      skill: HrSkillMatrixItem,
+    ) => {
+      setSelectedSkill(skill);
+
+      setEmployeesDrawerOpen(
+        true,
+      );
+    };
+
+    const handleCloseEmployees =
+      () => {
+        setEmployeesDrawerOpen(
+          false,
+        );
+
+        setSelectedSkill(null);
+      };
+
+    const handleViewProfile = (
+      employeeId: string,
+    ) => {
+      /*
+       * Đóng Skill Drawer trước để tránh
+       * hai Drawer chồng nhau gây rối UX.
+       */
+      setEmployeesDrawerOpen(
+        false,
+      );
+
+      setSelectedEmployeeId(
+        employeeId,
+      );
+
+      setProfileOpen(true);
+    };
+
+    const handleCloseProfile =
+      () => {
+        setProfileOpen(false);
+
+        setSelectedEmployeeId(
+          null,
+        );
       };
 
     return (
@@ -245,8 +315,41 @@ const SkillMatrixView: React.FC =
                 nextPage,
               )
             }
+            onViewEmployees={
+              handleViewEmployees
+            }
           />
         </Card>
+
+        <SkillEmployeesDrawer
+          open={
+            employeesDrawerOpen
+          }
+          skillId={
+            selectedSkill?.skillId ??
+            null
+          }
+          skillName={
+            selectedSkill?.name ??
+            null
+          }
+          onClose={
+            handleCloseEmployees
+          }
+          onViewProfile={
+            handleViewProfile
+          }
+        />
+
+        <TalentProfileDrawer
+          open={profileOpen}
+          employeeId={
+            selectedEmployeeId
+          }
+          onClose={
+            handleCloseProfile
+          }
+        />
       </>
     );
   };
