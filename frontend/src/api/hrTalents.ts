@@ -202,9 +202,12 @@ export interface EmployeeTalentProfile {
 // ─────────────────────────────────────────────────────────────────────────────
 // API
 // ─────────────────────────────────────────────────────────────────────────────
-
 export const hrTalentsApi = {
-  getAll: (params?: GetHrTalentsParams) => {
+  getAll: (
+    params?: GetHrTalentsParams,
+  ): Promise<
+    IBackendRes<TalentDirectoryResponse>
+  > => {
     return axios.get<
       IBackendRes<TalentDirectoryResponse>
     >(
@@ -212,14 +215,22 @@ export const hrTalentsApi = {
       {
         params,
       },
-    );
+    ) as unknown as Promise<
+      IBackendRes<TalentDirectoryResponse>
+    >;
   },
 
-  getByEmployeeId: (employeeId: string) => {
+  getByEmployeeId: (
+    employeeId: string,
+  ): Promise<
+    IBackendRes<EmployeeTalentProfile>
+  > => {
     return axios.get<
       IBackendRes<EmployeeTalentProfile>
     >(
       `/hr-talents/${employeeId}`,
-    );
+    ) as unknown as Promise<
+      IBackendRes<EmployeeTalentProfile>
+    >;
   },
 };

@@ -148,7 +148,7 @@ const TalentProfileDrawer: React.FC<
           }
 
           setProfile(
-            response?.data?.data ??
+            response?.data ??
               null,
           );
         } catch (error) {

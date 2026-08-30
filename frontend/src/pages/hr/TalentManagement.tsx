@@ -109,7 +109,7 @@ const TalentManagement: React.FC =
                             );
 
                         const data =
-                            response?.data?.data;
+                            response?.data;
 
                         setTalents(
                             data?.result ?? [],

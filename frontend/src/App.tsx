@@ -30,6 +30,7 @@ import { ResourcePlannerPage } from "./pages/pm/ResourcePlannerPage";
 import { PMDashboardPage } from "./pages/pm/PMDashboardPage";
 
 import BenchForecast from "./pages/hr/BenchForecast";
+import TalentManagement from "./pages/hr/TalentManagement";
 
 // import LayoutApp from "./components/protected-route/layout.app";
 // import ProtectedRoute from "./components/protected-route";
@@ -69,7 +70,9 @@ function App() {
       element: <LayoutHR />,
       errorElement: <ErrorPage />,
       children: [
+        { index: true, element: <HRDashboard /> },
         { path: "dashboard", element: <HRDashboard /> },
+        { path: "talents", element: <TalentManagement /> },
         { path: "wallet", element: <WalletAdmin /> },
         { path: "review", element: <ReviewConsole /> },
         { path: "bench", element: <BenchForecast /> },
