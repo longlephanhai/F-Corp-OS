@@ -435,6 +435,125 @@ export interface HrTalentDataQualityResponse {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Bench Talent Pool
+// GET /hr-talents/bench
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GetHrBenchTalentsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  skillId?: string;
+  minLevel?: number;
+  verified?: boolean;
+}
+
+export interface HrBenchTalentSkill {
+  userSkillId: string;
+
+  skillId: string;
+
+  name: string;
+
+  level: number;
+
+  years: number | null;
+
+  confidenceScore: number | null;
+
+  hasApprovedEvidence: boolean;
+
+  approvedEvidenceCount: number;
+
+  pendingEvidenceCount: number;
+}
+
+export interface HrBenchTalentSkillSummary {
+  totalSkills: number;
+
+  skillsWithApprovedEvidence: number;
+
+  totalEvidences: number;
+
+  approvedEvidences: number;
+
+  pendingEvidences: number;
+
+  rejectedEvidences: number;
+
+  evidenceCoverageRate: number;
+}
+
+export interface HrBenchTalentPerformance {
+  latestFinalScore: number | null;
+
+  latestReviewCycle: {
+    id: string;
+    name: string;
+  } | null;
+
+  reviewedAt: string | null;
+}
+
+export interface HrBenchTalentItem {
+  employee: {
+    id: string;
+
+    fullName: string;
+
+    email: string;
+
+    title: string | null;
+
+    status: TalentWorkforceStatus;
+
+    role: TalentRole | null;
+  };
+
+  skillSummary:
+  HrBenchTalentSkillSummary;
+
+  topSkills:
+  HrBenchTalentSkill[];
+
+  performance:
+  HrBenchTalentPerformance;
+
+  lastTalentDataUpdatedAt:
+  string | null;
+}
+
+export interface HrBenchTalentsResponse {
+  criteria: {
+    status: 'BENCH';
+
+    search: string | null;
+
+    role: string | null;
+
+    skillId: string | null;
+
+    minLevel: number | null;
+
+    verified: boolean;
+  };
+
+  meta: {
+    currentPage: number;
+
+    pageSize: number;
+
+    pages: number;
+
+    total: number;
+  };
+
+  result:
+  HrBenchTalentItem[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API
 // ─────────────────────────────────────────────────────────────────────────────
 export const hrTalentsApi = {
@@ -527,6 +646,23 @@ export const hrTalentsApi = {
       },
     ) as unknown as Promise<
       IBackendRes<HrTalentDataQualityResponse>
+    >;
+  },
+
+  getBenchTalents: (
+    params?: GetHrBenchTalentsParams,
+  ): Promise<
+    IBackendRes<HrBenchTalentsResponse>
+  > => {
+    return axios.get<
+      IBackendRes<HrBenchTalentsResponse>
+    >(
+      '/hr-talents/bench',
+      {
+        params,
+      },
+    ) as unknown as Promise<
+      IBackendRes<HrBenchTalentsResponse>
     >;
   },
 };

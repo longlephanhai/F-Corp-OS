@@ -7,6 +7,7 @@ import {
 import TalentDirectoryView from '../../components/hr/talents/TalentDirectoryView';
 import SkillMatrixView from '../../components/hr/talents/SkillMatrixView';
 import TalentDataQualityView from '../../components/hr/talents/TalentDataQualityView';
+import BenchTalentPoolView from '../../components/hr/talents/bench/BenchTalentPoolView';
 
 const {
   Title,
@@ -77,6 +78,13 @@ const TalentManagement: React.FC =
                 'Chất lượng dữ liệu',
               children: (
                 <TalentDataQualityView />
+              ),
+            },
+            {
+              key: 'bench-pool',
+              label: 'Bench Talent Pool',
+              children: (
+                <BenchTalentPoolView />
               ),
             },
           ]}

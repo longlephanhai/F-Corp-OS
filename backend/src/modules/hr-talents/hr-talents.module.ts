@@ -11,6 +11,9 @@ import { HrSkillMatrixService } from './services/hr-skill-matrix.service';
 import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
 import { HrSkillSupplyInsightService } from './services/hr-skill-supply-insight.service';
 import { HrTalentDataQualityService } from './services/hr-talent-data-quality.service';
+import { HrBenchTalentPoolService } from './services/bench/hr-bench-talent-pool.service';
+import { HrBenchTalentQueryService } from './services/bench/hr-bench-talent-query.service';
+import { HrBenchPerformanceService } from './services/bench/hr-bench-performance.service';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { HrTalentDataQualityService } from './services/hr-talent-data-quality.se
     HrSkillMatrixService,
     HrSkillSupplyInsightService,
     HrTalentDataQualityService,
+    HrBenchTalentPoolService,
+    HrBenchPerformanceService,
+    HrBenchTalentQueryService,
   ],
 
   exports: [

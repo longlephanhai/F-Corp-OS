@@ -11,6 +11,7 @@ import { HrTalentsService } from './hr-talents.service';
 import { GetHrSkillMatrixDto } from './dto/get-hr-skill-matrix.dto';
 import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
 import { GetHrTalentDataQualityDto } from './dto/get-hr-talent-data-quality.dto';
+import { GetHrBenchTalentsDto } from './dto/get-hr-bench-talents.dto';
 
 @Controller('hr-talents')
 export class HrTalentsController {
@@ -35,6 +36,19 @@ export class HrTalentsController {
     query: GetHrTalentsDto,
   ) {
     return this.hrTalentsService.findAll(
+      query,
+    );
+  }
+
+  @Get('bench')
+  @ResponseMessage(
+    'Lấy danh sách nhân sự Bench thành công',
+  )
+  getBenchTalents(
+    @Query()
+    query: GetHrBenchTalentsDto,
+  ) {
+    return this.hrTalentsService.getBenchTalents(
       query,
     );
   }
