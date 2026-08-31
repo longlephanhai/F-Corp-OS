@@ -33,7 +33,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
 import { ProjectHealthPanel } from "../../components/pm/projects/ProjectHealthPanel";
 import dayjs from "dayjs";
-
+import { SprintRetrospectiveModal } from "../../components/pm/sprints/SprintRetrospectiveModal";
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
@@ -49,7 +49,9 @@ export const ProjectDetail: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [project, setProject] = useState<any>(null);
   const [sprints, setSprints] = useState<any[]>([]);
+  const [retrospectiveSprint, setRetrospectiveSprint] = useState<any>(null);
 
+  const [isRetrospectiveOpen, setIsRetrospectiveOpen] = useState(false);
   const [form] = Form.useForm();
 
   // 1. KÉO DỮ LIỆU TỪ DB LÊN KHI VÀO TRANG
@@ -76,7 +78,11 @@ export const ProjectDetail: React.FC = () => {
       setLoading(false);
     }
   };
+  const handleOpenRetrospective = (sprint: any) => {
+    setRetrospectiveSprint(sprint);
 
+    setIsRetrospectiveOpen(true);
+  };
   useEffect(() => {
     fetchProjectDetails();
   }, [projectId]);
@@ -684,6 +690,19 @@ export const ProjectDetail: React.FC = () => {
             )}
 
             {/* ================================= */}
+            {/* COMPLETED */}
+            {/* ================================= */}
+
+            {status === "completed" && (
+              <Button
+                size="small"
+                onClick={() => handleOpenRetrospective(record)}
+              >
+                Retrospective
+              </Button>
+            )}
+
+            {/* ================================= */}
             {/* MANAGEMENT */}
             {/* ================================= */}
 
@@ -904,6 +923,15 @@ export const ProjectDetail: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+      <SprintRetrospectiveModal
+        open={isRetrospectiveOpen}
+        sprintId={retrospectiveSprint?.id ?? null}
+        sprintName={retrospectiveSprint?.name}
+        onClose={() => {
+          setIsRetrospectiveOpen(false);
+          setRetrospectiveSprint(null);
+        }}
+      />
     </div>
   );
 };

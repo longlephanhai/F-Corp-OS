@@ -123,6 +123,22 @@ export class SprintsController {
       data,
     };
   }
+  @Get(':id/retrospective')
+  async getRetrospective(
+    @Param('id')
+    id: string,
+  ) {
+    const data = await this.sprintsService.getSprintRetrospective(id);
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy Sprint retrospective thành công',
+
+      data,
+    };
+  }
+
   @Get(':id')
   async findOne(
     @Param('id')

@@ -220,6 +220,9 @@ export const pmApi = {
       status,
     });
   },
+  getSprintRetrospective: (sprintId: string) => {
+    return axios.get<IBackendRes<any>>(`/sprints/${sprintId}/retrospective`);
+  },
 
   getMyProjects: () => {
     return axios.get<IBackendRes<ProjectItem[]>>("/projects/my-projects");

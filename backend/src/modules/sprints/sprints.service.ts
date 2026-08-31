@@ -839,6 +839,315 @@ export class SprintsService {
     };
   }
 
+  async getSprintRetrospective(sprintId: string) {
+    const sprint = await this.findOne(sprintId);
+
+    // ==========================================
+    // TASK DATA
+    // ==========================================
+
+    const activeTasks = await this.taskRepo.find({
+      where: {
+        sprintId: sprint.id,
+
+        isDeleted: false,
+      },
+
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    const archivedTasks = await this.taskRepo.find({
+      where: {
+        sprintId: sprint.id,
+
+        isDeleted: true,
+      },
+
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    // ==========================================
+    // CARRY-OVER
+    // ==========================================
+
+    const carriedOverTasks = archivedTasks.filter((task) => {
+      const meta = task.carryOverMeta;
+
+      if (!meta) {
+        return false;
+      }
+
+      // New metadata format.
+      if (meta.targetTaskId) {
+        return true;
+      }
+
+      // Legacy format.
+      return meta.direction === 'SOURCE';
+    });
+
+    // ==========================================
+    // REMOVED SCOPE
+    //
+    // Task archive thủ công, không phải carry.
+    // ==========================================
+
+    const removedTasks = archivedTasks.filter(
+      (task) =>
+        !carriedOverTasks.some((carriedTask) => carriedTask.id === task.id),
+    );
+
+    // ==========================================
+    // COMPLETED / REMAINING
+    // ==========================================
+
+    const completedTasks = activeTasks.filter((task) => {
+      const status = (task.status ?? '').toString().toUpperCase();
+
+      const progress = Number(task.progress ?? 0);
+
+      return status === TaskStatus.DONE && progress >= 100;
+    });
+
+    const remainingTasks = activeTasks.filter(
+      (task) =>
+        !completedTasks.some((completedTask) => completedTask.id === task.id),
+    );
+
+    // ==========================================
+    // SCOPE
+    // ==========================================
+
+    const plannedScope =
+      completedTasks.length +
+      remainingTasks.length +
+      carriedOverTasks.length +
+      removedTasks.length;
+
+    const deliveredScope = completedTasks.length;
+
+    const carryOverScope = carriedOverTasks.length;
+
+    const removedScope = removedTasks.length;
+
+    const remainingScope = remainingTasks.length;
+
+    const deliveryRate =
+      plannedScope > 0 ? Math.round((deliveredScope / plannedScope) * 100) : 0;
+
+    const carryOverRate =
+      plannedScope > 0 ? Math.round((carryOverScope / plannedScope) * 100) : 0;
+
+    const removedScopeRate =
+      plannedScope > 0 ? Math.round((removedScope / plannedScope) * 100) : 0;
+
+    // ==========================================
+    // RESOURCE
+    // ==========================================
+
+    const allocations = await this.userSprintRepo.find({
+      where: {
+        sprintId: sprint.id,
+      },
+
+      relations: {
+        user: true,
+      },
+    });
+
+    const releasedAllocations = allocations.filter(
+      (allocation) => allocation.status === UserSprintStatus.RELEASED,
+    );
+
+    const participantUserIds = new Set(
+      allocations.map((allocation) => allocation.userId),
+    );
+
+    const totalAllocationPercent = allocations.reduce(
+      (total, allocation) => total + Number(allocation.percitant ?? 0),
+      0,
+    );
+
+    const totalAllocatedFte = Number((totalAllocationPercent / 100).toFixed(2));
+
+    // ==========================================
+    // PERFORMANCE REVIEW
+    // ==========================================
+
+    const reviewedAllocations = releasedAllocations.filter(
+      (allocation) =>
+        allocation.hardSkillRate !== null &&
+        allocation.hardSkillRate !== undefined &&
+        allocation.softSkillRate !== null &&
+        allocation.softSkillRate !== undefined,
+    );
+
+    const averageHardSkill =
+      reviewedAllocations.length > 0
+        ? Number(
+            (
+              reviewedAllocations.reduce(
+                (total, allocation) =>
+                  total + Number(allocation.hardSkillRate ?? 0),
+                0,
+              ) / reviewedAllocations.length
+            ).toFixed(2),
+          )
+        : null;
+
+    const averageSoftSkill =
+      reviewedAllocations.length > 0
+        ? Number(
+            (
+              reviewedAllocations.reduce(
+                (total, allocation) =>
+                  total + Number(allocation.softSkillRate ?? 0),
+                0,
+              ) / reviewedAllocations.length
+            ).toFixed(2),
+          )
+        : null;
+
+    // ==========================================
+    // RETROSPECTIVE FLAGS
+    // ==========================================
+
+    const observations: string[] = [];
+
+    if (carryOverRate >= 30) {
+      observations.push(
+        `Carry-over Rate ${carryOverRate}% cho thấy Sprint có mức scope spill cao.`,
+      );
+    }
+
+    if (removedScopeRate >= 20) {
+      observations.push(
+        `${removedScopeRate}% scope đã bị loại khỏi Sprint trong quá trình thực hiện.`,
+      );
+    }
+
+    if (deliveryRate >= 90) {
+      observations.push('Sprint đạt Delivery Rate rất tốt.');
+    }
+
+    if (deliveryRate < 60 && plannedScope > 0) {
+      observations.push(
+        'Delivery Rate dưới 60%. Cần xem lại planning và capacity.',
+      );
+    }
+
+    if (reviewedAllocations.length < releasedAllocations.length) {
+      observations.push(
+        'Một số resource đã Release nhưng chưa có đầy đủ performance review.',
+      );
+    }
+
+    // ==========================================
+    // RESULT
+    // ==========================================
+
+    return {
+      sprint: {
+        id: sprint.id,
+
+        name: sprint.name,
+
+        status: sprint.status,
+
+        startDate: sprint.startDate,
+
+        endDate: sprint.endDate,
+
+        projectId: sprint.projectId,
+      },
+
+      scope: {
+        planned: plannedScope,
+
+        delivered: deliveredScope,
+
+        carriedOver: carryOverScope,
+
+        removed: removedScope,
+
+        remaining: remainingScope,
+
+        deliveryRate,
+
+        carryOverRate,
+
+        removedScopeRate,
+      },
+
+      resources: {
+        totalParticipants: participantUserIds.size,
+
+        totalAllocations: allocations.length,
+
+        releasedAllocations: releasedAllocations.length,
+
+        totalAllocationPercent,
+
+        totalAllocatedFte,
+
+        reviewedResources: reviewedAllocations.length,
+
+        averageHardSkill,
+
+        averageSoftSkill,
+      },
+
+      observations,
+
+      details: {
+        completedTasks: completedTasks.map((task) => ({
+          id: task.id,
+
+          title: task.title,
+
+          progress: Number(task.progress ?? 0),
+        })),
+
+        carriedOverTasks: carriedOverTasks.map((task) => ({
+          id: task.id,
+
+          title: task.title,
+
+          progress: Number(task.progress ?? 0),
+
+          targetTaskId:
+            task.carryOverMeta?.targetTaskId ??
+            task.carryOverMeta?.linkedTaskId ??
+            null,
+
+          targetSprintId:
+            task.carryOverMeta?.targetSprintId ??
+            task.carryOverMeta?.linkedSprintId ??
+            null,
+        })),
+
+        removedTasks: removedTasks.map((task) => ({
+          id: task.id,
+
+          title: task.title,
+        })),
+
+        remainingTasks: remainingTasks.map((task) => ({
+          id: task.id,
+
+          title: task.title,
+
+          status: task.status,
+
+          progress: Number(task.progress ?? 0),
+        })),
+      },
+    };
+  }
   // ==========================================
   // COMPLETION GUARD
   // ==========================================
