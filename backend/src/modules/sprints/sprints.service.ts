@@ -1148,6 +1148,263 @@ export class SprintsService {
       },
     };
   }
+  async getProjectSprintTrends(projectId: string, limit = 5) {
+    // ==========================================
+    // PROJECT
+    // ==========================================
+
+    const project = await this.getProjectOrFail(projectId);
+
+    const safeLimit = Math.min(Math.max(Number(limit) || 5, 2), 10);
+
+    // ==========================================
+    // COMPLETED SPRINTS
+    // ==========================================
+
+    const completedSprints = await this.sprintRepo.find({
+      where: {
+        projectId: project.id,
+
+        status: 'completed',
+
+        isDeleted: false,
+      },
+
+      order: {
+        endDate: 'DESC',
+      },
+
+      take: safeLimit,
+    });
+
+    // API trả theo timeline cũ → mới
+    // để frontend đọc trend tự nhiên hơn.
+    completedSprints.reverse();
+
+    // ==========================================
+    // RETROSPECTIVE EACH SPRINT
+    // ==========================================
+
+    const sprintMetrics = await Promise.all(
+      completedSprints.map(async (sprint) => {
+        const retrospective = await this.getSprintRetrospective(sprint.id);
+
+        return {
+          sprintId: sprint.id,
+
+          sprintName: sprint.name,
+
+          startDate: sprint.startDate,
+
+          endDate: sprint.endDate,
+
+          scope: {
+            planned: retrospective.scope.planned,
+
+            delivered: retrospective.scope.delivered,
+
+            carriedOver: retrospective.scope.carriedOver,
+
+            removed: retrospective.scope.removed,
+
+            deliveryRate: retrospective.scope.deliveryRate,
+
+            carryOverRate: retrospective.scope.carryOverRate,
+
+            removedScopeRate: retrospective.scope.removedScopeRate,
+          },
+
+          resources: {
+            totalParticipants: retrospective.resources.totalParticipants,
+
+            totalAllocatedFte: retrospective.resources.totalAllocatedFte,
+
+            averageHardSkill: retrospective.resources.averageHardSkill,
+
+            averageSoftSkill: retrospective.resources.averageSoftSkill,
+          },
+        };
+      }),
+    );
+
+    // ==========================================
+    // EMPTY / NOT ENOUGH HISTORY
+    // ==========================================
+
+    if (sprintMetrics.length === 0) {
+      return {
+        project: {
+          id: project.id,
+
+          name: project.name,
+        },
+
+        totalSprints: 0,
+
+        metrics: [],
+
+        summary: {
+          averageDeliveryRate: 0,
+
+          averageCarryOverRate: 0,
+
+          averageRemovedScopeRate: 0,
+
+          averageAllocatedFte: 0,
+
+          deliveryTrend: 'NO_DATA',
+
+          carryOverTrend: 'NO_DATA',
+
+          overallTrend: 'NO_DATA',
+        },
+      };
+    }
+
+    // ==========================================
+    // AVERAGES
+    // ==========================================
+
+    const average = (values: number[]) => {
+      if (values.length === 0) {
+        return 0;
+      }
+
+      return Number(
+        (
+          values.reduce((total, value) => total + Number(value ?? 0), 0) /
+          values.length
+        ).toFixed(2),
+      );
+    };
+
+    const averageDeliveryRate = average(
+      sprintMetrics.map((item) => item.scope.deliveryRate),
+    );
+
+    const averageCarryOverRate = average(
+      sprintMetrics.map((item) => item.scope.carryOverRate),
+    );
+
+    const averageRemovedScopeRate = average(
+      sprintMetrics.map((item) => item.scope.removedScopeRate),
+    );
+
+    const averageAllocatedFte = average(
+      sprintMetrics.map((item) => item.resources.totalAllocatedFte),
+    );
+
+    // ==========================================
+    // TREND ENGINE
+    // ==========================================
+
+    type Trend = 'IMPROVING' | 'STABLE' | 'DECLINING' | 'NO_DATA';
+
+    const calculateTrend = (
+      first: number | null,
+      last: number | null,
+      higherIsBetter: boolean,
+      stableThreshold = 5,
+    ): Trend => {
+      if (first === null || last === null) {
+        return 'NO_DATA';
+      }
+
+      const delta = last - first;
+
+      if (Math.abs(delta) <= stableThreshold) {
+        return 'STABLE';
+      }
+
+      if (higherIsBetter) {
+        return delta > 0 ? 'IMPROVING' : 'DECLINING';
+      }
+
+      return delta < 0 ? 'IMPROVING' : 'DECLINING';
+    };
+
+    const first = sprintMetrics[0];
+
+    const last = sprintMetrics[sprintMetrics.length - 1];
+
+    const deliveryTrend =
+      sprintMetrics.length >= 2
+        ? calculateTrend(
+            first.scope.deliveryRate,
+
+            last.scope.deliveryRate,
+
+            true,
+          )
+        : 'NO_DATA';
+
+    const carryOverTrend =
+      sprintMetrics.length >= 2
+        ? calculateTrend(
+            first.scope.carryOverRate,
+
+            last.scope.carryOverRate,
+
+            false,
+          )
+        : 'NO_DATA';
+
+    // ==========================================
+    // OVERALL TREND
+    // ==========================================
+
+    let overallTrend: Trend = 'NO_DATA';
+
+    if (sprintMetrics.length >= 2) {
+      const trends = [deliveryTrend, carryOverTrend];
+
+      const improving = trends.filter((trend) => trend === 'IMPROVING').length;
+
+      const declining = trends.filter((trend) => trend === 'DECLINING').length;
+
+      if (improving > declining) {
+        overallTrend = 'IMPROVING';
+      } else if (declining > improving) {
+        overallTrend = 'DECLINING';
+      } else {
+        overallTrend = 'STABLE';
+      }
+    }
+
+    // ==========================================
+    // RESULT
+    // ==========================================
+
+    return {
+      project: {
+        id: project.id,
+
+        name: project.name,
+      },
+
+      totalSprints: sprintMetrics.length,
+
+      metrics: sprintMetrics,
+
+      summary: {
+        averageDeliveryRate,
+
+        averageCarryOverRate,
+
+        averageRemovedScopeRate,
+
+        averageAllocatedFte,
+
+        deliveryTrend,
+
+        carryOverTrend,
+
+        overallTrend,
+      },
+    };
+  }
+
+  
   // ==========================================
   // COMPLETION GUARD
   // ==========================================

@@ -34,6 +34,7 @@ import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
 import { ProjectHealthPanel } from "../../components/pm/projects/ProjectHealthPanel";
 import dayjs from "dayjs";
 import { SprintRetrospectiveModal } from "../../components/pm/sprints/SprintRetrospectiveModal";
+import { SprintTrendPanel } from "../../components/pm/projects/SprintTrendPanel";
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
@@ -831,7 +832,7 @@ export const ProjectDetail: React.FC = () => {
         loading={loading}
         onOpenSprint={(id) => navigate(`/pm/sprints/${id}`)}
       />
-
+      <SprintTrendPanel projectId={projectId!} />
       {/* --- BẢNG DANH SÁCH SPRINT --- */}
       <Card
         title={

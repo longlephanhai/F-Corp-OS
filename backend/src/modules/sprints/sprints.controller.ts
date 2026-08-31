@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { SkipCheckPermission } from 'decorator/customize';
@@ -138,7 +139,29 @@ export class SprintsController {
       data,
     };
   }
+  @Get('project/:projectId/retrospective-trends')
+  async getProjectSprintTrends(
+    @Param('projectId')
+    projectId: string,
 
+    @Query('limit')
+    limit?: string,
+  ) {
+    const data = await this.sprintsService.getProjectSprintTrends(
+      projectId,
+      Number(limit) || 5,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy xu hướng Sprint thành công',
+
+      data,
+    };
+  }
+
+  
   @Get(':id')
   async findOne(
     @Param('id')
