@@ -14,7 +14,11 @@ import {
   message,
   Select,
   Statistic,
+  Col,
   Progress,
+  Row,
+  Alert,
+  Divider,
 } from "antd";
 import {
   PlusOutlined,
@@ -265,6 +269,87 @@ export const ProjectDetail: React.FC = () => {
                 width: "100%",
               }}
             >
+              {/* ====================================== */}
+              {/* SPRINT SCOPE */}
+              {/* ====================================== */}
+
+              <Card
+                size="small"
+                title="Sprint Scope"
+                style={{
+                  marginBottom: 12,
+                  width: "100%",
+                }}
+              >
+                <Row gutter={[12, 12]}>
+                  <Col span={12}>
+                    <Statistic
+                      title="Planned"
+                      value={readiness?.summary?.plannedScopeTasks ?? 0}
+                      suffix="Task"
+                    />
+                  </Col>
+
+                  <Col span={12}>
+                    <Statistic
+                      title="Completed"
+                      value={readiness?.summary?.deliveredTasks ?? 0}
+                      suffix="Task"
+                    />
+                  </Col>
+
+                  <Col span={12}>
+                    <Statistic
+                      title="Carry-over"
+                      value={readiness?.summary?.carriedScopeTasks ?? 0}
+                      suffix="Task"
+                    />
+                  </Col>
+
+                  <Col span={12}>
+                    <Statistic
+                      title="Remaining"
+                      value={readiness?.summary?.remainingScopeTasks ?? 0}
+                      suffix="Task"
+                    />
+                  </Col>
+                </Row>
+
+                <Divider />
+
+                <Space
+                  direction="vertical"
+                  style={{
+                    width: "100%",
+                  }}
+                >
+                  <div>
+                    <Text>Delivery Rate</Text>
+
+                    <Progress percent={readiness?.summary?.deliveryRate ?? 0} />
+                  </div>
+
+                  <div>
+                    <Text>Carry-over Rate</Text>
+
+                    <Progress
+                      percent={readiness?.summary?.carryOverRate ?? 0}
+                      status={
+                        (readiness?.summary?.carryOverRate ?? 0) >= 30
+                          ? "exception"
+                          : "normal"
+                      }
+                    />
+                  </div>
+                </Space>
+              </Card>
+              {readiness?.warnings?.map((warning: string, index: number) => (
+                <Alert key={index} type="warning" showIcon title={warning} />
+              ))}
+              {/* ====================================== */}
+              {/* BLOCKERS */}
+              {/* ====================================== */}
+
               {(readiness?.blockers ?? []).map(
                 (blocker: string, index: number) => (
                   <Text key={index} type="danger">
@@ -278,7 +363,23 @@ export const ProjectDetail: React.FC = () => {
                   <Divider />
 
                   <Text strong>Task chưa hoàn thành</Text>
+                  {readiness?.details?.carriedOverTasks?.length > 0 && (
+                    <>
+                      <Divider />
 
+                      <Text strong>Task đã Carry-over</Text>
+
+                      {readiness.details.carriedOverTasks.map((task: any) => (
+                        <Space key={task.id} wrap>
+                          <Tag color="blue">Carry-over</Tag>
+
+                          <Text>{task.title}</Text>
+
+                          <Text type="secondary">{task.progress}%</Text>
+                        </Space>
+                      ))}
+                    </>
+                  )}
                   {readiness.details.unfinishedTasks.map((task: any) => (
                     <Text key={task.id}>
                       {task.title}
@@ -325,10 +426,60 @@ export const ProjectDetail: React.FC = () => {
         title: "Hoàn thành Sprint?",
 
         content: (
-          <Text>
-            Tất cả Task, dependency và allocation đã được xử lý. Bạn có chắc
-            muốn hoàn thành <strong>{sprint.name}</strong>?
-          </Text>
+          <Space
+            direction="vertical"
+            size={12}
+            style={{
+              width: "100%",
+            }}
+          >
+            <Text>
+              Sprint <strong>{sprint.name}</strong> đã đủ điều kiện hoàn thành.
+            </Text>
+
+            <Card
+              size="small"
+              title="Kết quả Sprint"
+              style={{
+                width: "100%",
+              }}
+            >
+              <Row gutter={[12, 12]}>
+                <Col span={8}>
+                  <Statistic
+                    title="Completed"
+                    value={readiness?.summary?.deliveredTasks ?? 0}
+                  />
+                </Col>
+
+                <Col span={8}>
+                  <Statistic
+                    title="Carry-over"
+                    value={readiness?.summary?.carriedScopeTasks ?? 0}
+                  />
+                </Col>
+
+                <Col span={8}>
+                  <Statistic
+                    title="Delivery"
+                    value={readiness?.summary?.deliveryRate ?? 0}
+                    suffix="%"
+                  />
+                </Col>
+              </Row>
+            </Card>
+
+            {(readiness?.summary?.carriedScopeTasks ?? 0) > 0 && (
+              <Alert
+                type="warning"
+                showIcon
+                title={`${readiness.summary.carriedScopeTasks} Task đã được Carry-over`}
+                description="Các Task này sẽ tiếp tục được thực hiện ở Sprint kế tiếp."
+              />
+            )}
+
+            <Text>Bạn có chắc muốn đánh dấu Sprint là COMPLETED?</Text>
+          </Space>
         ),
 
         okText: "Hoàn thành Sprint",

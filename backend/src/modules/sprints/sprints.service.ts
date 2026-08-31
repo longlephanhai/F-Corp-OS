@@ -567,6 +567,11 @@ export class SprintsService {
 
         isDeleted: true,
       },
+
+      // QUAN TRỌNG:
+      // Task carry-over đã được archive / soft-delete.
+      // TypeORM mặc định ẩn các row có deletedAt.
+      withDeleted: true,
     });
 
     const carriedOverTasks = archivedTasks.filter((task) => {
@@ -607,9 +612,62 @@ export class SprintsService {
 
       return status !== TaskStatus.DONE || progress < 100;
     });
+    const completedTasks = tasks.filter((task) => {
+      const status = (task.status ?? '').toString().toUpperCase();
 
+      const progress = Number(task.progress ?? 0);
+
+      return status === TaskStatus.DONE && progress >= 100;
+    });
+
+    // ==========================================
+    // SPRINT SCOPE SUMMARY
+    // ==========================================
+    //
+    // Scope thực tế của Sprint:
+    //
+    // - Completed:
+    //   Task hoàn thành trong Sprint.
+    //
+    // - Carried-over:
+    //   Task chưa hoàn thành nhưng đã được
+    //   chuyển sang Sprint tiếp theo.
+    //
+    // - Remaining:
+    //   Task vẫn còn active trong Sprint
+    //   nhưng chưa DONE.
+    //
+    // Không tính các Task archive thủ công
+    // không phải Carry-over.
+    // ==========================================
+
+    const plannedScopeTasks =
+      completedTasks.length + carriedOverTasks.length + unfinishedTasks.length;
+
+    const deliveredTasks = completedTasks.length;
+
+    const carriedScopeTasks = carriedOverTasks.length;
+
+    const remainingScopeTasks = unfinishedTasks.length;
+
+    const deliveryRate =
+      plannedScopeTasks > 0
+        ? Math.round((deliveredTasks / plannedScopeTasks) * 100)
+        : 0;
+
+    const carryOverRate =
+      plannedScopeTasks > 0
+        ? Math.round((carriedScopeTasks / plannedScopeTasks) * 100)
+        : 0;
     if (unfinishedTasks.length > 0) {
       blockers.push(`${unfinishedTasks.length} Task chưa hoàn thành.`);
+    }
+    const warnings: string[] = [];
+
+    if (carryOverRate >= 30) {
+      warnings.push(
+        `Carry-over Rate đang ở mức ${carryOverRate}%. Sprint có dấu hiệu scope spill cao.`,
+      );
     }
 
     // ==========================================
@@ -683,13 +741,32 @@ export class SprintsService {
       canComplete: blockers.length === 0,
 
       blockers,
+      warnings,
 
       summary: {
         totalTasks: tasks.length,
 
-        completedTasks: tasks.length - unfinishedTasks.length,
+        completedTasks: completedTasks.length,
 
         unfinishedTasks: unfinishedTasks.length,
+
+        carriedOverTasks: carriedOverTasks.length,
+
+        // ========================================
+        // SCOPE
+        // ========================================
+
+        plannedScopeTasks,
+
+        deliveredTasks,
+
+        carriedScopeTasks,
+
+        remainingScopeTasks,
+
+        deliveryRate,
+
+        carryOverRate,
 
         dependencyBlockedTasks: dependencyBlockedTasks.length,
 
@@ -700,7 +777,6 @@ export class SprintsService {
         ).length,
 
         unresolvedAllocations: unresolvedAllocations.length,
-        carriedOverTasks: carriedOverTasks.length,
       },
 
       details: {
@@ -732,6 +808,32 @@ export class SprintsService {
           status: allocation.status,
 
           percitant: Number(allocation.percitant ?? 0),
+        })),
+        carriedOverTasks: carriedOverTasks.map((task) => ({
+          id: task.id,
+
+          title: task.title ?? 'Task chưa đặt tên',
+
+          status: task.status,
+
+          progress: Number(task.progress ?? 0),
+
+          targetTaskId:
+            task.carryOverMeta?.targetTaskId ??
+            (task.carryOverMeta?.direction === 'SOURCE'
+              ? (task.carryOverMeta?.linkedTaskId ?? null)
+              : null),
+
+          targetSprintId:
+            task.carryOverMeta?.targetSprintId ??
+            (task.carryOverMeta?.direction === 'SOURCE'
+              ? (task.carryOverMeta?.linkedSprintId ?? null)
+              : null),
+
+          carriedAt:
+            task.carryOverMeta?.carriedOutAt ??
+            task.carryOverMeta?.carriedAt ??
+            null,
         })),
       },
     };
