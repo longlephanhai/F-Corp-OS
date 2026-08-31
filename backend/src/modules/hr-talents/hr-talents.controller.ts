@@ -10,6 +10,7 @@ import { GetHrTalentsDto } from './dto/get-hr-talents.dto';
 import { HrTalentsService } from './hr-talents.service';
 import { GetHrSkillMatrixDto } from './dto/get-hr-skill-matrix.dto';
 import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
+import { GetHrTalentDataQualityDto } from './dto/get-hr-talent-data-quality.dto';
 
 @Controller('hr-talents')
 export class HrTalentsController {
@@ -44,6 +45,19 @@ export class HrTalentsController {
   )
   getSkillSupplySummary() {
     return this.hrTalentsService.getSkillSupplySummary();
+  }
+
+  @Get('analytics/data-quality')
+  @ResponseMessage(
+    'Lấy chất lượng dữ liệu hồ sơ năng lực thành công',
+  )
+  getTalentDataQuality(
+    @Query()
+    query: GetHrTalentDataQualityDto,
+  ) {
+    return this.hrTalentsService.getTalentDataQuality(
+      query,
+    );
   }
 
   @Get('analytics/skill-matrix')

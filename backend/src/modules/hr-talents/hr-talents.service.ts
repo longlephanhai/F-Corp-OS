@@ -6,6 +6,8 @@ import { HrTalentDirectoryService } from './services/hr-talent-directory.service
 import { HrTalentProfileService } from './services/hr-talent-profile.service';
 import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
 import { HrSkillSupplyInsightService } from './services/hr-skill-supply-insight.service';
+import { GetHrTalentDataQualityDto } from './dto/get-hr-talent-data-quality.dto';
+import { HrTalentDataQualityService } from './services/hr-talent-data-quality.service';
 
 @Injectable()
 export class HrTalentsService {
@@ -21,6 +23,9 @@ export class HrTalentsService {
 
     private readonly skillSupplyInsightService:
       HrSkillSupplyInsightService,
+
+    private readonly talentDataQualityService:
+      HrTalentDataQualityService,
   ) { }
 
   findAll(
@@ -59,5 +64,13 @@ export class HrTalentsService {
 
   getSkillSupplySummary() {
     return this.skillSupplyInsightService.getSummary();
+  }
+
+  getTalentDataQuality(
+    query: GetHrTalentDataQualityDto,
+  ) {
+    return this.talentDataQualityService.getSummary(
+      query,
+    );
   }
 }

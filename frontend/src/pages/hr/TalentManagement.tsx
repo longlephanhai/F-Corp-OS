@@ -6,6 +6,7 @@ import {
 
 import TalentDirectoryView from '../../components/hr/talents/TalentDirectoryView';
 import SkillMatrixView from '../../components/hr/talents/SkillMatrixView';
+import TalentDataQualityView from '../../components/hr/talents/TalentDataQualityView';
 
 const {
   Title,
@@ -68,6 +69,14 @@ const TalentManagement: React.FC =
                 'Ma trận kỹ năng',
               children: (
                 <SkillMatrixView />
+              ),
+            },
+            {
+              key: 'data-quality',
+              label:
+                'Chất lượng dữ liệu',
+              children: (
+                <TalentDataQualityView />
               ),
             },
           ]}

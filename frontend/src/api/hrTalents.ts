@@ -349,6 +349,92 @@ export interface HrSkillSupplySummary {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Talent Data Quality
+// GET /hr-talents/analytics/data-quality
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GetHrTalentDataQualityParams {
+  role?: string;
+  staleDays?: number;
+}
+
+export interface HrTalentDataQualityEmployee {
+  id: string;
+  fullName: string;
+  email: string;
+  title: string | null;
+  status: TalentWorkforceStatus;
+  role: TalentRole | null;
+}
+
+export interface HrTalentDataQualityItem {
+  employee: HrTalentDataQualityEmployee;
+
+  quality: {
+    totalSkills: number;
+    totalEvidences: number;
+
+    approvedEvidences: number;
+    pendingEvidences: number;
+    rejectedEvidences: number;
+
+    hasSkills: boolean;
+    hasApprovedEvidence: boolean;
+    hasPendingEvidence: boolean;
+
+    isStale: boolean;
+
+    lastTalentDataUpdatedAt:
+    | string
+    | null;
+  };
+}
+
+export interface HrTalentDataQualityResponse {
+  criteria: {
+    role: string | null;
+
+    staleDays: number;
+
+    staleBefore: string;
+  };
+
+  summary: {
+    totalEmployees: number;
+
+    employeesWithSkills: number;
+    employeesWithoutSkills: number;
+
+    employeesWithApprovedEvidence: number;
+    employeesWithoutApprovedEvidence: number;
+
+    employeesWithPendingEvidence: number;
+
+    totalPendingEvidences: number;
+
+    staleProfiles: number;
+
+    skillCoverageRate: number;
+    evidenceCoverageRate: number;
+    freshnessRate: number;
+  };
+
+  issues: {
+    withoutSkills:
+    HrTalentDataQualityItem[];
+
+    withoutApprovedEvidence:
+    HrTalentDataQualityItem[];
+
+    pendingEvidence:
+    HrTalentDataQualityItem[];
+
+    staleProfiles:
+    HrTalentDataQualityItem[];
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API
 // ─────────────────────────────────────────────────────────────────────────────
 export const hrTalentsApi = {
@@ -415,15 +501,32 @@ export const hrTalentsApi = {
   },
 
   getSkillSupplySummary:
-  (): Promise<
-    IBackendRes<HrSkillSupplySummary>
+    (): Promise<
+      IBackendRes<HrSkillSupplySummary>
+    > => {
+      return axios.get<
+        IBackendRes<HrSkillSupplySummary>
+      >(
+        '/hr-talents/analytics/skill-supply-summary',
+      ) as unknown as Promise<
+        IBackendRes<HrSkillSupplySummary>
+      >;
+    },
+
+  getTalentDataQuality: (
+    params?: GetHrTalentDataQualityParams,
+  ): Promise<
+    IBackendRes<HrTalentDataQualityResponse>
   > => {
     return axios.get<
-      IBackendRes<HrSkillSupplySummary>
+      IBackendRes<HrTalentDataQualityResponse>
     >(
-      '/hr-talents/analytics/skill-supply-summary',
+      '/hr-talents/analytics/data-quality',
+      {
+        params,
+      },
     ) as unknown as Promise<
-      IBackendRes<HrSkillSupplySummary>
+      IBackendRes<HrTalentDataQualityResponse>
     >;
   },
 };
