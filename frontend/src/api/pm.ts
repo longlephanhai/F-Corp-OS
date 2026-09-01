@@ -223,21 +223,21 @@ export const pmApi = {
   getSprintRetrospective: (sprintId: string) => {
     return axios.get<IBackendRes<any>>(`/sprints/${sprintId}/retrospective`);
   },
-  getProjectSprintTrends: (
-  projectId: string,
-  limit = 5,
-) => {
-  return axios.get<
-    IBackendRes<any>
-  >(
-    `/sprints/project/${projectId}/retrospective-trends`,
-    {
-      params: {
-        limit,
+  getProjectSprintTrends: (projectId: string, limit = 5) => {
+    return axios.get<IBackendRes<any>>(
+      `/sprints/project/${projectId}/retrospective-trends`,
+      {
+        params: {
+          limit,
+        },
       },
-    },
-  );
-},
+    );
+  },
+  getSprintPlanningForecast: (sprintId: string) => {
+    return axios.get<IBackendRes<any>>(
+      `/sprints/${sprintId}/planning-forecast`,
+    );
+  },
 
   getMyProjects: () => {
     return axios.get<IBackendRes<ProjectItem[]>>("/projects/my-projects");
@@ -272,6 +272,4 @@ export const pmApi = {
   removeTaskDependency: (taskId: string, dependencyId: string) => {
     return axios.delete(`/tasks/${taskId}/dependencies/${dependencyId}`);
   },
-
-
 };

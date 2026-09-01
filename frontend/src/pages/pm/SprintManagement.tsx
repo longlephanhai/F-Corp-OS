@@ -45,6 +45,7 @@ import { SprintRiskPanel } from "../../components/pm/sprints/SprintRiskPanel";
 import { TaskDependenciesModal } from "../../components/pm/sprints/TaskDependenciesModal";
 import { EditTaskModal } from "../../components/pm/sprints/EditTaskModal";
 import { CarryOverTaskModal } from "../../components/pm/sprints/CarryOverTaskModal";
+import { SprintPlanningForecastPanel } from "../../components/pm/sprints/SprintPlanningForecastPanel";
 
 const { Title, Text } = Typography;
 
@@ -521,6 +522,16 @@ export const SprintManagementPage: React.FC = () => {
           style={{
             marginBottom: 20,
           }}
+        />
+      )}
+      {/* ====================================== */}
+      {/* UPCOMING SPRINT CAPACITY FORECAST */}
+      {/* ====================================== */}
+
+      {sprintId && (
+        <SprintPlanningForecastPanel
+          sprintId={sprintId}
+          sprintStatus={sprintStatus}
         />
       )}
 
