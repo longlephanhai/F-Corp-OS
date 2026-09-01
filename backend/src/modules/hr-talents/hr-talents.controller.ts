@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Query,
@@ -12,6 +13,7 @@ import { GetHrSkillMatrixDto } from './dto/get-hr-skill-matrix.dto';
 import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
 import { GetHrTalentDataQualityDto } from './dto/get-hr-talent-data-quality.dto';
 import { GetHrBenchTalentsDto } from './dto/get-hr-bench-talents.dto';
+import { GetHrBenchReadinessDto } from './dto/get-hr-bench-readiness.dto';
 
 @Controller('hr-talents')
 export class HrTalentsController {
@@ -41,6 +43,10 @@ export class HrTalentsController {
   }
 
   @Get('bench')
+  @Header(
+  'Cache-Control',
+  'no-store',
+)
   @ResponseMessage(
     'Lấy danh sách nhân sự Bench thành công',
   )
@@ -75,6 +81,10 @@ export class HrTalentsController {
   }
 
   @Get('analytics/skill-matrix')
+  @Header(
+  'Cache-Control',
+  'no-store',
+)
   @ResponseMessage(
     'Lấy ma trận kỹ năng nhân sự thành công',
   )
@@ -105,6 +115,26 @@ export class HrTalentsController {
       skillId,
       query,
     );
+  }
+
+  @Get('bench/readiness')
+  @Header(
+    'Cache-Control',
+    'no-store',
+  )
+  async getBenchReadiness(
+    @Query() query: GetHrBenchReadinessDto,
+  ) {
+    const data =
+      await this.hrTalentsService
+        .getBenchReadiness(query);
+
+    return {
+      message:
+        'Lấy mức độ sẵn sàng của nhân sự Bench thành công',
+
+      data,
+    };
   }
 
   @Get(':employeeId')

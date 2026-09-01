@@ -1,3 +1,4 @@
+import instance from '../config/interceptor';
 import axios from '../config/interceptor';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,6 +76,97 @@ export interface GetHrTalentsParams {
   search?: string;
   status?: TalentWorkforceStatus;
   role?: string;
+}
+
+export type HrBenchReadinessStatus =
+  | 'READY'
+  | 'PARTIALLY_READY'
+  | 'NEEDS_VERIFICATION'
+  | 'NEEDS_PROFILE_UPDATE';
+
+export interface GetHrBenchReadinessParams
+  extends GetHrBenchTalentsParams {
+  staleDays?: number;
+}
+
+export interface HrBenchReadinessSkillComponent {
+  score: number;
+  maxScore: 35;
+  skillCount: number;
+  averageTopLevel: number;
+}
+
+export interface HrBenchReadinessEvidenceComponent {
+  score: number;
+  maxScore: 30;
+  coverageRate: number;
+}
+
+export interface HrBenchReadinessPerformanceComponent {
+  score: number;
+  maxScore: 20;
+  latestFinalScore: number | null;
+  hasCompletedReview: boolean;
+}
+
+export interface HrBenchReadinessFreshnessComponent {
+  score: number;
+  maxScore: 15;
+  daysSinceUpdate: number | null;
+  isStale: boolean;
+}
+
+export interface HrBenchReadiness {
+  score: number;
+
+  status:
+  HrBenchReadinessStatus;
+
+  components: {
+    skill:
+    HrBenchReadinessSkillComponent;
+
+    evidence:
+    HrBenchReadinessEvidenceComponent;
+
+    performance:
+    HrBenchReadinessPerformanceComponent;
+
+    freshness:
+    HrBenchReadinessFreshnessComponent;
+  };
+
+  strengths: string[];
+
+  issues: string[];
+}
+
+export interface HrBenchReadinessItem
+  extends HrBenchTalentItem {
+  readiness:
+  HrBenchReadiness;
+}
+
+export interface HrBenchReadinessResponse {
+  criteria: {
+    status: string;
+    search: string | null;
+    role: string | null;
+    skillId: string | null;
+    minLevel: number | null;
+    verified: boolean;
+    staleDays: number;
+  };
+
+  meta: {
+    currentPage: number;
+    pageSize: number;
+    pages: number;
+    total: number;
+  };
+
+  result:
+  HrBenchReadinessItem[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -553,6 +645,11 @@ export interface HrBenchTalentsResponse {
   HrBenchTalentItem[];
 }
 
+export interface HrBenchReadinessApiResponse {
+  message: string;
+  data: HrBenchReadinessResponse;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API
 // ─────────────────────────────────────────────────────────────────────────────
@@ -665,4 +762,17 @@ export const hrTalentsApi = {
       IBackendRes<HrBenchTalentsResponse>
     >;
   },
+
+  getBenchReadiness: (
+  params:
+    GetHrBenchReadinessParams = {},
+) =>
+  instance.get(
+    '/hr-talents/bench/readiness',
+    {
+      params,
+    },
+  ) as unknown as Promise<
+    IBackendRes<HrBenchReadinessApiResponse>
+  >,
 };

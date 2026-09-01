@@ -5,7 +5,7 @@ import {
 } from 'antd';
 
 import type {
-  HrBenchTalentItem,
+  HrBenchReadinessItem,
 } from '../../../../api/hrTalents';
 
 import {
@@ -13,7 +13,7 @@ import {
 } from './bench-talent-table.columns';
 
 interface BenchTalentTableProps {
-  data: HrBenchTalentItem[];
+  data: HrBenchReadinessItem[];
 
   loading: boolean;
 
@@ -30,68 +30,68 @@ interface BenchTalentTableProps {
   onViewProfile: (
     employeeId: string,
   ) => void;
+
+  onViewReadiness: (
+    talent: HrBenchReadinessItem,
+  ) => void;
 }
 
 const BenchTalentTable:
-React.FC<
-  BenchTalentTableProps
-> = ({
-  data,
-  loading,
-  page,
-  pageSize,
-  total,
-  onPageChange,
-  onViewProfile,
-}) => {
-  const columns =
-    getBenchTalentColumns({
-      onViewProfile,
-    });
+  React.FC<
+    BenchTalentTableProps
+  > = ({
+    data,
+    loading,
+    page,
+    pageSize,
+    total,
+    onPageChange,
+    onViewProfile,
+    onViewReadiness,
+  }) => {
+    const columns =
+      getBenchTalentColumns({
+        onViewProfile,
+        onViewReadiness,
+      });
 
-  return (
-    <Table
-      rowKey={(
-        record,
-      ) =>
-        record.employee.id
-      }
-      columns={
-        columns
-      }
-      dataSource={
-        data
-      }
-      loading={
-        loading
-      }
-      scroll={{
-        x: 1350,
-      }}
-      pagination={{
-        current: page,
-
-        pageSize,
-
-        total,
-
-        showSizeChanger:
-          false,
-
-        showTotal: (
-          value,
+    return (
+      <Table
+        rowKey={(
+          record,
         ) =>
-          `${value} nhân sự Bench`,
+          record.employee.id
+        }
+        columns={columns}
+        dataSource={data}
+        loading={loading}
+        scroll={{
+          x: 1550,
+        }}
+        pagination={{
+          current: page,
 
-        onChange: (
-          nextPage,
-        ) =>
-          onPageChange(
+          pageSize,
+
+          total,
+
+          showSizeChanger:
+            false,
+
+          showTotal: (
+            value,
+          ) =>
+            `${value} nhân sự Bench`,
+
+          onChange: (
             nextPage,
-          ),
-      }}
-    />
-  );
-};
+          ) =>
+            onPageChange(
+              nextPage,
+            ),
+        }}
+      />
+    );
+  };
 
 export default BenchTalentTable;

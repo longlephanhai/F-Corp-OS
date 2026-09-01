@@ -13,8 +13,9 @@ import type {
 } from 'antd/es/table';
 
 import type {
-  HrBenchTalentItem,
+  HrBenchReadinessItem,
 } from '../../../../api/hrTalents';
+import BenchReadinessStatus from './readiness/BenchReadinessStatus';
 
 const {
   Text,
@@ -23,6 +24,10 @@ const {
 interface GetBenchTalentColumnsOptions {
   onViewProfile: (
     employeeId: string,
+  ) => void;
+
+  onViewReadiness: (
+    talent: HrBenchReadinessItem,
   ) => void;
 }
 
@@ -51,42 +56,29 @@ const formatDate = (
 
 export const getBenchTalentColumns = ({
   onViewProfile,
+  onViewReadiness,
 }: GetBenchTalentColumnsOptions):
-ColumnsType<HrBenchTalentItem> => [
-  {
-    title: 'Nhân sự',
-    key: 'employee',
-    width: 240,
+  ColumnsType<HrBenchReadinessItem> => [
+    {
+      title: 'Nhân sự',
+      key: 'employee',
+      width: 240,
 
-    render: (
-      _,
-      record,
-    ) => (
-      <Space
-        direction="vertical"
-        size={0}
-      >
-        <Text strong>
-          {
-            record.employee
-              .fullName
-          }
-        </Text>
-
-        <Text
-          type="secondary"
-          style={{
-            fontSize: 12,
-          }}
+      render: (
+        _,
+        record,
+      ) => (
+        <Space
+          direction="vertical"
+          size={0}
         >
-          {
-            record.employee
-              .email
-          }
-        </Text>
+          <Text strong>
+            {
+              record.employee
+                .fullName
+            }
+          </Text>
 
-        {record.employee
-          .title && (
           <Text
             type="secondary"
             style={{
@@ -95,163 +87,127 @@ ColumnsType<HrBenchTalentItem> => [
           >
             {
               record.employee
-                .title
+                .email
             }
           </Text>
-        )}
-      </Space>
-    ),
-  },
 
-  {
-    title: 'Vai trò',
-    key: 'role',
-    width: 130,
-
-    render: (
-      _,
-      record,
-    ) =>
-      record.employee
-        .role?.name ?? '-',
-  },
-
-  {
-    title: 'Top kỹ năng',
-    key: 'skills',
-    width: 310,
-
-    render: (
-      _,
-      record,
-    ) => {
-      if (
-        record.topSkills
-          .length === 0
-      ) {
-        return (
-          <Text type="secondary">
-            Chưa có kỹ năng
-          </Text>
-        );
-      }
-
-      return (
-        <Space
-          wrap
-          size={[4, 4]}
-        >
-          {record.topSkills.map(
-            (skill) => (
-              <Tag
-                key={
-                  skill.userSkillId
-                }
+          {record.employee
+            .title && (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: 12,
+                }}
               >
-                {skill.name}{' '}
-                L{skill.level}
-                {skill.hasApprovedEvidence
-                  ? ' ✓'
-                  : ''}
-              </Tag>
-            ),
-          )}
+                {
+                  record.employee
+                    .title
+                }
+              </Text>
+            )}
         </Space>
-      );
+      ),
     },
-  },
 
-  {
-    title: 'Evidence',
-    key: 'evidence',
-    width: 190,
+    {
+      title: 'Vai trò',
+      key: 'role',
+      width: 130,
 
-    render: (
-      _,
-      record,
-    ) => (
-      <Space
-        direction="vertical"
-        size={4}
-        style={{
-          width: '100%',
-        }}
-      >
-        <Progress
-          percent={
-            record.skillSummary
-              .evidenceCoverageRate
+      render: (
+        _,
+        record,
+      ) =>
+        record.employee
+          .role?.name ?? '-',
+    },
+
+    {
+      title: 'Mức độ sẵn sàng',
+      key: 'readiness',
+      width: 185,
+
+      render: (
+        _,
+        record,
+      ) => (
+        <BenchReadinessStatus
+          readiness={
+            record.readiness
           }
-          size="small"
+          compact
         />
+      ),
+    },
 
-        <Text
-          type="secondary"
-          style={{
-            fontSize: 12,
-          }}
-        >
-          {
-            record.skillSummary
-              .skillsWithApprovedEvidence
-          }
-          /
-          {
-            record.skillSummary
-              .totalSkills
-          }{' '}
-          kỹ năng đã xác minh
-        </Text>
+    {
+      title: 'Kỹ năng nổi bật',
+      key: 'skills',
+      width: 310,
 
-        {record.skillSummary
-          .pendingEvidences >
-          0 && (
-          <Tag color="processing">
-            {
-              record.skillSummary
-                .pendingEvidences
-            }{' '}
-            pending
-          </Tag>
-        )}
-      </Space>
-    ),
-  },
+      render: (
+        _,
+        record,
+      ) => {
+        if (
+          record.topSkills
+            .length === 0
+        ) {
+          return (
+            <Text type="secondary">
+              Chưa có kỹ năng
+            </Text>
+          );
+        }
 
-  {
-    title: 'Hiệu suất gần nhất',
-    key: 'performance',
-    width: 170,
-
-    render: (
-      _,
-      record,
-    ) => {
-      const {
-        latestFinalScore,
-        latestReviewCycle,
-      } =
-        record.performance;
-
-      if (
-        latestFinalScore ===
-        null
-      ) {
         return (
-          <Text type="secondary">
-            Chưa có đánh giá
-          </Text>
+          <Space
+            wrap
+            size={[4, 4]}
+          >
+            {record.topSkills.map(
+              (skill) => (
+                <Tag
+                  key={
+                    skill.userSkillId
+                  }
+                >
+                  {skill.name}{' '}
+                  L{skill.level}
+                  {skill.hasApprovedEvidence
+                    ? ' ✓'
+                    : ''}
+                </Tag>
+              ),
+            )}
+          </Space>
         );
-      }
+      },
+    },
 
-      return (
+    {
+      title: 'Minh chứng',
+      key: 'evidence',
+      width: 190,
+
+      render: (
+        _,
+        record,
+      ) => (
         <Space
           direction="vertical"
-          size={0}
+          size={4}
+          style={{
+            width: '100%',
+          }}
         >
-          <Text strong>
-            {latestFinalScore}
-          </Text>
+          <Progress
+            percent={
+              record.skillSummary
+                .evidenceCoverageRate
+            }
+            size="small"
+          />
 
           <Text
             type="secondary"
@@ -259,53 +215,137 @@ ColumnsType<HrBenchTalentItem> => [
               fontSize: 12,
             }}
           >
-            {latestReviewCycle
-              ?.name ??
-              'Không rõ chu kỳ'}
+            {
+              record.skillSummary
+                .skillsWithApprovedEvidence
+            }
+            /
+            {
+              record.skillSummary
+                .totalSkills
+            }{' '}
+            kỹ năng đã xác minh
           </Text>
+
+          {record.skillSummary
+            .pendingEvidences >
+            0 && (
+              <Tag color="processing">
+                {
+                  record.skillSummary
+                    .pendingEvidences
+                }{' '}
+                đang chờ duyệt
+              </Tag>
+            )}
         </Space>
-      );
+      ),
     },
-  },
 
-  {
-    title: 'Talent cập nhật',
-    key: 'updated',
-    width: 150,
+    {
+      title: 'Hiệu suất gần nhất',
+      key: 'performance',
+      width: 170,
 
-    render: (
-      _,
-      record,
-    ) => (
-      <Text>
-        {formatDate(
-          record
-            .lastTalentDataUpdatedAt,
-        )}
-      </Text>
-    ),
-  },
+      render: (
+        _,
+        record,
+      ) => {
+        const {
+          latestFinalScore,
+          latestReviewCycle,
+        } =
+          record.performance;
 
-  {
-    title: 'Thao tác',
-    key: 'action',
-    fixed: 'right',
-    width: 120,
-
-    render: (
-      _,
-      record,
-    ) => (
-      <Button
-        type="link"
-        onClick={() =>
-          onViewProfile(
-            record.employee.id,
-          )
+        if (
+          latestFinalScore ===
+          null
+        ) {
+          return (
+            <Text type="secondary">
+              Chưa có đánh giá
+            </Text>
+          );
         }
-      >
-        Xem hồ sơ
-      </Button>
-    ),
-  },
-];
+
+        return (
+          <Space
+            direction="vertical"
+            size={0}
+          >
+            <Text strong>
+              {latestFinalScore}
+            </Text>
+
+            <Text
+              type="secondary"
+              style={{
+                fontSize: 12,
+              }}
+            >
+              {latestReviewCycle
+                ?.name ??
+                'Không rõ chu kỳ'}
+            </Text>
+          </Space>
+        );
+      },
+    },
+
+    {
+      title: 'Cập nhật năng lực',
+      key: 'updated',
+      width: 150,
+
+      render: (
+        _,
+        record,
+      ) => (
+        <Text>
+          {formatDate(
+            record
+              .lastTalentDataUpdatedAt,
+          )}
+        </Text>
+      ),
+    },
+
+    {
+      title: 'Thao tác',
+      key: 'action',
+      fixed: 'right',
+      width: 170,
+
+      render: (
+        _,
+        record,
+      ) => (
+        <Space
+          orientation="vertical"
+          size={0}
+        >
+          <Button
+            type="link"
+            onClick={() =>
+              onViewReadiness(
+                record,
+              )
+            }
+          >
+            Xem đánh giá
+          </Button>
+
+          <Button
+            type="link"
+            onClick={() =>
+              onViewProfile(
+                record.employee.id,
+              )
+            }
+          >
+            Xem hồ sơ
+          </Button>
+        </Space>
+      ),
+    },
+  ];

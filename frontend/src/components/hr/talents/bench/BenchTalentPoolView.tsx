@@ -12,7 +12,7 @@ import {
 
 import {
   hrTalentsApi,
-  type HrBenchTalentItem,
+  type HrBenchReadinessItem,
 } from '../../../../api/hrTalents';
 
 import BenchTalentFilters, {
@@ -21,6 +21,8 @@ import BenchTalentFilters, {
 
 import BenchTalentTable from './BenchTalentTable';
 import TalentProfileDrawer from '../TalentProfileDrawer';
+import BenchReadinessDetailDrawer
+  from './readiness/BenchReadinessDetailDrawer';
 
 const { Text } = Typography;
 
@@ -28,7 +30,7 @@ const PAGE_SIZE = 10;
 
 const BenchTalentPoolView: React.FC = () => {
   const [talents, setTalents] =
-    useState<HrBenchTalentItem[]>([]);
+    useState<HrBenchReadinessItem[]>([]);
 
   const [loading, setLoading] =
     useState(false);
@@ -65,6 +67,19 @@ const BenchTalentPoolView: React.FC = () => {
     setSelectedEmployeeId,
   ] = useState<string | null>(null);
 
+  const [
+    selectedReadinessTalent,
+    setSelectedReadinessTalent,
+  ] =
+    useState<
+      HrBenchReadinessItem | null
+    >(null);
+
+  const [
+    readinessDrawerOpen,
+    setReadinessDrawerOpen,
+  ] = useState(false);
+
   const [profileOpen, setProfileOpen] =
     useState(false);
 
@@ -74,7 +89,7 @@ const BenchTalentPoolView: React.FC = () => {
 
       try {
         const response =
-          await hrTalentsApi.getBenchTalents({
+          await hrTalentsApi.getBenchReadiness({
             page,
             limit: PAGE_SIZE,
             search: search || undefined,
@@ -82,9 +97,11 @@ const BenchTalentPoolView: React.FC = () => {
             skillId,
             minLevel,
             verified,
+            staleDays: 90,
           });
 
-        const data = response?.data;
+        const data =
+          response?.data?.data;
 
         setTalents(
           data?.result ?? [],
@@ -95,7 +112,7 @@ const BenchTalentPoolView: React.FC = () => {
         );
       } catch (error) {
         console.error(
-          'Không tải được Bench Talent Pool',
+          'Không tải được danh sách nhân sự Bench',
           error,
         );
 
@@ -211,6 +228,29 @@ const BenchTalentPoolView: React.FC = () => {
     setProfileOpen(true);
   };
 
+  const handleViewReadiness = (
+    talent: HrBenchReadinessItem,
+  ) => {
+    setSelectedReadinessTalent(
+      talent,
+    );
+
+    setReadinessDrawerOpen(
+      true,
+    );
+  };
+
+  const handleCloseReadiness =
+    () => {
+      setReadinessDrawerOpen(
+        false,
+      );
+
+      setSelectedReadinessTalent(
+        null,
+      );
+    };
+
   const handleCloseProfile = () => {
     setProfileOpen(false);
     setSelectedEmployeeId(null);
@@ -244,7 +284,7 @@ const BenchTalentPoolView: React.FC = () => {
       />
 
       <Card
-        bordered={false}
+        variant="borderless"
         style={{
           borderRadius: 12,
           boxShadow:
@@ -277,8 +317,23 @@ const BenchTalentPoolView: React.FC = () => {
           onViewProfile={
             handleViewProfile
           }
+          onViewReadiness={
+            handleViewReadiness
+          }
         />
       </Card>
+
+      <BenchReadinessDetailDrawer
+        open={
+          readinessDrawerOpen
+        }
+        talent={
+          selectedReadinessTalent
+        }
+        onClose={
+          handleCloseReadiness
+        }
+      />
 
       <TalentProfileDrawer
         open={profileOpen}

@@ -10,6 +10,8 @@ import { GetHrTalentDataQualityDto } from './dto/get-hr-talent-data-quality.dto'
 import { HrTalentDataQualityService } from './services/hr-talent-data-quality.service';
 import { GetHrBenchTalentsDto } from './dto/get-hr-bench-talents.dto';
 import { HrBenchTalentPoolService } from './services/bench/hr-bench-talent-pool.service';
+import { GetHrBenchReadinessDto } from './dto/get-hr-bench-readiness.dto';
+import { HrBenchReadinessService } from './services/bench/readiness/hr-bench-readiness.service';
 
 @Injectable()
 export class HrTalentsService {
@@ -31,6 +33,9 @@ export class HrTalentsService {
 
     private readonly benchTalentPoolService:
       HrBenchTalentPoolService,
+
+    private readonly benchReadinessService:
+      HrBenchReadinessService,
   ) { }
 
   findAll(
@@ -85,5 +90,12 @@ export class HrTalentsService {
     return this.benchTalentPoolService.findAll(
       query,
     );
+  }
+
+  getBenchReadiness(
+    query: GetHrBenchReadinessDto,
+  ) {
+    return this.benchReadinessService
+      .findAll(query);
   }
 }

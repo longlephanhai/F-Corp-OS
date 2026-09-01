@@ -14,6 +14,7 @@ import { HrTalentDataQualityService } from './services/hr-talent-data-quality.se
 import { HrBenchTalentPoolService } from './services/bench/hr-bench-talent-pool.service';
 import { HrBenchTalentQueryService } from './services/bench/hr-bench-talent-query.service';
 import { HrBenchPerformanceService } from './services/bench/hr-bench-performance.service';
+import { HrBenchReadinessService } from './services/bench/readiness/hr-bench-readiness.service';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { HrBenchPerformanceService } from './services/bench/hr-bench-performance
     HrBenchTalentPoolService,
     HrBenchPerformanceService,
     HrBenchTalentQueryService,
+    HrBenchReadinessService,
   ],
 
   exports: [
