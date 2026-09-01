@@ -21,6 +21,7 @@ import { SkillEvidencesModule } from './modules/skill-evidences/skill-evidences.
 import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.entity';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { Project } from 'modules/projects/entities/project.entity';
+import { ProjectManager } from 'modules/projects/entities/project-manager.entity';
 import { SprintsModule } from './modules/sprints/sprints.module';
 import { Sprint } from 'modules/sprints/entities/sprint.entity';
 import { TaskModule } from './modules/task/task.module';
@@ -41,7 +42,6 @@ import { WebsocketModule } from 'websockets/websocket.module';
 import { Websocket } from 'websockets/entities/websocket.entity';
 @Module({
   imports: [
-
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -64,6 +64,7 @@ import { Websocket } from 'websockets/entities/websocket.entity';
           UserSkill,
           SkillEvidence,
           Project,
+          ProjectManager,
           Sprint,
           Task,
           UserSprint,

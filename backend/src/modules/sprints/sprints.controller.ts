@@ -160,8 +160,22 @@ export class SprintsController {
       data,
     };
   }
+  @Get(':id/planning-forecast')
+  async getPlanningForecast(
+    @Param('id')
+    id: string,
+  ) {
+    const data = await this.sprintsService.getSprintPlanningForecast(id);
 
-  
+    return {
+      statusCode: 200,
+
+      message: 'Lấy Sprint planning forecast thành công',
+
+      data,
+    };
+  }
+
   @Get(':id')
   async findOne(
     @Param('id')

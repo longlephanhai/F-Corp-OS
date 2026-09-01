@@ -1241,7 +1241,7 @@ export class SprintsService {
 
         totalSprints: 0,
 
-        metrics: [],
+        metrics: [] as typeof sprintMetrics,
 
         summary: {
           averageDeliveryRate: 0,
@@ -1404,7 +1404,351 @@ export class SprintsService {
     };
   }
 
-  
+  async getSprintPlanningForecast(sprintId: string) {
+    // ==========================================
+    // SPRINT
+    // ==========================================
+
+    const sprint = await this.findOne(sprintId);
+
+    const sprintStatus = this.normalizeStatus(sprint.status);
+
+    if (sprintStatus !== 'UPCOMING') {
+      throw new ConflictException({
+        code: 'SPRINT_FORECAST_NOT_UPCOMING',
+
+        message: 'Planning Forecast chỉ áp dụng cho Sprint UPCOMING.',
+
+        sprintStatus: sprint.status,
+      });
+    }
+
+    // ==========================================
+    // TASKS
+    // ==========================================
+
+    const tasks = await this.taskRepo.find({
+      where: {
+        sprintId: sprint.id,
+
+        isDeleted: false,
+      },
+
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    const plannedTasks = tasks.length;
+
+    const unassignedTasks = tasks.filter((task) => !task.userId);
+
+    // ==========================================
+    // ALLOCATIONS
+    // ==========================================
+
+    const allocations = await this.userSprintRepo.find({
+      where: {
+        sprintId: sprint.id,
+      },
+    });
+
+    const assignedAllocations = allocations.filter(
+      (allocation) => allocation.status === UserSprintStatus.ASSIGNED,
+    );
+
+    const pendingAllocations = allocations.filter(
+      (allocation) =>
+        allocation.status === UserSprintStatus.REQUESTED ||
+        allocation.status === UserSprintStatus.PENDING_APPROVAL,
+    );
+
+    // ==========================================
+    // COMMITTED CAPACITY
+    // ==========================================
+
+    const committedPercent = assignedAllocations.reduce(
+      (total, allocation) => total + Number(allocation.percitant ?? 0),
+      0,
+    );
+
+    const reservedPercent = pendingAllocations.reduce(
+      (total, allocation) => total + Number(allocation.percitant ?? 0),
+      0,
+    );
+
+    const committedFte = Number((committedPercent / 100).toFixed(2));
+
+    const reservedFte = Number((reservedPercent / 100).toFixed(2));
+
+    // ==========================================
+    // DEPENDENCY
+    // ==========================================
+
+    const dependencyStatuses = await Promise.all(
+      tasks.map(async (task) => {
+        try {
+          return await this.taskDependenciesService.getDependencyStatus(
+            task.id,
+          );
+        } catch {
+          return {
+            taskId: task.id,
+
+            totalDependencies: 0,
+
+            unfinishedDependencies: 0,
+
+            isBlockedByDependency: false,
+          };
+        }
+      }),
+    );
+
+    const dependencyBlockedTasks = dependencyStatuses.filter(
+      (status) => status.isBlockedByDependency,
+    );
+
+    // ==========================================
+    // HISTORICAL PERFORMANCE
+    // ==========================================
+
+    const trends = await this.getProjectSprintTrends(sprint.projectId, 5);
+
+    const historicalMetrics = trends.metrics ?? [];
+
+    const sufficientHistory = historicalMetrics.length >= 2;
+
+    const historicalDeliveredTasks = historicalMetrics.reduce(
+      (total, item) => total + Number(item.scope.delivered ?? 0),
+      0,
+    );
+
+    const historicalAllocatedFte = historicalMetrics.reduce(
+      (total, item) => total + Number(item.resources.totalAllocatedFte ?? 0),
+      0,
+    );
+
+    // ==========================================
+    // HISTORICAL THROUGHPUT
+    //
+    // Task / FTE
+    // ==========================================
+
+    const historicalThroughputPerFte =
+      sufficientHistory && historicalAllocatedFte > 0
+        ? Number((historicalDeliveredTasks / historicalAllocatedFte).toFixed(2))
+        : null;
+
+    // ==========================================
+    // FORECAST
+    // ==========================================
+
+    const expectedDeliverableTasks =
+      historicalThroughputPerFte !== null
+        ? Number((committedFte * historicalThroughputPerFte).toFixed(2))
+        : null;
+
+    const forecastCoverage =
+      expectedDeliverableTasks !== null && plannedTasks > 0
+        ? Math.min(
+            100,
+            Math.round((expectedDeliverableTasks / plannedTasks) * 100),
+          )
+        : null;
+
+    // ==========================================
+    // REQUIRED CAPACITY
+    // ==========================================
+
+    const requiredFte =
+      historicalThroughputPerFte !== null && historicalThroughputPerFte > 0
+        ? Number((plannedTasks / historicalThroughputPerFte).toFixed(2))
+        : null;
+
+    const additionalFteNeeded =
+      requiredFte !== null
+        ? Number(Math.max(0, requiredFte - committedFte).toFixed(2))
+        : null;
+
+    const forecastTaskGap =
+      expectedDeliverableTasks !== null
+        ? Math.max(0, Math.ceil(plannedTasks - expectedDeliverableTasks))
+        : null;
+
+    // ==========================================
+    // HEALTH
+    // ==========================================
+
+    type PlanningHealth = 'READY' | 'ATTENTION' | 'HIGH_RISK';
+
+    let planningHealth: PlanningHealth = 'READY';
+
+    if (
+      plannedTasks === 0 ||
+      (plannedTasks > 0 && committedFte === 0) ||
+      (sufficientHistory && forecastCoverage !== null && forecastCoverage < 70)
+    ) {
+      planningHealth = 'HIGH_RISK';
+    } else if (
+      !sufficientHistory ||
+      unassignedTasks.length > 0 ||
+      pendingAllocations.length > 0 ||
+      dependencyBlockedTasks.length > 0 ||
+      (forecastCoverage !== null && forecastCoverage < 100)
+    ) {
+      planningHealth = 'ATTENTION';
+    }
+
+    // ==========================================
+    // WARNINGS
+    // ==========================================
+
+    const warnings: string[] = [];
+
+    if (plannedTasks === 0) {
+      warnings.push('Sprint chưa có Task để forecast.');
+    }
+
+    if (plannedTasks > 0 && committedFte === 0) {
+      warnings.push('Sprint chưa có capacity ASSIGNED.');
+    }
+
+    if (unassignedTasks.length > 0) {
+      warnings.push(`${unassignedTasks.length} Task chưa có owner.`);
+    }
+
+    if (pendingAllocations.length > 0) {
+      warnings.push(
+        `${pendingAllocations.length} allocation vẫn đang REQUESTED/PENDING.`,
+      );
+    }
+
+    if (dependencyBlockedTasks.length > 0) {
+      warnings.push(
+        `${dependencyBlockedTasks.length} Task đang bị dependency block.`,
+      );
+    }
+
+    if (!sufficientHistory) {
+      warnings.push(
+        'Chưa đủ tối thiểu 2 Sprint COMPLETED để dự báo theo lịch sử.',
+      );
+    }
+
+    if (forecastTaskGap !== null && forecastTaskGap > 0) {
+      warnings.push(
+        `Theo historical throughput, Sprint có nguy cơ thiếu capacity cho khoảng ${forecastTaskGap} Task.`,
+      );
+    }
+
+    // ==========================================
+    // RECOMMENDATIONS
+    // ==========================================
+
+    const recommendations: string[] = [];
+
+    if (additionalFteNeeded !== null && additionalFteNeeded > 0) {
+      recommendations.push(
+        `Cân nhắc bổ sung khoảng ${additionalFteNeeded} FTE hoặc giảm scope trước khi Start Sprint.`,
+      );
+    }
+
+    if (unassignedTasks.length > 0) {
+      recommendations.push(
+        'Hoàn thiện Task ownership trước khi Sprint bắt đầu.',
+      );
+    }
+
+    if (pendingAllocations.length > 0) {
+      recommendations.push(
+        'Hoàn tất allocation approval để capacity forecast phản ánh committed capacity.',
+      );
+    }
+
+    if (dependencyBlockedTasks.length > 0) {
+      recommendations.push('Xử lý dependency plan trước khi Start Sprint.');
+    }
+
+    // ==========================================
+    // RESULT
+    // ==========================================
+
+    return {
+      sprint: {
+        id: sprint.id,
+
+        name: sprint.name,
+
+        status: sprint.status,
+
+        startDate: sprint.startDate,
+
+        endDate: sprint.endDate,
+
+        projectId: sprint.projectId,
+      },
+
+      planningHealth,
+
+      scope: {
+        plannedTasks,
+
+        assignedTasks: plannedTasks - unassignedTasks.length,
+
+        unassignedTasks: unassignedTasks.length,
+
+        dependencyBlockedTasks: dependencyBlockedTasks.length,
+      },
+
+      capacity: {
+        assignedResources: assignedAllocations.length,
+
+        pendingAllocations: pendingAllocations.length,
+
+        committedPercent,
+
+        reservedPercent,
+
+        committedFte,
+
+        reservedFte,
+      },
+
+      history: {
+        completedSprints: historicalMetrics.length,
+
+        sufficientHistory,
+
+        historicalDeliveredTasks,
+
+        historicalAllocatedFte: Number(historicalAllocatedFte.toFixed(2)),
+
+        throughputPerFte: historicalThroughputPerFte,
+
+        averageDeliveryRate: trends.summary?.averageDeliveryRate ?? null,
+
+        averageCarryOverRate: trends.summary?.averageCarryOverRate ?? null,
+      },
+
+      forecast: {
+        expectedDeliverableTasks,
+
+        forecastCoverage,
+
+        forecastTaskGap,
+
+        requiredFte,
+
+        additionalFteNeeded,
+      },
+
+      warnings,
+
+      recommendations,
+    };
+  }
+
   // ==========================================
   // COMPLETION GUARD
   // ==========================================

@@ -6,16 +6,18 @@ import {
   Param,
   Req,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { console } from 'inspector/promises';
 import { SkipCheckPermission } from 'decorator/customize';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { AddProjectManagerDto } from './dto/add-project-manager.dto';
 
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
-  
+
   @UseGuards(JwtAuthGuard)
   @SkipCheckPermission()
   @Post()
@@ -35,6 +37,76 @@ export class ProjectsController {
     return {
       statusCode: 200,
       message: 'Lấy danh sách dự án của tôi thành công',
+      data,
+    };
+  }
+
+  // ==========================================
+  // PROJECT MANAGERS
+  // ==========================================
+
+  @UseGuards(JwtAuthGuard)
+  @SkipCheckPermission()
+  @Get(':projectId/managers')
+  async getProjectManagers(
+    @Param('projectId')
+    projectId: string,
+  ) {
+    const data = await this.projectsService.getProjectManagers(projectId);
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy danh sách Project Manager thành công',
+
+      data,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @SkipCheckPermission()
+  @Post(':projectId/managers')
+  async addProjectManager(
+    @Param('projectId')
+    projectId: string,
+
+    @Body()
+    body: AddProjectManagerDto,
+  ) {
+    const data = await this.projectsService.addProjectManager(
+      projectId,
+      body.userId,
+    );
+
+    return {
+      statusCode: 201,
+
+      message: 'Thêm Co-PM thành công',
+
+      data,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @SkipCheckPermission()
+  @Delete(':projectId/managers/:userId')
+  async removeProjectManager(
+    @Param('projectId')
+    projectId: string,
+
+    @Param('userId')
+    userId: string,
+  ) {
+    const data = await this.projectsService.removeProjectManager(
+      projectId,
+      userId,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: 'Xóa Co-PM thành công',
+
       data,
     };
   }

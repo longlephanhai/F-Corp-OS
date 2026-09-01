@@ -1,102 +1,529 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { InjectRepository } from '@nestjs/typeorm';
+
 import { Repository } from 'typeorm';
+
 import { Project } from './entities/project.entity';
+
+import {
+  ProjectManager,
+  ProjectManagerRole,
+} from './entities/project-manager.entity';
+
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class ProjectsService {
   constructor(
-    @InjectRepository(Project) private projectRepo: Repository<Project>,
+    @InjectRepository(Project)
+    private readonly projectRepo: Repository<Project>,
+
+    @InjectRepository(ProjectManager)
+    private readonly projectManagerRepo: Repository<ProjectManager>,
+
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
-  // async getAllProjects() {
-  //   return await this.projectRepo.find({ order: { startDate: 'DESC' } });
-  // }
+  // ==========================================
+  // CREATE PROJECT
+  //
+  // projects.pmId vẫn là Primary PM.
+  //
+  // project_managers lưu:
+  // - PRIMARY
+  // - CO_MANAGER
+  //
+  // Hai record được tạo trong cùng transaction.
+  // ==========================================
 
   async createProject(data: any) {
-    const newProject = this.projectRepo.create({
-      name: data.name,
-      description: data.description,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      status: 'active',
+    // ========================================
+    // PRIMARY PM REQUIRED
+    // ========================================
 
-      pmId: data.pmId,
+    if (!data.pmId) {
+      throw new BadRequestException({
+        code: 'PROJECT_PRIMARY_PM_REQUIRED',
+
+        message: 'Project phải có Primary PM.',
+      });
+    }
+
+    // ========================================
+    // VALIDATE PRIMARY PM USER
+    // ========================================
+
+    const primaryPm = await this.userRepo.findOne({
+      where: {
+        id: data.pmId,
+
+        isDeleted: false,
+      },
     });
-    return await this.projectRepo.save(newProject);
+
+    if (!primaryPm) {
+      throw new NotFoundException({
+        code: 'PROJECT_PRIMARY_PM_NOT_FOUND',
+
+        message: 'Không tìm thấy Primary PM.',
+      });
+    }
+
+    // ========================================
+    // TRANSACTION
+    // ========================================
+
+    return await this.projectRepo.manager.transaction(async (manager) => {
+      const projectRepo = manager.getRepository(Project);
+
+      const managerRepo = manager.getRepository(ProjectManager);
+
+      // ======================================
+      // CREATE PROJECT
+      // ======================================
+
+      const newProject = projectRepo.create({
+        name: data.name,
+
+        description: data.description,
+
+        startDate: data.startDate,
+
+        endDate: data.endDate,
+
+        status: 'active',
+
+        // ====================================
+        // LEGACY + SOURCE OF PRIMARY PM
+        // ====================================
+
+        pmId: primaryPm.id,
+
+        isDeleted: false,
+      });
+
+      const savedProject = await projectRepo.save(newProject);
+
+      // ======================================
+      // CREATE PRIMARY MANAGER RELATION
+      // ======================================
+
+      const primaryManager = managerRepo.create({
+        projectId: savedProject.id,
+
+        userId: primaryPm.id,
+
+        managerRole: ProjectManagerRole.PRIMARY,
+      });
+
+      await managerRepo.save(primaryManager);
+
+      return savedProject;
+    });
   }
 
-  // Lấy chi tiết 1 Dự án
+  // ==========================================
+  // GET PROJECT BY ID
+  // ==========================================
+
   async getProjectById(id: string) {
     const project = await this.projectRepo.findOne({
-      where: { id },
+      where: {
+        id,
+
+        isDeleted: false,
+      },
+
       relations: {
+        // Primary PM legacy relation.
         pm: true,
-      }, // JOIN bảng User để lấy tên ông Quản lý (PM)
+
+        // Primary + Co-PMs.
+        managers: {
+          user: true,
+        },
+      },
     });
 
     if (!project) {
-      throw new NotFoundException('Không tìm thấy Dự án này');
+      throw new NotFoundException({
+        code: 'PROJECT_NOT_FOUND',
+
+        message: 'Không tìm thấy Dự án này.',
+      });
     }
+
     return project;
   }
 
-  // Lấy danh sách dự án (Có móc nối với tên PM)
+  // ==========================================
+  // GET ALL PROJECTS
+  //
+  // Đây là generic/admin list.
+  // PM-specific list dùng getMyProjects().
+  // ==========================================
+
   async getAllProjects() {
     return await this.projectRepo.find({
-      relations: {
-        pm: true,
-      },
-      order: { startDate: 'DESC' }, // Dự án mới nhất xếp lên đầu
-    });
-  }
-
-  // Lấy danh sách dự án DO CHÍNH PM ĐÓ QUẢN LÝ
-  async getMyProjects(pmId: string) {
-    return await this.projectRepo.find({
       where: {
-        pmId: pmId, // Chỉ lấy dự án có pm_id khớp với ID của người đang login
         isDeleted: false,
       },
+
       relations: {
         pm: true,
+
+        managers: {
+          user: true,
+        },
       },
-      order: { startDate: 'DESC' },
+
+      order: {
+        startDate: 'DESC',
+      },
     });
   }
 
-  async getProjectDetailWithBudget(projectId: string) {
-    // 1. Kéo Dự án lên, kèm theo toàn bộ Sprints và Tasks bên trong
-    const project = await this.projectRepo.findOne({
-      where: { id: projectId, isDeleted: false },
+  // ==========================================
+  // GET MY PROJECTS
+  //
+  // User nhìn thấy Project khi:
+  //
+  // 1. project.pmId === userId
+  //    -> Primary PM
+  //
+  // HOẶC
+  //
+  // 2. Có relation trong project_managers
+  //    -> Primary / Co-PM
+  // ==========================================
+
+  async getMyProjects(pmId: string) {
+    return await this.projectRepo
+      .createQueryBuilder('project')
+
+      // ========================================
+      // PRIMARY PM
+      // ========================================
+
+      .leftJoinAndSelect('project.pm', 'primaryPm')
+
+      // ========================================
+      // PROJECT MANAGERS
+      // ========================================
+
+      .leftJoinAndSelect('project.managers', 'projectManagers')
+
+      .leftJoinAndSelect('projectManagers.user', 'managerUser')
+
+      // ========================================
+      // ACTIVE RECORD ONLY
+      // ========================================
+
+      .where('project.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+
+      // ========================================
+      // PRIMARY PM OR CO-PM
+      // ========================================
+
+      .andWhere(
+        `
+        (
+          project.pmId = :pmId
+
+          OR EXISTS (
+            SELECT 1
+            FROM project_managers scopeManager
+            WHERE scopeManager.project_id = project.id
+              AND scopeManager.user_id = :pmId
+          )
+        )
+        `,
+        {
+          pmId,
+        },
+      )
+
+      // Join managers có thể sinh duplicate Project.
+      .distinct(true)
+
+      .orderBy('project.startDate', 'DESC')
+
+      .getMany();
+  }
+
+  // ==========================================
+  // GET PROJECT MANAGERS
+  // ==========================================
+
+  async getProjectManagers(projectId: string) {
+    await this.getProjectOrFail(projectId);
+
+    return await this.projectManagerRepo.find({
+      where: {
+        projectId,
+      },
+
       relations: {
+        user: true,
+      },
+
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+  }
+
+  // ==========================================
+  // ADD CO-MANAGER
+  // ==========================================
+
+  async addProjectManager(projectId: string, userId: string) {
+    const project = await this.getProjectOrFail(projectId);
+
+    // ========================================
+    // PRIMARY PM CANNOT BE ADDED AGAIN
+    // ========================================
+
+    if (project.pmId === userId) {
+      throw new ConflictException({
+        code: 'PROJECT_MANAGER_ALREADY_PRIMARY',
+
+        message: 'User này đã là Primary PM của Project.',
+      });
+    }
+
+    // ========================================
+    // USER EXISTS
+    // ========================================
+
+    const user = await this.userRepo.findOne({
+      where: {
+        id: userId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'PROJECT_MANAGER_USER_NOT_FOUND',
+
+        message: 'Không tìm thấy User để gán làm Project Manager.',
+      });
+    }
+
+    // ========================================
+    // DUPLICATE RELATION
+    // ========================================
+
+    const existing = await this.projectManagerRepo.findOne({
+      where: {
+        projectId,
+
+        userId,
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException({
+        code: 'PROJECT_MANAGER_ALREADY_ASSIGNED',
+
+        message: 'User này đã là Manager của Project.',
+      });
+    }
+
+    // ========================================
+    // CREATE CO-PM
+    // ========================================
+
+    const relation = this.projectManagerRepo.create({
+      projectId,
+
+      userId,
+
+      managerRole: ProjectManagerRole.CO_MANAGER,
+    });
+
+    await this.projectManagerRepo.save(relation);
+
+    // Trả lại full manager list để frontend
+    // refresh trực tiếp sau khi thêm.
+    return await this.getProjectManagers(projectId);
+  }
+
+  // ==========================================
+  // REMOVE CO-MANAGER
+  // ==========================================
+
+  async removeProjectManager(projectId: string, userId: string) {
+    const project = await this.getProjectOrFail(projectId);
+
+    // ========================================
+    // PRIMARY PM CANNOT BE REMOVED
+    // ========================================
+
+    if (project.pmId === userId) {
+      throw new ConflictException({
+        code: 'PRIMARY_PM_CANNOT_REMOVE',
+
+        message: 'Không thể xóa Primary PM bằng chức năng Co-PM.',
+      });
+    }
+
+    // ========================================
+    // FIND RELATION
+    // ========================================
+
+    const relation = await this.projectManagerRepo.findOne({
+      where: {
+        projectId,
+
+        userId,
+      },
+    });
+
+    if (!relation) {
+      throw new NotFoundException({
+        code: 'PROJECT_MANAGER_NOT_FOUND',
+
+        message: 'User không phải Manager của Project.',
+      });
+    }
+
+    // Guard thêm để DB bị lệch dữ liệu
+    // vẫn không vô tình xóa PRIMARY.
+    if (relation.managerRole === ProjectManagerRole.PRIMARY) {
+      throw new ConflictException({
+        code: 'PRIMARY_PM_CANNOT_REMOVE',
+
+        message: 'Primary PM không thể bị xóa bằng endpoint này.',
+      });
+    }
+
+    // ========================================
+    // DELETE RELATION ONLY
+    //
+    // Không xóa User.
+    // Không xóa Project.
+    // ========================================
+
+    await this.projectManagerRepo.delete(relation.id);
+
+    return {
+      success: true,
+
+      projectId,
+
+      userId,
+
+      message: 'Đã xóa Co-PM khỏi Project.',
+    };
+  }
+
+  // ==========================================
+  // PROJECT DETAIL + BUDGET
+  // ==========================================
+
+  async getProjectDetailWithBudget(projectId: string) {
+    // ========================================
+    // LOAD PROJECT
+    // ========================================
+
+    const project = await this.projectRepo.findOne({
+      where: {
+        id: projectId,
+
+        isDeleted: false,
+      },
+
+      relations: {
+        // Primary PM.
+        pm: true,
+
+        // Primary + Co-PMs.
+        managers: {
+          user: true,
+        },
+
+        // Existing PM flow.
         sprints: {
           tasks: true,
         },
       },
     });
 
-    if (!project) throw new NotFoundException('Không tìm thấy dự án!');
+    if (!project) {
+      throw new NotFoundException({
+        code: 'PROJECT_NOT_FOUND',
 
-    // 2. Thuật toán Roll-up: Cộng dồn ngân sách từ tất cả các Tasks
-    let totalBudget = 0;
-
-    if (project.sprints && project.sprints.length > 0) {
-      project.sprints.forEach((sprint) => {
-        if (sprint.tasks && sprint.tasks.length > 0) {
-          sprint.tasks.forEach((task) => {
-            // Ép kiểu về Number để đề phòng DB trả về dạng chuỗi
-            // Lưu ý: Sửa 'budget_rate' thành 'budgetRate' nếu Entity của bạn đặt là camelCase
-            totalBudget += Number(task.budgetRate || 0);
-          });
-        }
+        message: 'Không tìm thấy dự án!',
       });
     }
 
-    // 3. Trả về data dự án kèm theo con số tổng ngân sách vừa tính được
+    // ========================================
+    // BUDGET ROLL-UP
+    // ========================================
+
+    let totalBudget = 0;
+
+    if (project.sprints?.length > 0) {
+      project.sprints.forEach((sprint) => {
+        if (!sprint.tasks?.length) {
+          return;
+        }
+
+        sprint.tasks.forEach((task) => {
+          // Không tính Task archive vào current budget.
+          if (task.isDeleted) {
+            return;
+          }
+
+          totalBudget += Number(task.budgetRate ?? 0);
+        });
+      });
+    }
+
+    // ========================================
+    // RESULT
+    // ========================================
+
     return {
       ...project,
+
       totalBudget,
     };
+  }
+
+  // ==========================================
+  // INTERNAL PROJECT LOOKUP
+  // ==========================================
+
+  private async getProjectOrFail(projectId: string) {
+    const project = await this.projectRepo.findOne({
+      where: {
+        id: projectId,
+
+        isDeleted: false,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException({
+        code: 'PROJECT_NOT_FOUND',
+
+        message: 'Không tìm thấy Project.',
+      });
+    }
+
+    return project;
   }
 }

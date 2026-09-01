@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Sprint } from '../../sprints/entities/sprint.entity'; // Đường dẫn tùy máy bạn
 import { User } from '../../users/entities/user.entity'; // Đảm bảo đường dẫn trỏ đúng tới Entity User
+import { ProjectManager } from './project-manager.entity';
 
 @Entity('projects')
 export class Project {
@@ -54,7 +55,8 @@ export class Project {
   // Quan hệ 1 Project có nhiều Sprints
   @OneToMany(() => Sprint, (sprint) => sprint.project)
   sprints: Sprint[];
-
+  @OneToMany(() => ProjectManager, (manager) => manager.project)
+  managers: ProjectManager[];
   // =========================================================================
   // AUDIT LOG (Đồng bộ với chuẩn của team)
   // =========================================================================
