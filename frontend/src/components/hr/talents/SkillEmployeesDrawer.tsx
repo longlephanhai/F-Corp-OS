@@ -324,7 +324,7 @@ const SkillEmployeesDrawer: React.FC<
                 },
 
                 {
-                    title: 'Evidence',
+                    title: 'Minh chứng',
                     key: 'evidence',
                     width: 190,
 
@@ -346,7 +346,7 @@ const SkillEmployeesDrawer: React.FC<
                                 .evidenceSummary
                                 .pending > 0 && (
                                     <Tag color="gold">
-                                        Pending:{' '}
+                                        Chờ duyệt:{' '}
                                         {
                                             record
                                                 .evidenceSummary

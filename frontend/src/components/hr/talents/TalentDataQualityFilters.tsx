@@ -90,32 +90,32 @@ React.FC<
                 value:
                   'DEVELOPER',
                 label:
-                  'Developer',
+                  'Lập trình viên',
               },
               {
                 value:
                   'PM',
                 label:
-                  'Project Manager',
+                  'Quản lý dự án',
               },
               {
                 value:
                   'HR',
                 label:
-                  'HR',
+                  'Nhân sự',
               },
               {
                 value:
                   'ADMIN',
                 label:
-                  'Admin',
+                  'Quản trị viên',
               },
             ]}
           />
 
           <Space size={6}>
             <Text type="secondary">
-              Hồ sơ stale sau
+              Hồ sơ được xem là cũ sau
             </Text>
 
             <InputNumber

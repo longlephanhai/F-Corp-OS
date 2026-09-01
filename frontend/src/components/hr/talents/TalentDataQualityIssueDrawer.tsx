@@ -58,28 +58,28 @@ const ISSUE_CONFIG: Record<
         title:
             'Nhân sự chưa có kỹ năng',
         description:
-            'Các hồ sơ chưa có UserSkill hợp lệ trong Talent Profile.',
+            'Các hồ sơ chưa có dữ liệu kỹ năng hợp lệ trong hồ sơ năng lực.',
     },
 
     WITHOUT_APPROVED_EVIDENCE: {
         title:
-            'Chưa có evidence được duyệt',
+            'Chưa có minh chứng được duyệt',
         description:
-            'Các nhân sự chưa có ít nhất một evidence ở trạng thái APPROVED.',
+            'Các nhân sự chưa có ít nhất một minh chứng năng lực đã được duyệt.',
     },
 
     PENDING_EVIDENCE: {
         title:
-            'Evidence đang chờ duyệt',
+            'Minh chứng đang chờ duyệt',
         description:
-            'Các nhân sự hiện có evidence ở trạng thái PENDING.',
+            'Các nhân sự hiện có minh chứng đang chờ duyệt.',
     },
 
     STALE_PROFILE: {
         title:
             'Hồ sơ lâu chưa cập nhật',
         description:
-            'Các Talent Profile đã vượt quá ngưỡng freshness đang cấu hình.',
+            'Các hồ sơ năng lực đã lâu chưa được cập nhật theo ngưỡng đang cấu hình.',
     },
 };
 
@@ -231,7 +231,7 @@ const TalentDataQualityIssueDrawer:
 
                 {
                     title:
-                        'Evidence',
+                        'Minh chứng',
 
                     key:
                         'evidences',
@@ -370,7 +370,7 @@ const TalentDataQualityIssueDrawer:
                             {issueType ===
                                 'STALE_PROFILE' && (
                                     <Descriptions.Item
-                                        label="Ngưỡng stale"
+                                        label="Ngưỡng hồ sơ cũ"
                                     >
                                         {staleDays} ngày
                                     </Descriptions.Item>

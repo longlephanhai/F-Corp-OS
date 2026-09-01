@@ -161,25 +161,25 @@ const BenchTalentFilters:
                                     value:
                                         'DEVELOPER',
                                     label:
-                                        'Developer',
+                                        'Lập trình viên',
                                 },
                                 {
                                     value:
                                         'PM',
                                     label:
-                                        'Project Manager',
+                                        'Quản lý dự án',
                                 },
                                 {
                                     value:
                                         'HR',
                                     label:
-                                        'HR',
+                                        'Nhân sự',
                                 },
                                 {
                                     value:
                                         'ADMIN',
                                     label:
-                                        'Admin',
+                                        'Quản trị viên',
                                 },
                             ]}
                         />
@@ -212,7 +212,7 @@ const BenchTalentFilters:
                         <Select<number>
                             allowClear
                             value={minLevel}
-                            placeholder="Level tối thiểu"
+                            placeholder="Cấp độ tối thiểu"
                             style={{
                                 width: 155,
                             }}
@@ -250,7 +250,7 @@ const BenchTalentFilters:
                                     ? 'verified'
                                     : undefined
                             }
-                            placeholder="Evidence"
+                            placeholder="Minh chứng"
                             style={{
                                 width: 180,
                             }}
@@ -281,7 +281,7 @@ const BenchTalentFilters:
 
                     <Space>
                         <Text type="secondary">
-                            Bench Talent Pool
+                            Nguồn nhân sự Bench
                         </Text>
 
                         <Button

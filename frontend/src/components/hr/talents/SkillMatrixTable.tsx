@@ -175,7 +175,7 @@ const SkillMatrixTable: React.FC<
         },
 
         {
-          title: 'Evidence',
+          title: 'Minh chứng',
           key: 'evidence',
           width: 160,
 
@@ -193,7 +193,7 @@ const SkillMatrixTable: React.FC<
               </Tag>
 
               <Tag color="gold">
-                Pending:{' '}
+                Chờ duyệt:{' '}
                 {
                   record.evidence
                     .pending

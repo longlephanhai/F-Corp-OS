@@ -159,7 +159,7 @@ const SkillSupplyInsights: React.FC<
 
     {
       title:
-        'Evidence coverage',
+        'Tỷ lệ kỹ năng có minh chứng',
 
       value:
         `${summary.coverage.verificationRate}%`,

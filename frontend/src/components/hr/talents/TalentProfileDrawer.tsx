@@ -153,7 +153,7 @@ const TalentProfileDrawer: React.FC<
           );
         } catch (error) {
           console.error(
-            'Không tải được Talent Profile',
+            'Không tải được hồ sơ năng lực',
             error,
           );
 
@@ -304,7 +304,7 @@ const TalentProfileDrawer: React.FC<
                   }
                 </Descriptions.Item>
 
-                <Descriptions.Item label="Kỹ năng có evidence được duyệt">
+                <Descriptions.Item label="Kỹ năng có minh chứng được duyệt">
                   {
                     profile
                       .talentSummary
@@ -312,7 +312,7 @@ const TalentProfileDrawer: React.FC<
                   }
                 </Descriptions.Item>
 
-                <Descriptions.Item label="Evidence đã duyệt">
+                <Descriptions.Item label="Minh chứng đã duyệt">
                   {
                     profile
                       .talentSummary
@@ -320,7 +320,7 @@ const TalentProfileDrawer: React.FC<
                   }
                 </Descriptions.Item>
 
-                <Descriptions.Item label="Evidence chờ duyệt">
+                <Descriptions.Item label="Minh chứng chờ duyệt">
                   {
                     profile
                       .talentSummary
@@ -328,7 +328,7 @@ const TalentProfileDrawer: React.FC<
                   }
                 </Descriptions.Item>
 
-                <Descriptions.Item label="Evidence bị từ chối">
+                <Descriptions.Item label="Minh chứng bị từ chối">
                   {
                     profile
                       .talentSummary
@@ -461,7 +461,7 @@ const TalentProfileDrawer: React.FC<
                             </Tag>
 
                             <Tag color="gold">
-                              Pending:{' '}
+                              Chờ duyệt:{' '}
                               {
                                 userSkill
                                   .evidenceSummary
@@ -675,7 +675,7 @@ const TalentProfileDrawer: React.FC<
                             {review.tempScore !==
                               null && (
                               <Tag>
-                                PM:{' '}
+                                Quản lý dự án:{' '}
                                 {
                                   review.tempScore
                                 }

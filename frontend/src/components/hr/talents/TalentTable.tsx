@@ -290,7 +290,7 @@ const TalentTable: React.FC<
                 },
 
                 {
-                    title: 'Evidence',
+                    title: 'Minh chứng',
                     key: 'evidences',
                     width: 190,
 
@@ -328,7 +328,7 @@ const TalentTable: React.FC<
                                         color: '#ad6800',
                                     }}
                                 >
-                                    Pending:{' '}
+                                    Chờ duyệt:{' '}
                                     {
                                         record
                                             .skillSummary

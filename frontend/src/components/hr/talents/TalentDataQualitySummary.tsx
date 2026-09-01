@@ -94,7 +94,7 @@ React.FC<
           }}
         >
           <Text type="secondary">
-            Skill coverage
+            Tỷ lệ kỹ năng
           </Text>
 
           <Title
@@ -143,7 +143,7 @@ React.FC<
           }}
         >
           <Text type="secondary">
-            Evidence coverage
+            Tỷ lệ minh chứng
           </Text>
 
           <Title
@@ -172,7 +172,7 @@ React.FC<
             {summary
               ?.employeesWithApprovedEvidence ??
               0}{' '}
-            nhân sự có evidence
+            nhân sự có minh chứng
             được duyệt
           </Text>
         </Card>
@@ -193,7 +193,7 @@ React.FC<
           }}
         >
           <Text type="secondary">
-            Profile freshness
+            Độ mới của hồ sơ
           </Text>
 
           <Title

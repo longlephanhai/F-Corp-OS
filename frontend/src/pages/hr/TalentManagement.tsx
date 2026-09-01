@@ -82,7 +82,7 @@ const TalentManagement: React.FC =
             },
             {
               key: 'bench-pool',
-              label: 'Bench Talent Pool',
+              label: 'Nguồn nhân sự Bench',
               children: (
                 <BenchTalentPoolView />
               ),

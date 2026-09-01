@@ -31,8 +31,8 @@ const {
 
 interface TalentDataQualityIssuesProps {
   summary:
-    | HrTalentDataQualityResponse['summary']
-    | undefined;
+  | HrTalentDataQualityResponse['summary']
+  | undefined;
 
   staleDays: number;
 
@@ -54,217 +54,217 @@ interface IssueCardProps {
 }
 
 const IssueCard:
-React.FC<IssueCardProps> = ({
-  title,
-  description,
-  count,
-  icon,
-  onClick,
-}) => {
-  return (
-    <Card
-      bordered={false}
-      hoverable
-      onClick={onClick}
-      style={{
-        height: '100%',
-        borderRadius: 12,
-        cursor: 'pointer',
-        boxShadow:
-          '0 2px 8px rgba(0,0,0,0.04)',
-      }}
-      styles={{
-        body: {
-          padding: 18,
-        },
-      }}
-    >
-      <Flex
-        justify="space-between"
-        align="flex-start"
-        gap={16}
+  React.FC<IssueCardProps> = ({
+    title,
+    description,
+    count,
+    icon,
+    onClick,
+  }) => {
+    return (
+      <Card
+        bordered={false}
+        hoverable
+        onClick={onClick}
+        style={{
+          height: '100%',
+          borderRadius: 12,
+          cursor: 'pointer',
+          boxShadow:
+            '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+        styles={{
+          body: {
+            padding: 18,
+          },
+        }}
       >
-        <Space
-          direction="vertical"
-          size={4}
+        <Flex
+          justify="space-between"
+          align="flex-start"
+          gap={16}
         >
-          <Text strong>
-            {title}
-          </Text>
+          <Space
+            direction="vertical"
+            size={4}
+          >
+            <Text strong>
+              {title}
+            </Text>
 
-          <Text
-            type="secondary"
+            <Text
+              type="secondary"
+              style={{
+                fontSize: 13,
+              }}
+            >
+              {description}
+            </Text>
+          </Space>
+
+          <div
             style={{
-              fontSize: 13,
+              fontSize: 22,
             }}
           >
-            {description}
-          </Text>
-        </Space>
+            {icon}
+          </div>
+        </Flex>
 
         <div
           style={{
-            fontSize: 22,
+            marginTop: 16,
           }}
         >
-          {icon}
+          <Title
+            level={3}
+            style={{
+              margin: 0,
+            }}
+          >
+            {count}
+          </Title>
+
+          <Text type="secondary">
+            nhân sự
+          </Text>
         </div>
-      </Flex>
-
-      <div
-        style={{
-          marginTop: 16,
-        }}
-      >
-        <Title
-          level={3}
-          style={{
-            margin: 0,
-          }}
-        >
-          {count}
-        </Title>
-
-        <Text type="secondary">
-          nhân sự
-        </Text>
-      </div>
-    </Card>
-  );
-};
+      </Card>
+    );
+  };
 
 const TalentDataQualityIssues:
-React.FC<
-  TalentDataQualityIssuesProps
-> = ({
-  summary,
-  staleDays,
-  onOpenIssue,
-}) => {
-  return (
-    <>
-      <div
-        style={{
-          marginBottom: 12,
-        }}
-      >
-        <Title
-          level={4}
+  React.FC<
+    TalentDataQualityIssuesProps
+  > = ({
+    summary,
+    staleDays,
+    onOpenIssue,
+  }) => {
+    return (
+      <>
+        <div
           style={{
-            marginBottom: 2,
+            marginBottom: 12,
           }}
         >
-          Vấn đề cần chú ý
-        </Title>
+          <Title
+            level={4}
+            style={{
+              marginBottom: 2,
+            }}
+          >
+            Vấn đề cần chú ý
+          </Title>
 
-        <Text type="secondary">
-          Các nhóm có thể trùng
-          nhân sự vì mỗi hồ sơ có
-          thể tồn tại nhiều vấn đề
-          dữ liệu cùng lúc.
-        </Text>
-      </div>
+          <Text type="secondary">
+            Các nhóm có thể trùng
+            nhân sự vì mỗi hồ sơ có
+            thể tồn tại nhiều vấn đề
+            dữ liệu cùng lúc.
+          </Text>
+        </div>
 
-      <Row
-        gutter={[
-          16,
-          16,
-        ]}
-      >
-        <Col
-          xs={24}
-          md={12}
+        <Row
+          gutter={[
+            16,
+            16,
+          ]}
         >
-          <IssueCard
-            title="Chưa có kỹ năng"
-            description="Hồ sơ chưa có UserSkill hợp lệ."
-            count={
-              summary
-                ?.employeesWithoutSkills ??
-              0
-            }
-            icon={
-              <WarningOutlined />
-            }
-            onClick={() =>
-              onOpenIssue(
-                'WITHOUT_SKILLS',
-              )
-            }
-          />
-        </Col>
+          <Col
+            xs={24}
+            md={12}
+          >
+            <IssueCard
+              title="Chưa có kỹ năng"
+              description="Hồ sơ chưa có UserSkill hợp lệ."
+              count={
+                summary
+                  ?.employeesWithoutSkills ??
+                0
+              }
+              icon={
+                <WarningOutlined />
+              }
+              onClick={() =>
+                onOpenIssue(
+                  'WITHOUT_SKILLS',
+                )
+              }
+            />
+          </Col>
 
-        <Col
-          xs={24}
-          md={12}
-        >
-          <IssueCard
-            title="Chưa có evidence được duyệt"
-            description="Nhân sự chưa có evidence APPROVED."
-            count={
-              summary
-                ?.employeesWithoutApprovedEvidence ??
-              0
-            }
-            icon={
-              <FileSearchOutlined />
-            }
-            onClick={() =>
-              onOpenIssue(
-                'WITHOUT_APPROVED_EVIDENCE',
-              )
-            }
-          />
-        </Col>
+          <Col
+            xs={24}
+            md={12}
+          >
+            <IssueCard
+              title="Chưa có minh chứng được duyệt"
+              description="Nhân sự chưa có minh chứng năng lực được duyệt."
+              count={
+                summary
+                  ?.employeesWithoutApprovedEvidence ??
+                0
+              }
+              icon={
+                <FileSearchOutlined />
+              }
+              onClick={() =>
+                onOpenIssue(
+                  'WITHOUT_APPROVED_EVIDENCE',
+                )
+              }
+            />
+          </Col>
 
-        <Col
-          xs={24}
-          md={12}
-        >
-          <IssueCard
-            title="Evidence đang chờ duyệt"
-            description={`${summary?.totalPendingEvidences ?? 0} evidence đang ở trạng thái PENDING.`}
-            count={
-              summary
-                ?.employeesWithPendingEvidence ??
-              0
-            }
-            icon={
-              <ClockCircleOutlined />
-            }
-            onClick={() =>
-              onOpenIssue(
-                'PENDING_EVIDENCE',
-              )
-            }
-          />
-        </Col>
+          <Col
+            xs={24}
+            md={12}
+          >
+            <IssueCard
+              title="Minh chứng đang chờ duyệt"
+              description={`${summary?.totalPendingEvidences ?? 0} minh chứng đang chờ duyệt.`}
+              count={
+                summary
+                  ?.employeesWithPendingEvidence ??
+                0
+              }
+              icon={
+                <ClockCircleOutlined />
+              }
+              onClick={() =>
+                onOpenIssue(
+                  'PENDING_EVIDENCE',
+                )
+              }
+            />
+          </Col>
 
-        <Col
-          xs={24}
-          md={12}
-        >
-          <IssueCard
-            title="Hồ sơ lâu chưa cập nhật"
-            description={`Talent data không cập nhật trong hơn ${staleDays} ngày.`}
-            count={
-              summary
-                ?.staleProfiles ??
-              0
-            }
-            icon={
-              <CheckCircleOutlined />
-            }
-            onClick={() =>
-              onOpenIssue(
-                'STALE_PROFILE',
-              )
-            }
-          />
-        </Col>
-      </Row>
-    </>
-  );
-};
+          <Col
+            xs={24}
+            md={12}
+          >
+            <IssueCard
+              title="Hồ sơ lâu chưa cập nhật"
+              description={`Dữ liệu năng lực không được cập nhật trong hơn ${staleDays} ngày.`}
+              count={
+                summary
+                  ?.staleProfiles ??
+                0
+              }
+              icon={
+                <CheckCircleOutlined />
+              }
+              onClick={() =>
+                onOpenIssue(
+                  'STALE_PROFILE',
+                )
+              }
+            />
+          </Col>
+        </Row>
+      </>
+    );
+  };
 
 export default TalentDataQualityIssues;
