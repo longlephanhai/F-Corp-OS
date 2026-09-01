@@ -261,6 +261,119 @@ export class ProjectsService {
   }
 
   // ==========================================
+  // SEARCH PROJECT MANAGER CANDIDATES
+  // ==========================================
+
+  async searchProjectManagerCandidates(projectId: string, search?: string) {
+    const project = await this.getProjectOrFail(projectId);
+
+    const query = this.userRepo
+      .createQueryBuilder('user')
+
+      .leftJoinAndSelect('user.role', 'role')
+
+      .where('user.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+
+      // ======================================
+      // PM ROLE ONLY
+      //
+      // Support:
+      // PM
+      // Project Manager
+      // PROJECT_MANAGER
+      // project-manager
+      // ======================================
+
+      .andWhere(
+        `
+        UPPER(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                role.name,
+                ' ',
+                ''
+              ),
+              '_',
+              ''
+            ),
+            '-',
+            ''
+          )
+        ) IN ('PM', 'PROJECTMANAGER')
+        `,
+      )
+
+      // ======================================
+      // PRIMARY PM NOT CANDIDATE
+      // ======================================
+
+      .andWhere('user.id != :primaryPmId', {
+        primaryPmId: project.pmId,
+      })
+
+      // ======================================
+      // ALREADY ASSIGNED MANAGERS EXCLUDED
+      // ======================================
+
+      .andWhere(
+        `
+        NOT EXISTS (
+          SELECT 1
+          FROM project_managers existingManager
+          WHERE existingManager.project_id = :projectId
+            AND existingManager.user_id = user.id
+        )
+        `,
+        {
+          projectId,
+        },
+      );
+
+    const normalizedSearch = search?.trim();
+
+    if (normalizedSearch) {
+      query.andWhere(
+        `
+      (
+        user.fullName LIKE :search
+        OR user.email LIKE :search
+      )
+      `,
+        {
+          search: `%${normalizedSearch}%`,
+        },
+      );
+    }
+
+    const users = await query
+      .orderBy('user.fullName', 'ASC')
+      .take(20)
+      .getMany();
+
+    return users.map((user) => ({
+      id: user.id,
+
+      fullName: user.fullName,
+
+      email: user.email,
+
+      title: user.title,
+
+      status: user.status,
+
+      role: user.role
+        ? {
+            id: user.role.id,
+
+            name: user.role.name,
+          }
+        : null,
+    }));
+  }
+  // ==========================================
   // GET PROJECT MANAGERS
   // ==========================================
 
@@ -320,7 +433,21 @@ export class ProjectsService {
         message: 'Không tìm thấy User để gán làm Project Manager.',
       });
     }
+    // ========================================
+    // USER MUST HAVE PM ROLE
+    // ========================================
 
+    if (!this.isProjectManagerRole(user.role?.name)) {
+      throw new ConflictException({
+        code: 'USER_IS_NOT_PROJECT_MANAGER',
+
+        message: 'Chỉ User có role Project Manager mới được gán làm Co-PM.',
+
+        userId: user.id,
+
+        role: user.role?.name ?? null,
+      });
+    }
     // ========================================
     // DUPLICATE RELATION
     // ========================================
@@ -501,6 +628,15 @@ export class ProjectsService {
 
       totalBudget,
     };
+  }
+
+  private isProjectManagerRole(roleName?: string | null) {
+    const normalized = (roleName ?? '')
+      .trim()
+      .toUpperCase()
+      .replace(/[\s_-]+/g, '');
+
+    return normalized === 'PM' || normalized === 'PROJECTMANAGER';
   }
 
   // ==========================================

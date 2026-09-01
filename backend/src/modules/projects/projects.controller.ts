@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { console } from 'inspector/promises';
@@ -110,6 +111,30 @@ export class ProjectsController {
       data,
     };
   }
+  @UseGuards(JwtAuthGuard)
+  @SkipCheckPermission()
+  @Get(':projectId/manager-candidates')
+  async searchProjectManagerCandidates(
+    @Param('projectId')
+    projectId: string,
+
+    @Query('search')
+    search?: string,
+  ) {
+    const data = await this.projectsService.searchProjectManagerCandidates(
+      projectId,
+      search,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy danh sách PM có thể thêm thành công',
+
+      data,
+    };
+  }
+
   @UseGuards(JwtAuthGuard)
   @SkipCheckPermission()
   @Get(':id')

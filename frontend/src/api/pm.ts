@@ -199,6 +199,24 @@ export const pmApi = {
     return axios.get<IBackendRes<any>>(`/projects/${id}`);
   },
 
+  getProjectManagers: (projectId: string) =>
+    axios.get<IBackendRes<any[]>>(`/projects/${projectId}/managers`),
+
+  searchProjectManagerCandidates: (projectId: string, search = "") =>
+    axios.get<IBackendRes<any[]>>(`/projects/${projectId}/manager-candidates`, {
+      params: {
+        search,
+      },
+    }),
+
+  addProjectManager: (projectId: string, userId: string) =>
+    axios.post<IBackendRes<any[]>>(`/projects/${projectId}/managers`, {
+      userId,
+    }),
+
+  removeProjectManager: (projectId: string, userId: string) =>
+    axios.delete<IBackendRes<any>>(`/projects/${projectId}/managers/${userId}`),
+
   // Lấy toàn bộ Sprint của 1 Dự án
   getSprintsByProject: (projectId: string) => {
     return axios.get<IBackendRes<any[]>>(`/sprints/project/${projectId}`);

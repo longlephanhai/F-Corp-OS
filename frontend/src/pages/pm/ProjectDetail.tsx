@@ -35,6 +35,7 @@ import { ProjectHealthPanel } from "../../components/pm/projects/ProjectHealthPa
 import dayjs from "dayjs";
 import { SprintRetrospectiveModal } from "../../components/pm/sprints/SprintRetrospectiveModal";
 import { SprintTrendPanel } from "../../components/pm/projects/SprintTrendPanel";
+import { ProjectManagersPanel } from "../../components/pm/projects/ProjectManagersPanel";
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
@@ -832,6 +833,8 @@ export const ProjectDetail: React.FC = () => {
         loading={loading}
         onOpenSprint={(id) => navigate(`/pm/sprints/${id}`)}
       />
+      <ProjectManagersPanel projectId={projectId!} />
+
       <SprintTrendPanel projectId={projectId!} />
       {/* --- BẢNG DANH SÁCH SPRINT --- */}
       <Card
