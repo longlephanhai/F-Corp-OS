@@ -16,10 +16,16 @@ import { Sprint } from '../sprints/entities/sprint.entity';
 import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { CarryOverTaskDto } from './dto/carry-over-task.dto';
+
 import {
   UserSprint,
   UserSprintStatus,
 } from '../user-sprints/entities/user-sprint.entity';
+
+import {
+  PmRealtimeService,
+  PmRealtimeAction,
+} from '../pm-realtime/pm-realtime.service';
 
 @Injectable()
 export class TasksService {
@@ -34,7 +40,25 @@ export class TasksService {
     private readonly userSprintRepo: Repository<UserSprint>,
 
     private readonly taskDependenciesService: TaskDependenciesService,
+    private readonly pmRealtimeService: PmRealtimeService,
   ) {}
+
+  // ==========================================
+  // PM REALTIME
+  // ==========================================
+
+  private async publishTaskChanged(
+    task: Pick<Task, 'id' | 'sprintId'>,
+    action: PmRealtimeAction,
+  ) {
+    await this.pmRealtimeService.publishSprintChanged(task.sprintId, {
+      entity: 'TASK',
+
+      action,
+
+      entityId: task.id,
+    });
+  }
 
   async getTasksBySprint(sprintId: string) {
     return await this.taskRepo.find({
@@ -52,6 +76,15 @@ export class TasksService {
         message: 'Task phải thuộc một Sprint.',
       });
     }
+    const title = data.title?.trim();
+
+    if (!title) {
+      throw new BadRequestException({
+        code: 'INVALID_TASK_TITLE',
+
+        message: 'Tên Task không được để trống.',
+      });
+    }
 
     const sprint = await this.assertSprintMutable(data.sprintId);
     this.validateTaskTimeline(data.startDate, data.endDate, sprint);
@@ -63,7 +96,7 @@ export class TasksService {
 
       userId: data.userId ?? null,
 
-      title: data.title ?? null,
+      title,
 
       description: data.description ?? null,
 
@@ -81,8 +114,11 @@ export class TasksService {
 
       budgetRate: data.budgetRate,
     });
+    const savedTask = await this.taskRepo.save(newTask);
 
-    return await this.taskRepo.save(newTask);
+    await this.publishTaskChanged(savedTask, 'CREATED');
+
+    return savedTask;
   }
 
   async updateTask(taskId: string, data: UpdateTaskDto) {
@@ -240,7 +276,11 @@ export class TasksService {
     // 9. SAVE ONCE
     // ==========================================
 
-    return await this.taskRepo.save(task);
+    const savedTask = await this.taskRepo.save(task);
+
+    await this.publishTaskChanged(savedTask, 'UPDATED');
+
+    return savedTask;
   }
   async carryOverTask(taskId: string, data: CarryOverTaskDto) {
     // ==========================================
@@ -429,7 +469,7 @@ export class TasksService {
     // TRANSACTION
     // ==========================================
 
-    return await this.taskRepo.manager.transaction(async (manager) => {
+    const result = await this.taskRepo.manager.transaction(async (manager) => {
       const taskRepo = manager.getRepository(Task);
 
       // ======================================
@@ -515,6 +555,30 @@ export class TasksService {
         previousOwnerId: sourceTask.userId ?? null,
       };
     });
+
+    // ==========================================
+    // REALTIME
+    //
+    // Chỉ emit SAU KHI transaction commit.
+    // ==========================================
+
+    await this.pmRealtimeService.publishSprintChanged(result.sourceSprintId, {
+      entity: 'TASK',
+
+      action: 'CARRIED_OVER',
+
+      entityId: result.sourceTaskId,
+    });
+
+    await this.pmRealtimeService.publishSprintChanged(result.targetSprintId, {
+      entity: 'TASK',
+
+      action: 'CARRIED_OVER',
+
+      entityId: result.targetTask.id,
+    });
+
+    return result;
   }
   async getTaskCarryOverHistory(taskId: string) {
     // ==========================================
@@ -528,6 +592,8 @@ export class TasksService {
       where: {
         id: taskId,
       },
+
+      withDeleted: true,
     });
 
     if (!currentTask) {
@@ -577,6 +643,8 @@ export class TasksService {
         where: {
           id: sourceTaskId,
         },
+
+        withDeleted: true,
       });
 
       if (!sourceTask) {
@@ -687,6 +755,8 @@ export class TasksService {
         where: {
           id: nextTaskId,
         },
+
+        withDeleted: true,
       });
     }
 
@@ -762,8 +832,11 @@ export class TasksService {
 
     task.isDeleted = true;
 
-    await this.taskRepo.save(task);
+    task.deletedAt = new Date();
 
+    const savedTask = await this.taskRepo.save(task);
+
+    await this.publishTaskChanged(savedTask, 'DELETED');
     return {
       success: true,
 
@@ -1089,7 +1162,11 @@ export class TasksService {
     if (!userId) {
       task.userId = null;
 
-      return await this.taskRepo.save(task);
+      const savedTask = await this.taskRepo.save(task);
+
+      await this.publishTaskChanged(savedTask, 'ASSIGNED');
+
+      return savedTask;
     }
 
     // ========================================
@@ -1104,7 +1181,11 @@ export class TasksService {
 
     task.userId = userId;
 
-    return await this.taskRepo.save(task);
+    const savedTask = await this.taskRepo.save(task);
+
+    await this.publishTaskChanged(savedTask, 'ASSIGNED');
+
+    return savedTask;
   }
 
   async updateTaskTimeline(taskId: string, data: UpdateTaskTimelineDto) {
@@ -1194,7 +1275,11 @@ export class TasksService {
       task.endDate = new Date(data.endDate);
     }
 
-    return await this.taskRepo.save(task);
+    const savedTask = await this.taskRepo.save(task);
+
+    await this.publishTaskChanged(savedTask, 'UPDATED');
+
+    return savedTask;
   }
 
   async updateTaskLifecycle(taskId: string, data: UpdateTaskLifecycleDto) {
@@ -1320,7 +1405,11 @@ export class TasksService {
       }
     }
 
-    return await this.taskRepo.save(task);
+    const savedTask = await this.taskRepo.save(task);
+
+    await this.publishTaskChanged(savedTask, 'STATUS_CHANGED');
+
+    return savedTask;
   }
 
   private validateTaskTimeline(

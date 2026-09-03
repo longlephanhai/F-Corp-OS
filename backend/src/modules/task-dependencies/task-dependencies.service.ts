@@ -13,6 +13,7 @@ import { TaskDependency } from './entities/task-dependency.entity';
 import { Task, TaskStatus } from '../task/entities/task.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import dayjs from 'dayjs';
+import { PmRealtimeService } from '../pm-realtime/pm-realtime.service';
 
 @Injectable()
 export class TaskDependenciesService {
@@ -24,6 +25,8 @@ export class TaskDependenciesService {
     private readonly taskRepo: Repository<Task>,
     @InjectRepository(Sprint)
     private readonly sprintRepo: Repository<Sprint>,
+
+    private readonly pmRealtimeService: PmRealtimeService,
   ) {}
 
   // ==========================================
@@ -248,7 +251,17 @@ export class TaskDependenciesService {
       dependsOnTaskId,
     });
 
-    return await this.dependencyRepo.save(dependency);
+    const savedDependency = await this.dependencyRepo.save(dependency);
+
+    await this.pmRealtimeService.publishSprintChanged(task.sprintId, {
+      entity: 'TASK_DEPENDENCY',
+
+      action: 'DEPENDENCY_CHANGED',
+
+      entityId: savedDependency.id,
+    });
+
+    return savedDependency;
   }
 
   // ==========================================
@@ -279,6 +292,13 @@ export class TaskDependenciesService {
     }
 
     await this.dependencyRepo.remove(dependency);
+    await this.pmRealtimeService.publishSprintChanged(task.sprintId, {
+      entity: 'TASK_DEPENDENCY',
+
+      action: 'DEPENDENCY_CHANGED',
+
+      entityId: dependencyId,
+    });
 
     return {
       success: true,

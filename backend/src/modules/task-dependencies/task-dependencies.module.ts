@@ -7,9 +7,13 @@ import { Task } from '../task/entities/task.entity';
 import { TaskDependenciesController } from './task-dependencies.controller';
 import { TaskDependenciesService } from './task-dependencies.service';
 import { Sprint } from '../sprints/entities/sprint.entity';
-
+import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([TaskDependency, Task, Sprint])],
+  imports: [
+    TypeOrmModule.forFeature([TaskDependency, Task, Sprint]),
+
+    PmRealtimeModule,
+  ],
 
   controllers: [TaskDependenciesController],
 

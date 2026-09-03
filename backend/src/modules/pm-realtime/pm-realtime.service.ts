@@ -76,80 +76,87 @@ export class PmRealtimeService {
   // ==========================================
 
   async publishProjectChanged(input: PublishProjectChangeInput) {
-    const project = await this.projectRepo.findOne({
-      where: {
-        id: input.projectId,
-      },
-    });
+    try {
+      const project = await this.projectRepo.findOne({
+        where: {
+          id: input.projectId,
+        },
+      });
 
-    if (!project) {
-      // Realtime không được làm business API fail.
-      //
-      // Mutation DB thành công vẫn phải giữ
-      // kết quả thành công dù realtime lookup lỗi.
-      console.warn(`[PM Realtime] Project ${input.projectId} không tồn tại.`);
+      if (!project) {
+        // Realtime không được làm business API fail.
+        //
+        // Mutation DB thành công vẫn phải giữ
+        // kết quả thành công dù realtime lookup lỗi.
+        console.warn(`[PM Realtime] Project ${input.projectId} không tồn tại.`);
 
-      return;
-    }
+        return;
+      }
 
-    // ========================================
-    // PRIMARY + CO-PM
-    // ========================================
+      // ========================================
+      // PRIMARY + CO-PM
+      // ========================================
 
-    const managerRelations = await this.projectManagerRepo.find({
-      where: {
+      const managerRelations = await this.projectManagerRepo.find({
+        where: {
+          projectId: project.id,
+        },
+      });
+
+      const userIds = new Set<string>();
+
+      // Legacy Primary PM.
+      if (project.pmId) {
+        userIds.add(project.pmId);
+      }
+
+      // New Multi-PM relation.
+      managerRelations.forEach((manager) => {
+        if (manager.userId) {
+          userIds.add(manager.userId);
+        }
+      });
+
+      // Ví dụ Co-PM vừa bị remove.
+      input.extraUserIds?.forEach((userId) => {
+        if (userId) {
+          userIds.add(userId);
+        }
+      });
+
+      const payload = {
+        type: 'PM_PROJECT_CHANGED',
+
         projectId: project.id,
-      },
-    });
 
-    const userIds = new Set<string>();
+        sprintId: input.sprintId ?? null,
 
-    // Legacy Primary PM.
-    if (project.pmId) {
-      userIds.add(project.pmId);
-    }
+        entity: input.entity,
 
-    // New Multi-PM relation.
-    managerRelations.forEach((manager) => {
-      if (manager.userId) {
-        userIds.add(manager.userId);
-      }
-    });
+        action: input.action,
 
-    // Ví dụ Co-PM vừa bị remove.
-    input.extraUserIds?.forEach((userId) => {
-      if (userId) {
-        userIds.add(userId);
-      }
-    });
+        entityId: input.entityId ?? null,
 
-    const payload = {
-      type: 'PM_PROJECT_CHANGED',
+        occurredAt: new Date().toISOString(),
+      };
 
-      projectId: project.id,
+      userIds.forEach((userId) => {
+        this.notificationsGateway.emitEventToUser(
+          userId,
+          'pm_project_changed',
+          payload,
+        );
+      });
 
-      sprintId: input.sprintId ?? null,
-
-      entity: input.entity,
-
-      action: input.action,
-
-      entityId: input.entityId ?? null,
-
-      occurredAt: new Date().toISOString(),
-    };
-
-    userIds.forEach((userId) => {
-      this.notificationsGateway.emitEventToUser(
-        userId,
-        'pm_project_changed',
-        payload,
+      console.log(
+        `[PM Realtime] ${input.entity}:${input.action} project:${project.id} → ${userIds.size} PM(s)`,
       );
-    });
-
-    console.log(
-      `[PM Realtime] ${input.entity}:${input.action} project:${project.id} → ${userIds.size} PM(s)`,
-    );
+    } catch (error) {
+      console.error(
+        `[PM Realtime] Không publish được Project ${input.projectId}`,
+        error,
+      );
+    }
   }
 
   // ==========================================
@@ -166,28 +173,37 @@ export class PmRealtimeService {
       entityId?: string | null;
     },
   ) {
-    const sprint = await this.sprintRepo.findOne({
-      where: {
-        id: sprintId,
-      },
-    });
+    try {
+      const sprint = await this.sprintRepo.findOne({
+        where: {
+          id: sprintId,
+        },
+      });
 
-    if (!sprint) {
-      console.warn(`[PM Realtime] Sprint ${sprintId} không tồn tại.`);
+      if (!sprint) {
+        console.warn(`[PM Realtime] Sprint ${sprintId} không tồn tại.`);
 
-      return;
+        return;
+      }
+
+      await this.publishProjectChanged({
+        projectId: sprint.projectId,
+
+        sprintId: sprint.id,
+
+        entity: input.entity,
+
+        action: input.action,
+
+        entityId: input.entityId ?? null,
+      });
+    } catch (error) {
+      // Realtime tuyệt đối không được
+      // làm mutation business thất bại.
+      console.error(
+        `[PM Realtime] Không publish được Sprint ${sprintId}`,
+        error,
+      );
     }
-
-    await this.publishProjectChanged({
-      projectId: sprint.projectId,
-
-      sprintId: sprint.id,
-
-      entity: input.entity,
-
-      action: input.action,
-
-      entityId: input.entityId ?? null,
-    });
   }
 }
