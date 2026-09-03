@@ -11,36 +11,22 @@ import { NotificationsGateway } from './notifications.gateway';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Notification,
-    ]),
+    TypeOrmModule.forFeature([Notification]),
 
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
 
-      useFactory: async (
-        configService: ConfigService,
-      ) => ({
-        secret:
-          configService.get<string>(
-            'JWT_SECRET_KEY',
-          ),
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET_KEY'),
       }),
     }),
   ],
 
-  controllers: [
-    NotificationsController,
-  ],
+  controllers: [NotificationsController],
 
-  providers: [
-    NotificationsService,
-    NotificationsGateway,
-  ],
+  providers: [NotificationsService, NotificationsGateway],
 
-  exports: [
-    NotificationsService,
-  ],
+  exports: [NotificationsService, NotificationsGateway],
 })
 export class NotificationsModule {}

@@ -46,6 +46,7 @@ import { TaskDependenciesModal } from "../../components/pm/sprints/TaskDependenc
 import { EditTaskModal } from "../../components/pm/sprints/EditTaskModal";
 import { CarryOverTaskModal } from "../../components/pm/sprints/CarryOverTaskModal";
 import { SprintPlanningForecastPanel } from "../../components/pm/sprints/SprintPlanningForecastPanel";
+import { usePmProjectRealtime } from "../../hooks/usePmProjectRealtime";
 
 const { Title, Text } = Typography;
 
@@ -413,6 +414,21 @@ export const SprintManagementPage: React.FC = () => {
     void fetchSprintData();
   }, [fetchSprintData]);
 
+  // ==========================================
+  // REALTIME SPRINT SYNC
+  // ==========================================
+
+  usePmProjectRealtime({
+    projectId: sprintInfo?.projectId ?? null,
+
+    sprintId: sprintId ?? null,
+
+    onChange: async (event) => {
+      console.log("[PM Realtime] Sprint refresh:", event);
+
+      await fetchSprintData();
+    },
+  });
   // ==========================================
   // RELEASE
   // ==========================================

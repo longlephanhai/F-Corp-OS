@@ -36,6 +36,7 @@ import dayjs from "dayjs";
 import { SprintRetrospectiveModal } from "../../components/pm/sprints/SprintRetrospectiveModal";
 import { SprintTrendPanel } from "../../components/pm/projects/SprintTrendPanel";
 import { ProjectManagersPanel } from "../../components/pm/projects/ProjectManagersPanel";
+import { usePmProjectRealtime } from "../../hooks/usePmProjectRealtime";
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
@@ -88,6 +89,20 @@ export const ProjectDetail: React.FC = () => {
   useEffect(() => {
     fetchProjectDetails();
   }, [projectId]);
+
+  // ==========================================
+  // REALTIME PROJECT SYNC
+  // ==========================================
+
+  usePmProjectRealtime({
+    projectId,
+
+    onChange: async (event) => {
+      console.log("[PM Realtime] ProjectDetail refresh:", event);
+
+      await fetchProjectDetails();
+    },
+  });
 
   // 2. HÀM TÍNH % TIẾN ĐỘ DỰ ÁN DỰA TRÊN SPRINT
   const calculateProgress = () => {

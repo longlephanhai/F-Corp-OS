@@ -52,7 +52,26 @@ export class NotificationsGateway
     console.log(`[Socket] Disconnected: ${client.id}`);
   }
 
+  // ==========================================
+  // GENERIC USER EVENT
+  // ==========================================
+
+  emitEventToUser(userId: string, eventName: string, payload: unknown) {
+    if (!this.server) {
+      return;
+    }
+
+    this.server.to(`user:${userId}`).emit(eventName, payload);
+  }
+
+  // ==========================================
+  // NOTIFICATION
+  //
+  // Giữ backward compatibility.
+  // NotificationBell vẫn nghe new_notification.
+  // ==========================================
+
   emitToUser(userId: string, payload: unknown) {
-    this.server.to(`user:${userId}`).emit('new_notification', payload);
+    this.emitEventToUser(userId, 'new_notification', payload);
   }
 }

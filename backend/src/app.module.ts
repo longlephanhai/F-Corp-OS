@@ -40,6 +40,7 @@ import { NotificationsModule } from 'modules/notifications/notifications.module'
 import { Notification } from 'modules/notifications/entities/notification.entity';
 import { WebsocketModule } from 'websockets/websocket.module';
 import { Websocket } from 'websockets/entities/websocket.entity';
+import { PmRealtimeModule } from './modules/pm-realtime/pm-realtime.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -97,6 +98,7 @@ import { Websocket } from 'websockets/entities/websocket.entity';
     HrWalletsModule,
     NotificationsModule,
     WebsocketModule,
+    PmRealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

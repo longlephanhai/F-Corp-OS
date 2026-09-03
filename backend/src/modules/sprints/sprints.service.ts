@@ -26,6 +26,7 @@ import { Project } from '../projects/entities/project.entity';
 
 import { Task, TaskStatus } from '../task/entities/task.entity';
 
+import { PmRealtimeService } from '../pm-realtime/pm-realtime.service';
 import {
   UserSprint,
   UserSprintStatus,
@@ -49,6 +50,8 @@ export class SprintsService {
     private readonly userSprintRepo: Repository<UserSprint>,
 
     private readonly taskDependenciesService: TaskDependenciesService,
+
+    private readonly pmRealtimeService: PmRealtimeService,
   ) {}
 
   // ==========================================
@@ -173,7 +176,21 @@ export class SprintsService {
       isDeleted: false,
     });
 
-    return await this.sprintRepo.save(newSprint);
+    const savedSprint = await this.sprintRepo.save(newSprint);
+
+    await this.pmRealtimeService.publishProjectChanged({
+      projectId: savedSprint.projectId,
+
+      sprintId: savedSprint.id,
+
+      entity: 'SPRINT',
+
+      action: 'CREATED',
+
+      entityId: savedSprint.id,
+    });
+
+    return savedSprint;
   }
 
   // ==========================================
@@ -291,7 +308,21 @@ export class SprintsService {
     // PATCH /sprints/:id/status
     // ========================================
 
-    return await this.sprintRepo.save(sprint);
+    const savedSprint = await this.sprintRepo.save(sprint);
+
+    await this.pmRealtimeService.publishProjectChanged({
+      projectId: savedSprint.projectId,
+
+      sprintId: savedSprint.id,
+
+      entity: 'SPRINT',
+
+      action: 'UPDATED',
+
+      entityId: savedSprint.id,
+    });
+
+    return savedSprint;
   }
 
   // ==========================================
@@ -380,7 +411,21 @@ export class SprintsService {
 
     sprint.status = dto.status;
 
-    return await this.sprintRepo.save(sprint);
+    const savedSprint = await this.sprintRepo.save(sprint);
+
+    await this.pmRealtimeService.publishProjectChanged({
+      projectId: savedSprint.projectId,
+
+      sprintId: savedSprint.id,
+
+      entity: 'SPRINT',
+
+      action: 'STATUS_CHANGED',
+
+      entityId: savedSprint.id,
+    });
+
+    return savedSprint;
   }
 
   // ==========================================
@@ -1871,7 +1916,17 @@ export class SprintsService {
     sprint.deletedAt = new Date();
 
     await this.sprintRepo.save(sprint);
+    await this.pmRealtimeService.publishProjectChanged({
+      projectId: sprint.projectId,
 
+      sprintId: sprint.id,
+
+      entity: 'SPRINT',
+
+      action: 'DELETED',
+
+      entityId: sprint.id,
+    });
     return {
       success: true,
 

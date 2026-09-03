@@ -24,6 +24,7 @@ import {
 } from "@ant-design/icons";
 
 import { pmApi } from "../../../api/pm";
+import { usePmProjectRealtime } from "../../../hooks/usePmProjectRealtime";
 
 const { Text } = Typography;
 
@@ -112,6 +113,17 @@ export const ProjectManagersPanel: React.FC<Props> = ({ projectId }) => {
     void loadManagers();
   }, [loadManagers]);
 
+  usePmProjectRealtime({
+    projectId,
+
+    onChange: async (event) => {
+      if (event.entity !== "PROJECT_MANAGER") {
+        return;
+      }
+
+      await loadManagers();
+    },
+  });
   // ========================================
   // SORT:
   // PRIMARY ALWAYS FIRST

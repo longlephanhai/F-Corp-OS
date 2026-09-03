@@ -3,13 +3,24 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
+
 import { Project } from './entities/project.entity';
 import { ProjectManager } from './entities/project-manager.entity';
 import { User } from '../users/entities/user.entity';
 
+import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Project, ProjectManager, User])],
+  imports: [
+    // Entity của ProjectsService
+    TypeOrmModule.forFeature([Project, ProjectManager, User]),
+
+    // Module cung cấp PmRealtimeService
+    PmRealtimeModule,
+  ],
+
   controllers: [ProjectsController],
+
   providers: [ProjectsService],
 })
 export class ProjectsModule {}

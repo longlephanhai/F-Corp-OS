@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Project } from './entities/project.entity';
+import { PmRealtimeService } from '../pm-realtime/pm-realtime.service';
 
 import {
   ProjectManager,
@@ -29,6 +30,8 @@ export class ProjectsService {
 
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+
+    private readonly pmRealtimeService: PmRealtimeService,
   ) {}
 
   // ==========================================
@@ -482,8 +485,20 @@ export class ProjectsService {
 
     await this.projectManagerRepo.save(relation);
 
-    // Trả lại full manager list để frontend
-    // refresh trực tiếp sau khi thêm.
+    // ========================================
+    // REALTIME
+    // ========================================
+
+    await this.pmRealtimeService.publishProjectChanged({
+      projectId,
+
+      entity: 'PROJECT_MANAGER',
+
+      action: 'MANAGER_ADDED',
+
+      entityId: relation.id,
+    });
+
     return await this.getProjectManagers(projectId);
   }
 
@@ -544,6 +559,25 @@ export class ProjectsService {
     // ========================================
 
     await this.projectManagerRepo.delete(relation.id);
+    // ========================================
+    // REALTIME
+    //
+    // userId đã bị remove khỏi relation,
+    // nên truyền extraUserIds để client của
+    // chính PM vừa bị remove cũng refresh.
+    // ========================================
+
+    await this.pmRealtimeService.publishProjectChanged({
+      projectId,
+
+      entity: 'PROJECT_MANAGER',
+
+      action: 'MANAGER_REMOVED',
+
+      entityId: relation.id,
+
+      extraUserIds: [userId],
+    });
 
     return {
       success: true,
