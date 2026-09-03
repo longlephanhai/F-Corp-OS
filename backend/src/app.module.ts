@@ -34,6 +34,7 @@ import { HrReviewsModule } from './modules/hr-reviews/hr-reviews.module';
 import { ReviewCycle } from 'modules/hr-reviews/entities/review-cycle.entity';
 import { ReviewRecord } from 'modules/hr-reviews/entities/review-record.entity';
 import { HrWalletsModule } from './modules/hr-wallets/hr-wallets.module';
+import { HrTalentsModule } from './modules/hr-talents/hr-talents.module';
 import { Wallet } from 'modules/hr-wallets/entities/wallet.entity';
 import { TransactionHistory } from 'modules/hr-wallets/entities/transaction-history.entity';
 import { NotificationsModule } from 'modules/notifications/notifications.module';
@@ -96,6 +97,7 @@ import { PmRealtimeModule } from './modules/pm-realtime/pm-realtime.module';
     TaskDependenciesModule,
     HrReviewsModule,
     HrWalletsModule,
+    HrTalentsModule,
     NotificationsModule,
     WebsocketModule,
     PmRealtimeModule,

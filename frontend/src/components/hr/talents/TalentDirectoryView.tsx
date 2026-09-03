@@ -1,0 +1,328 @@
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+import {
+  Button,
+  Card,
+  Flex,
+  Input,
+  Select,
+  Space,
+  Typography,
+  message,
+} from 'antd';
+import {
+  ReloadOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
+
+import TalentTable from './TalentTable';
+import TalentProfileDrawer from './TalentProfileDrawer';
+
+import {
+  hrTalentsApi,
+  type TalentDirectoryItem,
+  type TalentWorkforceStatus,
+} from '../../../api/hrTalents';
+
+const { Text } = Typography;
+
+const PAGE_SIZE = 10;
+
+const TalentDirectoryView: React.FC = () => {
+  const [talents, setTalents] = useState<
+    TalentDirectoryItem[]
+  >([]);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [page, setPage] =
+    useState(1);
+
+  const [total, setTotal] =
+    useState(0);
+
+  const [
+    searchInput,
+    setSearchInput,
+  ] = useState('');
+
+  const [search, setSearch] =
+    useState('');
+
+  const [status, setStatus] =
+    useState<TalentWorkforceStatus>();
+
+  const [
+    selectedEmployeeId,
+    setSelectedEmployeeId,
+  ] = useState<string | null>(null);
+
+  const [
+    profileOpen,
+    setProfileOpen,
+  ] = useState(false);
+
+  const loadTalents =
+    useCallback(async () => {
+      setLoading(true);
+
+      try {
+        const response =
+          await hrTalentsApi.getAll({
+            page,
+            limit: PAGE_SIZE,
+            search:
+              search || undefined,
+            status,
+          });
+
+        const data =
+          response?.data;
+
+        setTalents(
+          data?.result ?? [],
+        );
+
+        setTotal(
+          data?.meta?.total ?? 0,
+        );
+      } catch (error) {
+        console.error(
+          'Không tải được HR Talent Directory',
+          error,
+        );
+
+        setTalents([]);
+        setTotal(0);
+
+        message.error(
+          'Không thể tải danh sách nhân sự.',
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      page,
+      search,
+      status,
+    ]);
+
+  useEffect(() => {
+    void loadTalents();
+  }, [loadTalents]);
+
+  const handleSearch = () => {
+    setPage(1);
+
+    setSearch(
+      searchInput.trim(),
+    );
+  };
+
+  const handleStatusChange = (
+    value:
+      | TalentWorkforceStatus
+      | undefined,
+  ) => {
+    setPage(1);
+    setStatus(value);
+  };
+
+  const handleReset = () => {
+    setSearchInput('');
+    setSearch('');
+    setStatus(undefined);
+    setPage(1);
+  };
+
+  const handleViewProfile = (
+    employeeId: string,
+  ) => {
+    setSelectedEmployeeId(
+      employeeId,
+    );
+
+    setProfileOpen(true);
+  };
+
+  const handleCloseProfile = () => {
+    setProfileOpen(false);
+
+    setSelectedEmployeeId(
+      null,
+    );
+  };
+
+  return (
+    <>
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          marginBottom: 16,
+          boxShadow:
+            '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+        styles={{
+          body: {
+            padding: 16,
+          },
+        }}
+      >
+        <Flex
+          justify="space-between"
+          align="center"
+          wrap="wrap"
+          gap={12}
+        >
+          <Space
+            wrap
+            size={10}
+          >
+            <Input
+              value={searchInput}
+              onChange={(event) =>
+                setSearchInput(
+                  event.target.value,
+                )
+              }
+              onPressEnter={
+                handleSearch
+              }
+              placeholder="Tìm theo tên hoặc email..."
+              prefix={
+                <SearchOutlined />
+              }
+              allowClear
+              style={{
+                width: 280,
+              }}
+            />
+
+            <Button
+              type="primary"
+              icon={
+                <SearchOutlined />
+              }
+              onClick={
+                handleSearch
+              }
+            >
+              Tìm kiếm
+            </Button>
+
+            <Select<
+              TalentWorkforceStatus
+            >
+              allowClear
+              value={status}
+              placeholder="Trạng thái"
+              style={{
+                width: 170,
+              }}
+              onChange={
+                handleStatusChange
+              }
+              options={[
+                {
+                  value:
+                    'AVAILABLE',
+                  label:
+                    'Sẵn sàng',
+                },
+                {
+                  value:
+                    'IN_PROJECT',
+                  label:
+                    'Trong dự án',
+                },
+                {
+                  value:
+                    'BENCH',
+                  label:
+                    'Bench',
+                },
+              ]}
+            />
+
+            <Button
+              onClick={
+                handleReset
+              }
+            >
+              Xóa bộ lọc
+            </Button>
+          </Space>
+
+          <Space>
+            <Text type="secondary">
+              {total} nhân sự
+            </Text>
+
+            <Button
+              icon={
+                <ReloadOutlined />
+              }
+              loading={loading}
+              onClick={() =>
+                void loadTalents()
+              }
+            >
+              Làm mới
+            </Button>
+          </Space>
+        </Flex>
+      </Card>
+
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow:
+            '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
+      >
+        <TalentTable
+          data={talents}
+          loading={loading}
+          page={page}
+          pageSize={
+            PAGE_SIZE
+          }
+          total={total}
+          onPageChange={(
+            nextPage,
+          ) =>
+            setPage(
+              nextPage,
+            )
+          }
+          onViewProfile={
+            handleViewProfile
+          }
+        />
+      </Card>
+
+      <TalentProfileDrawer
+        open={profileOpen}
+        employeeId={
+          selectedEmployeeId
+        }
+        onClose={
+          handleCloseProfile
+        }
+      />
+    </>
+  );
+};
+
+export default TalentDirectoryView;

@@ -4,6 +4,7 @@ import {
     WalletOutlined,
     CalendarOutlined,
     FundProjectionScreenOutlined,
+    TeamOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router';
 
@@ -60,6 +61,12 @@ const HRSider = ({ collapsed }: IProps) => {
                         icon: <BarChartOutlined />,
                         label: 'Tổng quan',
                         onClick: () => navigate('/hr/dashboard'),
+                    },
+                    {
+                        key: 'talents',
+                        icon: <TeamOutlined />,
+                        label: 'Nhân sự & Năng lực',
+                        onClick: () => navigate('/hr/talents'),
                     },
                     {
                         key: 'wallet',
