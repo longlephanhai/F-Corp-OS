@@ -69,6 +69,7 @@ function App() {
       element: <LayoutHR />,
       errorElement: <ErrorPage />,
       children: [
+        { path: "", element: <HRDashboard /> },
         { path: "dashboard", element: <HRDashboard /> },
         { path: "wallet", element: <WalletAdmin /> },
         { path: "review", element: <ReviewConsole /> },

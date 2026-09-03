@@ -23,6 +23,53 @@ export interface TransactionHistoryItem {
   createdAt: string;
 }
 
+export interface WalletTransactionEmployee {
+  id: string;
+  fullName?: string;
+  email?: string;
+  title?: string;
+}
+
+export interface WalletTransactionWallet {
+  id: string;
+  employee?: WalletTransactionEmployee;
+}
+
+export interface WalletTransactionListItem
+  extends TransactionHistoryItem {
+  wallet?: WalletTransactionWallet;
+}
+
+export interface GetWalletTransactionsParams {
+  page?: number;
+  limit?: number;
+  employeeId?: string;
+  type?: WalletTransactionType;
+}
+
+export interface WalletTransactionListResponse {
+  meta: {
+    currentPage: number;
+    pageSize: number;
+    pages: number;
+    total: number;
+  };
+  result: WalletTransactionListItem[];
+}
+
+export type WalletTransactionType =
+  | 'REWARD'
+  | 'PENALTY'
+  | 'TRANSFER';
+
+export interface CreateWalletTransactionPayload {
+  employeeId: string;
+  amount: number;
+  type: WalletTransactionType;
+  reason: string;
+  referenceId?: string;
+}
+
 export interface WalletsResponse {
   meta: {
     currentPage: number;
@@ -53,7 +100,22 @@ export const hrWalletsApi = {
   getAllWallets: (params?: any) => {
     return axios.get<IBackendRes<WalletsResponse>>('/hr-wallets', { params });
   },
-  createTransaction: (data: any) => {
-    return axios.post<IBackendRes<any>>('/hr-wallets/transaction', data);
-  }
+  createTransaction: (
+    data: CreateWalletTransactionPayload,
+  ) => {
+    return axios.post<IBackendRes<TransactionHistoryItem>>(
+      '/hr-wallets/transaction',
+      data,
+    );
+  },
+  getAllTransactions: (
+    params?: GetWalletTransactionsParams,
+  ) => {
+    return axios.get<
+      IBackendRes<WalletTransactionListResponse>
+    >('/hr-wallets/transactions', {
+      params,
+    });
+  },
+
 };

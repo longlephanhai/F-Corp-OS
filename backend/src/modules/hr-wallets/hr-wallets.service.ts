@@ -4,9 +4,10 @@ import { TransactionType, WalletStatus } from 'common/enum/hr-wallet.enum';
 import type { IUser } from 'common/types/user.interface';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { GetWalletTransactionsDto } from './dto/get-wallet-transactions.dto';
 import { TransactionHistory } from './entities/transaction-history.entity';
 import { Wallet } from './entities/wallet.entity';
-
+import { User } from 'modules/users/entities/user.entity';
 /**
  * HrWalletsService — chứa toàn bộ business logic cho phân hệ ví F-Token.
  * Được inject vào Controller và các Service khác có nhu cầu thao tác ví.
@@ -25,8 +26,30 @@ export class HrWalletsService {
      * khi cập nhật Wallet balance và tạo TransactionHistory trong cùng một transaction DB.
      */
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
+  private async lockEmployeeForWallet(
+    manager: EntityManager,
+    employeeId: string,
+  ): Promise<User> {
+    const employee = await manager
+      .createQueryBuilder(User, 'employee')
+      .setLock('pessimistic_write')
+      .where('employee.id = :employeeId', {
+        employeeId,
+      })
+      .andWhere('employee.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+      .getOne();
 
+    if (!employee) {
+      throw new NotFoundException(
+        `Không tìm thấy nhân viên với id "${employeeId}".`,
+      );
+    }
+
+    return employee;
+  }
   /**
    * Xử lý một giao dịch F-Token (REWARD / PENALTY / TRANSFER) một cách an toàn.
    *
@@ -45,86 +68,122 @@ export class HrWalletsService {
     dto: CreateTransactionDto,
     user: IUser,
   ): Promise<TransactionHistory> {
+    if (dto.type === TransactionType.TRANSFER) {
+      throw new BadRequestException(
+        'TRANSFER chưa được hỗ trợ. Giao dịch thủ công chỉ cho phép REWARD hoặc PENALTY.',
+      );
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
 
-    // Kết nối và bắt đầu DB transaction
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // --- Bước 1: Tìm hoặc tạo mới Wallet ---
-      // Dùng queryRunner.manager để tham gia vào DB transaction hiện tại
+      /*
+       * Lock theo employee trước khi đọc/tạo Wallet.
+       *
+       * Không lock trực tiếp Wallet ngay từ đầu vì employee
+       * có thể chưa có Wallet để lock.
+       */
+      const employee = await this.lockEmployeeForWallet(
+        queryRunner.manager,
+        dto.employeeId,
+      );
+
+      const auditUser = {
+        id: user?.id ?? '',
+        email: user?.email ?? '',
+      };
+
+      // --- Bước 1: Tìm hoặc tạo Wallet ---
       let wallet = await queryRunner.manager.findOne(Wallet, {
-        where: { employee: { id: dto.employeeId }, isDeleted: false },
+        where: {
+          employee: {
+            id: dto.employeeId,
+          },
+          isDeleted: false,
+        },
       });
 
-      const auditUser = { id: user?.id ?? '', email: user?.email ?? '' };
-
       if (!wallet) {
-        // Chưa có ví → tự động khởi tạo ví mới với balance = 0
         wallet = queryRunner.manager.create(Wallet, {
-          employee: { id: dto.employeeId } as any,
-          balance:  0,
-          status:   WalletStatus.ACTIVE,
+          employee,
+          balance: 0,
+          status: WalletStatus.ACTIVE,
           createdBy: auditUser,
           updatedBy: auditUser,
         });
-        wallet = await queryRunner.manager.save(Wallet, wallet);
+
+        wallet = await queryRunner.manager.save(
+          Wallet,
+          wallet,
+        );
       }
 
-      // --- Bước 2: Kiểm tra trạng thái ví ---
+      // --- Bước 2: Kiểm tra trạng thái Wallet ---
       if (wallet.status !== WalletStatus.ACTIVE) {
         throw new BadRequestException(
           `Ví của nhân viên này đang ở trạng thái "${wallet.status}" và không thể thực hiện giao dịch.`,
         );
       }
 
-      // --- Bước 3: Tính số dư mới ---
+      // --- Bước 3: Tính balance mới ---
       const currentBalance = Number(wallet.balance);
-      const amount         = Number(dto.amount);
-      let   newBalance: number;
+      const amount = Number(dto.amount);
 
-      if (dto.type === TransactionType.REWARD || dto.type === TransactionType.TRANSFER) {
-        // REWARD / TRANSFER: cộng vào số dư
+      let newBalance: number;
+
+      if (dto.type === TransactionType.REWARD) {
         newBalance = currentBalance + amount;
       } else {
-        // PENALTY: trừ số dư, kiểm tra không được âm
+        // PENALTY
         if (currentBalance < amount) {
           throw new BadRequestException(
             `Số dư không đủ. Số dư hiện tại: ${currentBalance} F-Token, yêu cầu trừ: ${amount} F-Token.`,
           );
         }
+
         newBalance = currentBalance - amount;
       }
 
-      // --- Bước 4: Cập nhật Wallet ---
-      wallet.balance   = newBalance;
+      // --- Bước 4: Update Wallet ---
+      wallet.balance = newBalance;
       wallet.updatedBy = auditUser;
-      await queryRunner.manager.save(Wallet, wallet);
 
-      // --- Bước 5: Tạo TransactionHistory ---
-      const history = queryRunner.manager.create(TransactionHistory, {
-        amount:      dto.amount,
-        type:        dto.type,
-        reason:      dto.reason,
-        referenceId: dto.referenceId ?? undefined,
-        wallet:      wallet,
-        createdBy:   auditUser,
-        updatedBy:   auditUser,
-      });
+      await queryRunner.manager.save(
+        Wallet,
+        wallet,
+      );
 
-      const savedHistory = await queryRunner.manager.save(TransactionHistory, history);
+      // --- Bước 5: Transaction History ---
+      const history = queryRunner.manager.create(
+        TransactionHistory,
+        {
+          amount: dto.amount,
+          type: dto.type,
+          reason: dto.reason,
+          referenceId:
+            dto.referenceId ?? undefined,
+          wallet,
+          createdBy: auditUser,
+          updatedBy: auditUser,
+        },
+      );
 
-      // --- Commit: tất cả thao tác thành công ---
+      const savedHistory =
+        await queryRunner.manager.save(
+          TransactionHistory,
+          history,
+        );
+
       await queryRunner.commitTransaction();
 
       return savedHistory;
     } catch (error) {
-      // Rollback toàn bộ nếu có bất kỳ lỗi nào xảy ra
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
-      // Giải phóng queryRunner dù commit hay rollback
       await queryRunner.release();
     }
   }
@@ -146,51 +205,98 @@ export class HrWalletsService {
     manager: EntityManager,
     userId: string,
   ): Promise<void> {
-    const auditUser = { id: userId, email: '' }; // Fallback email rỗng, ID là quan trọng nhất
+    const auditUser = {
+      id: userId,
+      email: '',
+    };
 
-    // 1. Kiểm tra idempotency (Tránh thưởng 2 lần cho cùng một đánh giá)
-    const existingTx = await manager.findOne(TransactionHistory, {
-      where: { referenceId, type: TransactionType.REWARD, isDeleted: false },
-    });
-    
+    /*
+     * Lock employee trước.
+     *
+     * Điều này serialize mọi thao tác Wallet của cùng
+     * một employee, kể cả trường hợp Wallet chưa tồn tại.
+     */
+    const employee = await this.lockEmployeeForWallet(
+      manager,
+      employeeId,
+    );
+
+    /*
+     * Sau khi đã lấy lock mới kiểm tra idempotency.
+     *
+     * Nếu transaction khác vừa tạo reward cùng referenceId,
+     * transaction hiện tại sẽ thấy transaction đó sau khi
+     * lock được giải phóng.
+     */
+    const existingTx = await manager.findOne(
+      TransactionHistory,
+      {
+        where: {
+          referenceId,
+          type: TransactionType.REWARD,
+          isDeleted: false,
+        },
+      },
+    );
+
     if (existingTx) {
-      return; // Đã nhận thưởng cho đánh giá này, bỏ qua
+      return;
     }
 
-    // 2. Tìm hoặc tạo mới Wallet
+    // --- Tìm hoặc tạo Wallet ---
     let wallet = await manager.findOne(Wallet, {
-      where: { employee: { id: employeeId }, isDeleted: false },
+      where: {
+        employee: {
+          id: employeeId,
+        },
+        isDeleted: false,
+      },
     });
 
     if (!wallet) {
       wallet = manager.create(Wallet, {
-        employee: { id: employeeId } as any,
+        employee,
         balance: 0,
         status: WalletStatus.ACTIVE,
         createdBy: auditUser,
         updatedBy: auditUser,
       });
-      wallet = await manager.save(Wallet, wallet);
+
+      wallet = await manager.save(
+        Wallet,
+        wallet,
+      );
     }
 
-    // 3. Cập nhật Wallet balance
-    wallet.balance = Number(wallet.balance) + amount;
-    wallet.updatedBy = auditUser;
-    await manager.save(Wallet, wallet);
+    // --- Update balance ---
+    wallet.balance =
+      Number(wallet.balance) + Number(amount);
 
-    // 4. Tạo TransactionHistory
-    const history = manager.create(TransactionHistory, {
-      amount,
-      type: TransactionType.REWARD,
-      reason: 'Thưởng đánh giá năng lực',
-      referenceId,
+    wallet.updatedBy = auditUser;
+
+    await manager.save(
+      Wallet,
       wallet,
-      createdBy: auditUser,
-      updatedBy: auditUser,
-    });
-    
-    
-    await manager.save(TransactionHistory, history);
+    );
+
+    // --- Transaction History ---
+    const history = manager.create(
+      TransactionHistory,
+      {
+        amount,
+        type: TransactionType.REWARD,
+        reason: 'Thưởng đánh giá năng lực',
+        referenceId,
+        wallet,
+        createdBy: auditUser,
+        updatedBy: auditUser,
+      },
+    );
+
+    await manager.save(
+      TransactionHistory,
+      history,
+    );
   }
 
   /**
@@ -236,6 +342,74 @@ export class HrWalletsService {
   }
 
   /**
+   * Lấy lịch sử giao dịch F-Token toàn hệ thống dành cho HR.
+   * Hỗ trợ phân trang và lọc theo nhân viên / loại giao dịch.
+   */
+  async getAllTransactions(
+    query: GetWalletTransactionsDto,
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      employeeId,
+      type,
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    const queryBuilder =
+      this.transactionHistoryRepository
+        .createQueryBuilder('transaction')
+        .leftJoinAndSelect(
+          'transaction.wallet',
+          'wallet',
+        )
+        .leftJoinAndSelect(
+          'wallet.employee',
+          'employee',
+        )
+        .where('transaction.isDeleted = :isDeleted', {
+          isDeleted: false,
+        });
+
+    if (employeeId) {
+      queryBuilder.andWhere(
+        'employee.id = :employeeId',
+        {
+          employeeId,
+        },
+      );
+    }
+
+    if (type) {
+      queryBuilder.andWhere(
+        'transaction.type = :type',
+        {
+          type,
+        },
+      );
+    }
+
+    queryBuilder
+      .orderBy('transaction.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    const [result, total] =
+      await queryBuilder.getManyAndCount();
+
+    return {
+      meta: {
+        currentPage: Number(page),
+        pageSize: Number(limit),
+        pages: Math.ceil(total / limit),
+        total,
+      },
+      result,
+    };
+  }
+
+  /**
    * Lấy danh sách tất cả các ví (dành cho HR/Admin)
    */
   async getAllWallets(query: any) {
@@ -244,7 +418,7 @@ export class HrWalletsService {
 
     const [result, total] = await this.walletRepository.findAndCount({
       where: { isDeleted: false },
-      relations: { employee: true }, 
+      relations: { employee: true },
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
