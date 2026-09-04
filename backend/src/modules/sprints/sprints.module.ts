@@ -11,6 +11,7 @@ import { UserSprint } from '../user-sprints/entities/user-sprint.entity';
 
 import { TaskDependenciesModule } from '../task-dependencies/task-dependencies.module';
 import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
+import { PmAccessModule } from '../pm-access/pm-access.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
     TaskDependenciesModule,
 
     PmRealtimeModule,
+    PmAccessModule,
   ],
 
   controllers: [SprintsController],
