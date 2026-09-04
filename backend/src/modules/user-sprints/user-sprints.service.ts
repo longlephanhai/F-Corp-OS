@@ -11,6 +11,10 @@ import { UserSprint, UserSprintStatus } from './entities/user-sprint.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { User } from '../users/entities/user.entity';
 import { Task, TaskStatus } from '../task/entities/task.entity';
+import {
+  PmRealtimeAction,
+  PmRealtimeService,
+} from '../pm-realtime/pm-realtime.service';
 
 @Injectable()
 export class UserSprintService {
@@ -25,7 +29,25 @@ export class UserSprintService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
+    private readonly pmRealtimeService: PmRealtimeService,
   ) {}
+
+  // ==========================================
+  // PM REALTIME
+  // ==========================================
+
+  private async publishAllocationChanged(
+    allocation: Pick<UserSprint, 'id' | 'sprintId'>,
+    action: PmRealtimeAction,
+  ) {
+    await this.pmRealtimeService.publishSprintChanged(allocation.sprintId, {
+      entity: 'ALLOCATION',
+
+      action,
+
+      entityId: allocation.id,
+    });
+  }
 
   // 1. Lấy danh sách nhân sự tham gia Sprint (Có JOIN với bảng User để lấy Tên, Email)
   async getSprintUsers(sprintId: string) {
@@ -285,7 +307,11 @@ export class UserSprintService {
       status: UserSprintStatus.REQUESTED,
     });
 
-    return await this.userSprintRepo.save(newUserSprint);
+    const savedAllocation = await this.userSprintRepo.save(newUserSprint);
+
+    await this.publishAllocationChanged(savedAllocation, 'CREATED');
+
+    return savedAllocation;
   }
   async submitForApproval(id: string) {
     const allocation = await this.userSprintRepo.findOne({
@@ -322,7 +348,11 @@ export class UserSprintService {
 
     allocation.status = UserSprintStatus.PENDING_APPROVAL;
 
-    return await this.userSprintRepo.save(allocation);
+    const savedAllocation = await this.userSprintRepo.save(allocation);
+
+    await this.publishAllocationChanged(savedAllocation, 'STATUS_CHANGED');
+
+    return savedAllocation;
   }
 
   async cancelRequest(id: string) {
@@ -357,8 +387,14 @@ export class UserSprintService {
         currentStatus: allocation.status,
       });
     }
+    const realtimeAllocation = {
+      id: allocation.id,
 
+      sprintId: allocation.sprintId,
+    };
     await this.userSprintRepo.remove(allocation);
+
+    await this.publishAllocationChanged(realtimeAllocation, 'DELETED');
 
     return {
       success: true,
@@ -567,7 +603,16 @@ export class UserSprintService {
 
     record.status = UserSprintStatus.ASSIGNED;
 
-    return await this.userSprintRepo.save(record);
+    record.status = status;
+
+    const savedAllocation = await this.userSprintRepo.save(record);
+
+    await this.publishAllocationChanged(
+      savedAllocation,
+      status === UserSprintStatus.ASSIGNED ? 'ASSIGNED' : 'STATUS_CHANGED',
+    );
+
+    return savedAllocation;
   }
 
   private async assertUserCanBeReleasedFromSprint(
@@ -687,7 +732,11 @@ export class UserSprintService {
     record.softSkillRate = reviewData.softSkillRate;
     record.reviewComment = reviewData.reviewComment;
 
-    return await this.userSprintRepo.save(record);
+    const savedAllocation = await this.userSprintRepo.save(record);
+
+    await this.publishAllocationChanged(savedAllocation, 'RELEASED');
+
+    return savedAllocation;
   }
 
   async getResourcePlanner(pmId: string) {

@@ -8,8 +8,12 @@ import { UserSprint } from './entities/user-sprint.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { User } from '../users/entities/user.entity';
 import { Task } from '../task/entities/task.entity';
+import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([UserSprint, Sprint, User, Task])],
+  imports: [
+    TypeOrmModule.forFeature([UserSprint, Sprint, User, Task]),
+    PmRealtimeModule,
+  ],
 
   controllers: [UserSprintController],
 
