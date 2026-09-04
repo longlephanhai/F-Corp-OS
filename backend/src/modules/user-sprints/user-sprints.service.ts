@@ -603,14 +603,9 @@ export class UserSprintService {
 
     record.status = UserSprintStatus.ASSIGNED;
 
-    record.status = status;
-
     const savedAllocation = await this.userSprintRepo.save(record);
 
-    await this.publishAllocationChanged(
-      savedAllocation,
-      status === UserSprintStatus.ASSIGNED ? 'ASSIGNED' : 'STATUS_CHANGED',
-    );
+    await this.publishAllocationChanged(savedAllocation, 'ASSIGNED');
 
     return savedAllocation;
   }
@@ -721,15 +716,16 @@ export class UserSprintService {
     );
 
     // Cập nhật trạng thái và thông tin đánh giá
+    // ==========================================
+    // RELEASE + REVIEW
+    // ==========================================
+
     record.status = UserSprintStatus.RELEASED;
 
-    // Cập nhật trạng thái và thông tin đánh giá
-    record.status = UserSprintStatus.RELEASED;
-
-    // Cập nhật trạng thái và thông tin đánh giá
-    record.status = UserSprintStatus.RELEASED;
     record.hardSkillRate = reviewData.hardSkillRate;
+
     record.softSkillRate = reviewData.softSkillRate;
+
     record.reviewComment = reviewData.reviewComment;
 
     const savedAllocation = await this.userSprintRepo.save(record);
