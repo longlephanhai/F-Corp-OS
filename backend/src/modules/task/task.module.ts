@@ -8,6 +8,7 @@ import { TaskDependenciesModule } from '../task-dependencies/task-dependencies.m
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { UserSprint } from '../user-sprints/entities/user-sprint.entity';
 import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
+import { PmAccessModule } from '../pm-access/pm-access.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
     TaskDependenciesModule,
 
     PmRealtimeModule,
+    PmAccessModule,
   ],
 
   controllers: [TasksController],

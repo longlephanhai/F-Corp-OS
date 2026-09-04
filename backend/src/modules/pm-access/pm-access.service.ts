@@ -181,7 +181,41 @@ export class PmAccessService {
       sprint,
     };
   }
+  // ==========================================
+  // TASK HISTORY ACCESS
+  //
+  // Cho phép resolve Task đã archive để xem
+  // Carry-over history.
+  //
+  // Chỉ nới điều kiện Task deleted.
+  // Ownership Project vẫn được kiểm tra đầy đủ.
+  // ==========================================
 
+  async assertTaskHistoryAccess(userId: string, taskId: string) {
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+      },
+
+      withDeleted: true,
+    });
+
+    if (!task) {
+      throw new NotFoundException({
+        code: 'TASK_NOT_FOUND',
+
+        message: 'Không tìm thấy Task.',
+      });
+    }
+
+    const sprint = await this.assertSprintAccess(userId, task.sprintId);
+
+    return {
+      task,
+
+      sprint,
+    };
+  }
   // ==========================================
   // ALLOCATION ACCESS
   // ==========================================
