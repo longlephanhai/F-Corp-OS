@@ -11,6 +11,7 @@ import { UserSprint, UserSprintStatus } from './entities/user-sprint.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { User } from '../users/entities/user.entity';
 import { Task, TaskStatus } from '../task/entities/task.entity';
+import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
 import {
   PmRealtimeAction,
   PmRealtimeService,
@@ -30,6 +31,7 @@ export class UserSprintService {
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
     private readonly pmRealtimeService: PmRealtimeService,
+    private readonly sprintAllocationInvitationService: SprintAllocationInvitationService,
   ) {}
 
   // ==========================================
@@ -320,7 +322,10 @@ export class UserSprintService {
       },
       relations: {
         user: true,
-        sprint: true,
+
+        sprint: {
+          project: true,
+        },
       },
     });
 
@@ -351,6 +356,29 @@ export class UserSprintService {
     const savedAllocation = await this.userSprintRepo.save(allocation);
 
     await this.publishAllocationChanged(savedAllocation, 'STATUS_CHANGED');
+    // ==========================================
+    // SEND INVITATION TO DEV
+    // ==========================================
+
+    await this.sprintAllocationInvitationService.send({
+      userId: savedAllocation.userId,
+
+      allocationId: savedAllocation.id,
+
+      sprintId: allocation.sprint.id,
+
+      sprintName: allocation.sprint.name ?? 'Sprint',
+
+      projectId: allocation.sprint.projectId,
+
+      projectName: allocation.sprint.project?.name ?? 'Dự án',
+
+      percentage: Number(savedAllocation.percitant ?? 0),
+
+      startDate: allocation.sprint.startDate ?? null,
+
+      endDate: allocation.sprint.endDate ?? null,
+    });
 
     return savedAllocation;
   }

@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<
   },
 
   PENDING_APPROVAL: {
-    label: "Chờ phê duyệt",
+    label: "Chờ Dev phản hồi",
     color: "gold",
   },
 
@@ -247,7 +247,7 @@ export const SprintAllocationTable: React.FC<Props> = ({
                   void handleSubmitApproval(record);
                 }}
               >
-                Gửi phê duyệt
+                Gửi lời mời
               </Button>
 
               <Button
@@ -267,7 +267,7 @@ export const SprintAllocationTable: React.FC<Props> = ({
         // ------------------------------------
 
         if (status === "PENDING_APPROVAL") {
-          return <Text type="warning">Đang chờ phê duyệt</Text>;
+          return <Text type="warning"> Đang chờ Dev phản hồi</Text>;
         }
 
         // ------------------------------------

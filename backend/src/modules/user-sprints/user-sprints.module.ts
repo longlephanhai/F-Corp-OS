@@ -10,15 +10,18 @@ import { User } from '../users/entities/user.entity';
 import { Task } from '../task/entities/task.entity';
 import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 import { PmAccessModule } from '../pm-access/pm-access.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserSprint, Sprint, User, Task]),
     PmRealtimeModule,
     PmAccessModule,
+    NotificationsModule,
   ],
 
   controllers: [UserSprintController],
 
-  providers: [UserSprintService],
+  providers: [UserSprintService, SprintAllocationInvitationService],
 })
 export class UserSprintsModule {}
