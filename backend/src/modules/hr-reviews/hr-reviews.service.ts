@@ -88,48 +88,185 @@ export class HrReviewsService {
    * Tạo mới một Review Cycle với trạng thái mặc định DRAFT.
    * Validate logic nghiệp vụ: endDate phải sau startDate.
    */
-  async createCycle(dto: CreateReviewCycleDto, user: IUser): Promise<ReviewCycle> {
-    const start = new Date(dto.startDate);
-    const end = new Date(dto.endDate);
+  async createCycle(
+    dto: CreateReviewCycleDto,
+    user: IUser,
+  ): Promise<ReviewCycle> {
+    const start = new Date(
+      dto.startDate,
+    );
+
+    const end = new Date(
+      dto.endDate,
+    );
 
     if (end <= start) {
-      throw new BadRequestException('endDate phải sau startDate');
-    }
-
-    const auditUser = { id: user?.id ?? '', email: user?.email ?? '' };
-
-    // 1. Tạo và lưu ReviewCycle
-    const cycle = this.reviewCycleRepository.create({
-      name: dto.name,
-      startDate: start,
-      endDate: end,
-      status: ReviewCycleStatus.DRAFT,
-      createdBy: auditUser,
-      updatedBy: auditUser,
-    });
-
-    const savedCycle = await this.reviewCycleRepository.save(cycle);
-
-    // 2. Nếu có employeeIds, tự động tạo ReviewRecord PENDING cho từng nhân viên
-    if (dto.employeeIds && dto.employeeIds.length > 0) {
-      const records = dto.employeeIds.map((empId) =>
-        this.reviewRecordRepository.create({
-          // TypeORM chấp nhận relation partial { id } — không cần fetch full entity
-          employee: { id: empId } as any,
-          reviewCycle: savedCycle,
-          status: ReviewRecordStatus.PENDING,
-          createdBy: auditUser,
-          updatedBy: auditUser,
-        }),
+      throw new BadRequestException(
+        'Ngày kết thúc phải sau ngày bắt đầu.',
       );
-
-      // Bulk-save toàn bộ records trong một lần gọi DB
-      await this.reviewRecordRepository.save(records);
     }
 
-    return savedCycle;
-  }
+    const employeeIds =
+      dto.employeeIds ?? [];
 
+    /*
+     * Không âm thầm loại duplicate.
+     *
+     * Nếu frontend gửi cùng một nhân viên
+     * hai lần thì đó là request không hợp lệ.
+     */
+    const uniqueEmployeeIds = [
+      ...new Set(employeeIds),
+    ];
+
+    if (
+      uniqueEmployeeIds.length !==
+      employeeIds.length
+    ) {
+      throw new BadRequestException(
+        'Danh sách nhân viên tham gia kỳ đánh giá có dữ liệu trùng lặp.',
+      );
+    }
+
+    const auditUser = {
+      id: user?.id ?? '',
+      email: user?.email ?? '',
+    };
+
+    return this.dataSource.transaction(
+      async (manager) => {
+        /*
+         * Validate toàn bộ employee trước khi
+         * tạo ReviewCycle.
+         *
+         * Nếu có một ID không tồn tại thì
+         * không lưu cycle dang dở.
+         */
+        let employees: User[] = [];
+
+        if (
+          uniqueEmployeeIds.length >
+          0
+        ) {
+          employees = await manager
+            .getRepository(User)
+            .createQueryBuilder(
+              'employee',
+            )
+            .where(
+              'employee.id IN (:...employeeIds)',
+              {
+                employeeIds:
+                  uniqueEmployeeIds,
+              },
+            )
+            .andWhere(
+              'employee.isDeleted = :isDeleted',
+              {
+                isDeleted: false,
+              },
+            )
+            .getMany();
+
+          if (
+            employees.length !==
+            uniqueEmployeeIds.length
+          ) {
+            const foundIds =
+              new Set(
+                employees.map(
+                  (employee) =>
+                    employee.id,
+                ),
+              );
+
+            const missingIds =
+              uniqueEmployeeIds.filter(
+                (employeeId) =>
+                  !foundIds.has(
+                    employeeId,
+                  ),
+              );
+
+            throw new BadRequestException(
+              `Không tìm thấy nhân viên hợp lệ: ${missingIds.join(', ')}.`,
+            );
+          }
+        }
+
+        /*
+         * Tạo cycle và records bằng cùng
+         * EntityManager.
+         *
+         * Bất kỳ bước nào lỗi:
+         * toàn bộ transaction rollback.
+         */
+        const cycle =
+          manager.create(
+            ReviewCycle,
+            {
+              name:
+                dto.name.trim(),
+
+              startDate:
+                start,
+
+              endDate:
+                end,
+
+              status:
+                ReviewCycleStatus.DRAFT,
+
+              createdBy:
+                auditUser,
+
+              updatedBy:
+                auditUser,
+            },
+          );
+
+        const savedCycle =
+          await manager.save(
+            ReviewCycle,
+            cycle,
+          );
+
+        if (
+          employees.length > 0
+        ) {
+          const records =
+            employees.map(
+              (employee) =>
+                manager.create(
+                  ReviewRecord,
+                  {
+                    employee,
+
+                    reviewCycle:
+                      savedCycle,
+
+                    status:
+                      ReviewRecordStatus.PENDING,
+
+                    createdBy:
+                      auditUser,
+
+                    updatedBy:
+                      auditUser,
+                  },
+                ),
+            );
+
+          await manager.save(
+            ReviewRecord,
+            records,
+          );
+        }
+
+        return savedCycle;
+      },
+    );
+  }
   /**
    * Trả về số liệu tổng hợp của toàn bộ Review Records (không phân trang).
    * Dùng Promise.all để chạy 4 query COUNT song song, tối ưu performance.
