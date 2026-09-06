@@ -309,7 +309,12 @@ export class SprintAllocationResponseService {
     // ========================================
     // PM REALTIME REFRESH
     // ========================================
-
+    console.log('[Allocation Response Realtime]', {
+      allocationId: allocation.id,
+      sprintId: allocation.sprintId,
+      status: allocation.status,
+      accepted,
+    });
     await this.pmRealtimeService.publishSprintChanged(allocation.sprintId, {
       entity: 'ALLOCATION',
 

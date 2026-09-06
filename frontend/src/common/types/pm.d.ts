@@ -114,6 +114,8 @@ export interface UserSprintItem {
     fullName: string;
     email: string;
   };
+  responseReason?: string | null;
+  respondedAt?: string | null;
 }
 
 export interface SkillEvidence {
@@ -183,4 +185,3 @@ export interface ChatMessage {
     email: string;
   };
 }
-

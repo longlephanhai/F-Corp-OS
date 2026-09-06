@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { socket } from "../config/socket";
+import { connectSocket, socket } from "../config/socket";
 
 export interface PmProjectChangedEvent {
   type: "PM_PROJECT_CHANGED";
@@ -58,21 +58,54 @@ export const usePmProjectRealtime = ({
   // ========================================
 
   useEffect(() => {
-    if (!projectId) {
+    // Sprint page có thể listen chỉ bằng
+    // sprintId, không bắt buộc phải đợi
+    // sprintInfo/projectId load xong.
+    if (!projectId && !sprintId) {
       return;
     }
 
+    // Hook realtime phải tự đảm bảo
+    // main socket đã được connect.
+    connectSocket();
+
+    console.log("[PM Realtime] Listener mounted:", {
+      projectId,
+      sprintId,
+      socketConnected: socket.connected,
+      socketId: socket.id,
+    });
+
     const handleChange = (event: PmProjectChangedEvent) => {
-      if (!event || event.projectId !== projectId) {
+      console.log("[PM Realtime] Event received:", event);
+
+      if (!event) {
         return;
       }
 
-      // Nếu page đang ở một Sprint cụ thể:
+      // ====================================
+      // SPRINT-SPECIFIC PAGE
       //
-      // - event Sprint khác => bỏ qua
-      // - event project-level (sprintId null)
-      //   vẫn refresh.
-      if (sprintId && event.sprintId && event.sprintId !== sprintId) {
+      // Nếu đang đứng trong Sprint cụ thể,
+      // sprintId là filter đáng tin nhất.
+      // ====================================
+
+      if (sprintId) {
+        if (event.sprintId && event.sprintId !== sprintId) {
+          return;
+        }
+
+        // Project-level event không có
+        // sprintId thì dùng projectId
+        // để kiểm tra nếu đã biết project.
+        if (!event.sprintId && projectId && event.projectId !== projectId) {
+          return;
+        }
+      } else if (projectId && event.projectId !== projectId) {
+        // ==================================
+        // PROJECT-SPECIFIC PAGE
+        // ==================================
+
         return;
       }
 
@@ -80,9 +113,23 @@ export const usePmProjectRealtime = ({
         window.clearTimeout(timerRef.current);
       }
 
-      timerRef.current = window.setTimeout(() => {
-        void onChangeRef.current(event);
-      }, debounceMs);
+      timerRef.current = window.setTimeout(
+        () => {
+          console.log("[PM Realtime] Apply refresh:", {
+            entity: event.entity,
+
+            action: event.action,
+
+            entityId: event.entityId,
+
+            sprintId: event.sprintId,
+          });
+
+          void onChangeRef.current(event);
+        },
+
+        debounceMs,
+      );
     };
 
     socket.on("pm_project_changed", handleChange);

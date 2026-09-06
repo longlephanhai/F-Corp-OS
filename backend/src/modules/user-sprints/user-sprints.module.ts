@@ -13,6 +13,7 @@ import { PmAccessModule } from '../pm-access/pm-access.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
 import { SprintAllocationResponseService } from './sprint-allocation-response.service';
+import { SprintAllocationRetryService } from './sprint-allocation-retry.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserSprint, Sprint, User, Task]),
@@ -27,6 +28,7 @@ import { SprintAllocationResponseService } from './sprint-allocation-response.se
     UserSprintService,
     SprintAllocationInvitationService,
     SprintAllocationResponseService,
+    SprintAllocationRetryService,
   ],
 })
 export class UserSprintsModule {}

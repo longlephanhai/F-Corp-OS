@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 import { notification } from "antd";
 
-import { socket } from "../../config/socket";
+import { connectSocket, socket } from "../../config/socket";
 
 interface SprintAllocationInvitationEvent {
   type: "SPRINT_ALLOCATION_INVITATION";
@@ -32,6 +32,13 @@ export const SprintInvitationSocketListener = () => {
   const [notificationApi, contextHolder] = notification.useNotification();
 
   useEffect(() => {
+    connectSocket();
+
+    console.log("[Sprint Invitation] Listener mounted:", {
+      socketConnected: socket.connected,
+
+      socketId: socket.id,
+    });
     const handleInvitation = (event: SprintAllocationInvitationEvent) => {
       console.log("[Sprint Invitation] Received:", event);
 

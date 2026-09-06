@@ -24,6 +24,9 @@ import { UserSprintStatus } from './entities/user-sprint.entity';
 import { SprintAllocationResponseService } from './sprint-allocation-response.service';
 
 import { RespondSprintInvitationDto } from './dto/respond-sprint-invitation.dto';
+import { RetrySprintInvitationDto } from './dto/retry-sprint-invitation.dto';
+
+import { SprintAllocationRetryService } from './sprint-allocation-retry.service';
 
 @UseGuards(JwtAuthGuard)
 @SkipCheckPermission()
@@ -35,6 +38,8 @@ export class UserSprintController {
     private readonly pmAccessService: PmAccessService,
 
     private readonly sprintAllocationResponseService: SprintAllocationResponseService,
+
+    private readonly sprintAllocationRetryService: SprintAllocationRetryService,
   ) {}
 
   // ==========================================
@@ -345,6 +350,43 @@ export class UserSprintController {
   // Service vẫn chịu trách nhiệm state machine
   // và capacity re-check.
   // ==========================================
+
+  // ==========================================
+  // PM - RETRY DECLINED INVITATION
+  //
+  // PATCH /user-sprint/:id/retry-invitation
+  // ==========================================
+
+  @Patch(':id/retry-invitation')
+  async retrySprintInvitation(
+    @Param('id')
+    id: string,
+
+    @Body()
+    body: RetrySprintInvitationDto,
+
+    @Req()
+    req: any,
+  ) {
+    // ========================================
+    // PM OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertAllocationAccess(req.user.id, id);
+
+    const data = await this.sprintAllocationRetryService.retry(
+      id,
+      body.percentage,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: 'Đã gửi lại lời mời Sprint tới Dev',
+
+      data,
+    };
+  }
 
   @Patch(':id')
   async updateUserSprintStatus(

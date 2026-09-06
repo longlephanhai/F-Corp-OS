@@ -5,7 +5,6 @@ import type {
   TaskItem,
   TeamMember,
   UserSprintItem,
-  
 } from "../common/types/pm";
 
 export const pmApi = {
@@ -291,4 +290,16 @@ export const pmApi = {
   removeTaskDependency: (taskId: string, dependencyId: string) => {
     return axios.delete(`/tasks/${taskId}/dependencies/${dependencyId}`);
   },
+
+  retrySprintInvitation: (
+    allocationId: string,
+
+    percentage?: number,
+  ) =>
+    axios.patch<IBackendRes<any>>(
+      `/user-sprint/${allocationId}/retry-invitation`,
+      {
+        percentage,
+      },
+    ),
 };
