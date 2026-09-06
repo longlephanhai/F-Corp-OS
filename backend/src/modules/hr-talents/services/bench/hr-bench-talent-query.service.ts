@@ -14,7 +14,7 @@ export class HrBenchTalentQueryService {
     @InjectRepository(User)
     private readonly userRepository:
       Repository<User>,
-  ) {}
+  ) { }
 
   async findPage(
     query: GetHrBenchTalentsDto,
@@ -137,11 +137,79 @@ export class HrBenchTalentQueryService {
     };
   }
 
+  async findAllBench() {
+    const users =
+      await this.userRepository
+        .createQueryBuilder('user')
+
+        .leftJoinAndSelect(
+          'user.role',
+          'role',
+        )
+
+        .leftJoinAndSelect(
+          'user.userSkills',
+          'userSkill',
+          'userSkill.isDeleted = :userSkillDeleted',
+          {
+            userSkillDeleted:
+              false,
+          },
+        )
+
+        .leftJoinAndSelect(
+          'userSkill.skill',
+          'skill',
+          'skill.isDeleted = :skillDeleted',
+          {
+            skillDeleted:
+              false,
+          },
+        )
+
+        .leftJoinAndSelect(
+          'userSkill.evidences',
+          'evidence',
+          'evidence.isDeleted = :evidenceDeleted',
+          {
+            evidenceDeleted:
+              false,
+          },
+        )
+
+        .where(
+          'user.isDeleted = :userDeleted',
+          {
+            userDeleted:
+              false,
+          },
+        )
+
+        .andWhere(
+          'user.status = :benchStatus',
+          {
+            benchStatus:
+              UserStatusType.BENCH,
+          },
+        )
+
+        .distinct(true)
+
+        .orderBy(
+          'user.fullName',
+          'ASC',
+        )
+
+        .getMany();
+
+    return users;
+  }
+
   private applySearchFilter(
     queryBuilder:
       ReturnType<
         Repository<User>[
-          'createQueryBuilder'
+        'createQueryBuilder'
         ]
       >,
 
@@ -167,7 +235,7 @@ export class HrBenchTalentQueryService {
     queryBuilder:
       ReturnType<
         Repository<User>[
-          'createQueryBuilder'
+        'createQueryBuilder'
         ]
       >,
 
@@ -190,7 +258,7 @@ export class HrBenchTalentQueryService {
     queryBuilder:
       ReturnType<
         Repository<User>[
-          'createQueryBuilder'
+        'createQueryBuilder'
         ]
       >,
 

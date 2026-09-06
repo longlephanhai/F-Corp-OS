@@ -98,4 +98,16 @@ export class HrTalentsService {
     return this.benchReadinessService
       .findAll(query);
   }
+
+  getWorkforceSummary() {
+    return this.directoryService
+      .getWorkforceSummary();
+  }
+
+  getBenchReadinessSummary(
+    staleDays = 90,
+  ) {
+    return this.benchReadinessService
+      .getSummary(staleDays);
+  }
 }

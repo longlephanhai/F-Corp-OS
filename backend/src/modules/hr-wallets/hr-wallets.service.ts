@@ -434,4 +434,66 @@ export class HrWalletsService {
       result,
     };
   }
+
+  async getDashboardStats() {
+    const [
+      walletAggregate,
+      rewardTransactions,
+      penaltyTransactions,
+    ] = await Promise.all([
+      this.walletRepository
+        .createQueryBuilder('wallet')
+        .select(
+          'COUNT(wallet.id)',
+          'totalWallets',
+        )
+        .addSelect(
+          'COALESCE(SUM(wallet.balance), 0)',
+          'totalBalance',
+        )
+        .where(
+          'wallet.isDeleted = :isDeleted',
+          {
+            isDeleted: false,
+          },
+        )
+        .getRawOne(),
+
+      this.transactionHistoryRepository
+        .count({
+          where: {
+            type:
+              TransactionType.REWARD,
+            isDeleted: false,
+          },
+        }),
+
+      this.transactionHistoryRepository
+        .count({
+          where: {
+            type:
+              TransactionType.PENALTY,
+            isDeleted: false,
+          },
+        }),
+    ]);
+
+    return {
+      totalWallets:
+        Number(
+          walletAggregate
+            ?.totalWallets ?? 0,
+        ),
+
+      totalBalance:
+        Number(
+          walletAggregate
+            ?.totalBalance ?? 0,
+        ),
+
+      rewardTransactions,
+
+      penaltyTransactions,
+    };
+  }
 }

@@ -16,7 +16,7 @@ export class HrBenchTalentPoolService {
 
     private readonly benchPerformanceService:
       HrBenchPerformanceService,
-  ) {}
+  ) { }
 
   async findAll(
     query: GetHrBenchTalentsDto,
@@ -114,14 +114,42 @@ export class HrBenchTalentPoolService {
           total === 0
             ? 0
             : Math.ceil(
-                total /
-                  limit,
-              ),
+              total /
+              limit,
+            ),
 
         total,
       },
 
       result,
     };
+  }
+
+  async findAllForSummary() {
+    const users =
+      await this.benchTalentQueryService
+        .findAllBench();
+
+    const employeeIds =
+      users.map(
+        (user) =>
+          user.id,
+      );
+
+    const latestReviewByEmployeeId =
+      await this.benchPerformanceService
+        .getLatestCompletedReviewMap(
+          employeeIds,
+        );
+
+    return users.map(
+      (user) =>
+        mapBenchTalent(
+          user,
+          latestReviewByEmployeeId.get(
+            user.id,
+          ) ?? null,
+        ),
+    );
   }
 }

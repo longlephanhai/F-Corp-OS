@@ -73,4 +73,61 @@ export class HrBenchReadinessService {
             result,
         };
     }
+
+    async getSummary(
+        staleDays = 90,
+    ) {
+        const talents =
+            await this.benchTalentPoolService
+                .findAllForSummary();
+
+        const readinessResults =
+            talents.map(
+                (talent) =>
+                    scoreBenchReadiness(
+                        talent,
+                        staleDays,
+                    ),
+            );
+
+        const ready =
+            readinessResults.filter(
+                (item) =>
+                    item.status === 'READY',
+            ).length;
+
+        const partiallyReady =
+            readinessResults.filter(
+                (item) =>
+                    item.status ===
+                    'PARTIALLY_READY',
+            ).length;
+
+        const needsVerification =
+            readinessResults.filter(
+                (item) =>
+                    item.status ===
+                    'NEEDS_VERIFICATION',
+            ).length;
+
+        const needsProfileUpdate =
+            readinessResults.filter(
+                (item) =>
+                    item.status ===
+                    'NEEDS_PROFILE_UPDATE',
+            ).length;
+
+        return {
+            totalBench:
+                readinessResults.length,
+
+            ready,
+
+            partiallyReady,
+
+            needsVerification,
+
+            needsProfileUpdate,
+        };
+    }
 }

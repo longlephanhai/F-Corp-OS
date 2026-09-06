@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'modules/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { GetHrTalentsDto } from '../dto/get-hr-talents.dto';
+import { UserStatusType } from 'common/enum/user.enum';
 
 @Injectable()
 export class HrTalentDirectoryService {
@@ -273,6 +274,107 @@ export class HrTalentDirectoryService {
             },
 
             result,
+        };
+    }
+    async getWorkforceSummary() {
+        const raw = await this.userRepository
+            .createQueryBuilder('user')
+            .select(
+                'COUNT(user.id)',
+                'totalEmployees',
+            )
+            .addSelect(
+                `
+            SUM(
+                CASE
+                    WHEN user.status = :inProjectStatus
+                    THEN 1
+                    ELSE 0
+                END
+            )
+            `,
+                'inProject',
+            )
+            .addSelect(
+                `
+            SUM(
+                CASE
+                    WHEN user.status = :availableStatus
+                    THEN 1
+                    ELSE 0
+                END
+            )
+            `,
+                'available',
+            )
+            .addSelect(
+                `
+            SUM(
+                CASE
+                    WHEN user.status = :benchStatus
+                    THEN 1
+                    ELSE 0
+                END
+            )
+            `,
+                'bench',
+            )
+            .where(
+                'user.isDeleted = :isDeleted',
+                {
+                    isDeleted: false,
+                },
+            )
+            .setParameters({
+                inProjectStatus:
+                    UserStatusType.IN_PROJECT,
+
+                availableStatus:
+                    UserStatusType.AVAILABLE,
+
+                benchStatus:
+                    UserStatusType.BENCH,
+            })
+            .getRawOne();
+
+        const totalEmployees =
+            Number(
+                raw?.totalEmployees ?? 0,
+            );
+
+        const inProject =
+            Number(
+                raw?.inProject ?? 0,
+            );
+
+        const available =
+            Number(
+                raw?.available ?? 0,
+            );
+
+        const bench =
+            Number(
+                raw?.bench ?? 0,
+            );
+
+        return {
+            totalEmployees,
+            inProject,
+            available,
+            bench,
+
+            benchRate:
+                totalEmployees === 0
+                    ? 0
+                    : Number(
+                        (
+                            (
+                                bench /
+                                totalEmployees
+                            ) *
+                            100
+                        ).toFixed(1),
+                    ),
         };
     }
 }
