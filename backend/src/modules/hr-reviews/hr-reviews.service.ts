@@ -1,5 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'; import { InjectRepository } from '@nestjs/typeorm';
 import { ReviewCycleStatus, ReviewRecordStatus } from 'common/enum/hr-review.enum';
 import type { IUser } from 'common/types/user.interface';
 import { User } from 'modules/users/entities/user.entity';
@@ -186,57 +190,195 @@ export class HrReviewsService {
     updateDto: UpdateReviewStatusDto,
     user: IUser,
   ): Promise<ReviewRecord> {
-    const record = await this.reviewRecordRepository.findOne({
-      where: { id, isDeleted: false },
-    });
+    return this.dataSource.transaction(
+      async (manager) => {
+        /*
+         * Lock ReviewRecord ngay trong transaction.
+         *
+         * Hai request thay đổi trạng thái cùng lúc
+         * sẽ được serialize tại đây.
+         */
+        const record = await manager
+          .getRepository(ReviewRecord)
+          .createQueryBuilder('record')
+          .leftJoinAndSelect(
+            'record.employee',
+            'employee',
+          )
+          .leftJoinAndSelect(
+            'record.reviewCycle',
+            'reviewCycle',
+          )
+          .setLock('pessimistic_write')
+          .where(
+            'record.id = :id',
+            {
+              id,
+            },
+          )
+          .andWhere(
+            'record.isDeleted = :isDeleted',
+            {
+              isDeleted: false,
+            },
+          )
+          .getOne();
 
-    if (!record) {
-      throw new NotFoundException(`Review record with id "${id}" not found`);
-    }
-
-    // Nếu chuyển sang trạng thái COMPLETED, chạy logic thưởng F-Token trong 1 Transaction
-    if (updateDto.status === ReviewRecordStatus.COMPLETED) {
-      return this.dataSource.transaction(async (manager) => {
-        record.status = updateDto.status;
-        if (updateDto.finalScore !== undefined) {
-          record.finalScore = updateDto.finalScore;
+        if (!record) {
+          throw new NotFoundException(
+            `Review record with id "${id}" not found`,
+          );
         }
 
-        // Cập nhật audit field
-        record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
+        /*
+         * Lifecycle hợp lệ duy nhất:
+         *
+         * PENDING
+         *   ↓
+         * IN_REVIEW
+         *   ↓
+         * COMPLETED
+         */
+        const allowedTransitions: Record<
+          ReviewRecordStatus,
+          ReviewRecordStatus[]
+        > = {
+          [ReviewRecordStatus.PENDING]: [
+            ReviewRecordStatus.IN_REVIEW,
+          ],
 
-        // 1. Lưu record đã cập nhật
-        const savedRecord = await manager.save(record);
+          [ReviewRecordStatus.IN_REVIEW]: [
+            ReviewRecordStatus.COMPLETED,
+          ],
 
-        // 2. Tính thưởng và gọi logic thưởng qua Wallet service nếu có
-        if (savedRecord.finalScore !== null && savedRecord.finalScore !== undefined) {
-          const amount = this.rewardRuleService.calculateScoreReward(Number(savedRecord.finalScore));
+          [ReviewRecordStatus.COMPLETED]:
+            [],
+        };
 
-          if (amount > 0 && savedRecord.employee?.id) {
-            await this.hrWalletsService.processRewardWithManager(
-              savedRecord.employee.id,
-              amount,
-              savedRecord.id,
-              manager,
-              user?.id ?? ''
+        const allowedNextStatuses =
+          allowedTransitions[
+          record.status
+          ] ?? [];
+
+        if (
+          !allowedNextStatuses.includes(
+            updateDto.status,
+          )
+        ) {
+          throw new BadRequestException(
+            `Không thể chuyển trạng thái từ ${record.status} sang ${updateDto.status}.`,
+          );
+        }
+
+        /*
+         * finalScore không được gửi khi chỉ
+         * chuyển PENDING -> IN_REVIEW.
+         */
+        if (
+          updateDto.status !==
+          ReviewRecordStatus.COMPLETED &&
+          updateDto.finalScore !==
+          undefined
+        ) {
+          throw new BadRequestException(
+            'Điểm cuối chỉ được gửi khi hoàn tất đánh giá.',
+          );
+        }
+
+        if (
+          updateDto.status ===
+          ReviewRecordStatus.COMPLETED
+        ) {
+          /*
+           * Giữ backward compatibility:
+           * finalScore có thể đã được HR nhập
+           * qua endpoint /score hoặc gửi cùng
+           * request hoàn tất.
+           */
+          const finalScore =
+            updateDto.finalScore !==
+              undefined
+              ? updateDto.finalScore
+              : record.finalScore;
+
+          if (
+            record.tempScore === null ||
+            record.tempScore === undefined
+          ) {
+            throw new BadRequestException(
+              'PM chưa hoàn tất đánh giá sơ bộ.',
             );
           }
+
+          if (
+            finalScore === null ||
+            finalScore === undefined
+          ) {
+            throw new BadRequestException(
+              'HR chưa nhập điểm đánh giá cuối cùng.',
+            );
+          }
+
+          record.status =
+            ReviewRecordStatus.COMPLETED;
+
+          record.finalScore =
+            finalScore;
+
+          record.updatedBy = {
+            id: user?.id ?? '',
+            email: user?.email ?? '',
+          };
+
+          const savedRecord =
+            await manager.save(
+              ReviewRecord,
+              record,
+            );
+
+          const amount =
+            this.rewardRuleService
+              .calculateScoreReward(
+                Number(
+                  savedRecord.finalScore,
+                ),
+              );
+
+          if (
+            amount > 0 &&
+            savedRecord.employee?.id
+          ) {
+            await this.hrWalletsService
+              .processRewardWithManager(
+                savedRecord.employee.id,
+                amount,
+                savedRecord.id,
+                manager,
+                user?.id ?? '',
+              );
+          }
+
+          return savedRecord;
         }
 
-        return savedRecord;
-      });
-    }
-    record.status = updateDto.status;
-    if (updateDto.finalScore !== undefined) {
-      record.finalScore = updateDto.finalScore;
-    }
+        /*
+         * Đến đây chỉ còn:
+         * PENDING -> IN_REVIEW
+         */
+        record.status =
+          ReviewRecordStatus.IN_REVIEW;
 
-    // Cập nhật audit field `updatedBy` với thông tin người dùng hiện tại
-    // Optional chaining đảm bảo không crash ngay cả khi user bị undefined
-    // (bảo vệ phòng ngừa — sau khi fix @SkipCheckPermission(), user luôn có giá trị)
-    record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
+        record.updatedBy = {
+          id: user?.id ?? '',
+          email: user?.email ?? '',
+        };
 
-    return this.reviewRecordRepository.save(record);
+        return manager.save(
+          ReviewRecord,
+          record,
+        );
+      },
+    );
   }
 
   /**
@@ -249,42 +391,167 @@ export class HrReviewsService {
     dto: UpdateReviewScoreDto,
     user: IUser,
   ): Promise<ReviewRecord> {
-    const record = await this.reviewRecordRepository.findOne({
-      where: { id, isDeleted: false },
-    });
+    return this.dataSource.transaction(
+      async (manager) => {
+        const record = await manager
+          .getRepository(ReviewRecord)
+          .createQueryBuilder('record')
+          .leftJoinAndSelect(
+            'record.employee',
+            'employee',
+          )
+          .setLock('pessimistic_write')
+          .where(
+            'record.id = :id',
+            {
+              id,
+            },
+          )
+          .andWhere(
+            'record.isDeleted = :isDeleted',
+            {
+              isDeleted: false,
+            },
+          )
+          .getOne();
 
-    if (!record) {
-      throw new NotFoundException(`Review record with id "${id}" not found`);
-    }
+        if (!record) {
+          throw new NotFoundException(
+            `Review record with id "${id}" not found`,
+          );
+        }
 
-    // ── Business rule: HR không được chốt điểm khi PM chưa đánh giá ──────────
-    // finalScore chỉ được ghi khi đã có tempScore (từ DB hoặc từ request hiện tại)
-    const incomingTempScore = dto.tempScore;
-    const existingTempScore = record.tempScore;
-    if (
-      dto.finalScore !== undefined &&
-      (existingTempScore === null || existingTempScore === undefined) &&
-      (incomingTempScore === null || incomingTempScore === undefined)
-    ) {
-      throw new BadRequestException(
-        'PM chưa đánh giá chuyên môn, hệ thống không cho phép HR chốt điểm cuối cùng.',
-      );
-    }
+        /*
+         * PENDING chưa được chấm.
+         * COMPLETED đã đóng và read-only.
+         */
+        if (
+          record.status !==
+          ReviewRecordStatus.IN_REVIEW
+        ) {
+          throw new BadRequestException(
+            'Chỉ có thể cập nhật điểm khi đánh giá đang ở trạng thái IN_REVIEW.',
+          );
+        }
 
-    // Chỉ cập nhật các field được gửi lên (partial update)
-    if (dto.tempScore !== undefined) {
-      record.tempScore = dto.tempScore;
-    }
-    if (dto.finalScore !== undefined) {
-      record.finalScore = dto.finalScore;
-    }
-    if (dto.reviewerNote !== undefined) {
-      record.reviewerNote = dto.reviewerNote;
-    }
+        const roleName =
+          user?.role?.name
+            ?.toUpperCase();
 
-    record.updatedBy = { id: user?.id ?? '', email: user?.email ?? '' };
+        const isPM =
+          roleName === 'PM';
 
-    return this.reviewRecordRepository.save(record);
+        const isHR =
+          roleName === 'HR';
+
+        if (!isPM && !isHR) {
+          throw new ForbiddenException(
+            'Bạn không có quyền cập nhật điểm đánh giá.',
+          );
+        }
+
+        // ─────────────────────────────
+        // PM
+        // ─────────────────────────────
+        if (isPM) {
+          if (
+            record.employee
+              ?.managerId !==
+            user.id
+          ) {
+            throw new ForbiddenException(
+              'Bạn không có quyền đánh giá nhân viên này.',
+            );
+          }
+
+          if (
+            dto.finalScore !==
+            undefined
+          ) {
+            throw new ForbiddenException(
+              'PM không có quyền cập nhật điểm cuối.',
+            );
+          }
+
+          if (
+            dto.tempScore ===
+            undefined &&
+            dto.reviewerNote ===
+            undefined
+          ) {
+            throw new BadRequestException(
+              'PM phải cung cấp điểm sơ bộ hoặc nhận xét.',
+            );
+          }
+
+          if (
+            dto.tempScore !==
+            undefined
+          ) {
+            record.tempScore =
+              dto.tempScore;
+          }
+
+          if (
+            dto.reviewerNote !==
+            undefined
+          ) {
+            record.reviewerNote =
+              dto.reviewerNote;
+          }
+        }
+
+        // ─────────────────────────────
+        // HR
+        // ─────────────────────────────
+        if (isHR) {
+          if (
+            dto.tempScore !==
+            undefined ||
+            dto.reviewerNote !==
+            undefined
+          ) {
+            throw new ForbiddenException(
+              'HR không có quyền sửa điểm sơ bộ hoặc nhận xét của PM.',
+            );
+          }
+
+          if (
+            dto.finalScore ===
+            undefined
+          ) {
+            throw new BadRequestException(
+              'HR phải cung cấp điểm đánh giá cuối cùng.',
+            );
+          }
+
+          if (
+            record.tempScore ===
+            null ||
+            record.tempScore ===
+            undefined
+          ) {
+            throw new BadRequestException(
+              'PM chưa đánh giá chuyên môn, hệ thống không cho phép HR chốt điểm cuối cùng.',
+            );
+          }
+
+          record.finalScore =
+            dto.finalScore;
+        }
+
+        record.updatedBy = {
+          id: user?.id ?? '',
+          email:
+            user?.email ?? '',
+        };
+
+        return manager.save(
+          ReviewRecord,
+          record,
+        );
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------

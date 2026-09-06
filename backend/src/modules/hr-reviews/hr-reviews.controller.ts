@@ -20,7 +20,6 @@ export class HrReviewsController {
    * Tạo mới một Review Cycle. Lưu thông tin người tạo qua @User() decorator.
    */
   @Post('cycles')
-  @SkipCheckPermission()
   @ResponseMessage('Tạo kỳ đánh giá thành công')
   createCycle(
     @Body() createDto: CreateReviewCycleDto,
@@ -49,7 +48,6 @@ export class HrReviewsController {
    * PHẢI khai báo TRƯỚC route /records để NestJS không hiểu nhầm 'stats' là :id param.
    */
   @Get('records/stats')
-  @SkipCheckPermission()
   @ResponseMessage('Get review stats successfully')
   getRecordStats() {
     return this.hrReviewsService.getRecordStats();
@@ -60,7 +58,6 @@ export class HrReviewsController {
    * Lấy danh sách bản ghi đánh giá với phân trang và bộ lọc tùy chọn.
    */
   @Get('records')
-  @SkipCheckPermission()
   @ResponseMessage('Get review records successfully')
   findAllRecords(@Query() query: GetReviewRecordsDto) {
     return this.hrReviewsService.findAllRecords(query);
@@ -71,7 +68,6 @@ export class HrReviewsController {
    * Cập nhật trạng thái (và điểm số) của một bản ghi đánh giá cụ thể.
    */
   @Patch('records/:id/status')
-  @SkipCheckPermission()
   @ResponseMessage('Update review status successfully')
   updateRecordStatus(
     @Param('id') id: string,
@@ -87,7 +83,6 @@ export class HrReviewsController {
    * PM gửi tempScore + reviewerNote; HR gửi finalScore.
    */
   @Patch('records/:id/score')
-  @SkipCheckPermission()
   @ResponseMessage('Update review score successfully')
   updateRecordScore(
     @Param('id') id: string,
@@ -103,7 +98,6 @@ export class HrReviewsController {
    * PHẢI khai báo SAU /records/stats để tránh NestJS khớp 'stats' như một :id UUID.
    */
   @Get('records/:id')
-  @SkipCheckPermission()
   @ResponseMessage('Get review record detail successfully')
   getRecordById(@Param('id') id: string) {
     return this.hrReviewsService.getRecordById(id);
