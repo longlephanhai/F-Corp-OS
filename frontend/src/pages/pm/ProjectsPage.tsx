@@ -16,6 +16,9 @@ import { PlusOutlined, FolderOpenOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { pmApi } from "../../api/pm"; // Đảm bảo đường dẫn đúng
 import type { ProjectItem } from "../../common/types/pm";
+import { MessageOutlined } from "@ant-design/icons";
+import { ProjectChatDrawer } from "../../components/pm/ProjectChatDrawer";
+
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -26,7 +29,7 @@ export const ProjectsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-
+  const [chatProject, setChatProject] = useState<ProjectItem | null>(null);
   // Gọi API lấy danh sách dự án
   const fetchProjects = async () => {
     setLoading(true);
@@ -49,6 +52,7 @@ export const ProjectsPage: React.FC = () => {
 
   // Xử lý submit form tạo dự án mới
   const handleCreateProject = async (values: any) => {
+    
     try {
       setLoading(true);
       const payload = {
@@ -57,7 +61,7 @@ export const ProjectsPage: React.FC = () => {
         startDate: values.dateRange[0].format("YYYY-MM-DD"),
         endDate: values.dateRange[1].format("YYYY-MM-DD"),
         // Tạm thời hardcode ID của PM (Lấy từ bảng users trong DB của bác)
-        pmId: "2ff0de6e-2759-4d11-aab7-42ca161f2933",
+        pmId: values.id , 
       };
 
       // Gọi API tạo dự án
@@ -122,20 +126,28 @@ export const ProjectsPage: React.FC = () => {
         );
       },
     },
-    {
+        {
       title: "THAO TÁC",
       key: "action",
       align: "right" as const,
       render: (_: any, record: ProjectItem) => (
-        <Button
-          type="primary"
-          ghost
-          icon={<FolderOpenOutlined />}
-          // BÙM! Khi bấm nút này, nó sẽ nhảy vào cái Command Center bạn làm hôm trước
-          onClick={() => navigate(`/pm/projects/${record.id}`)}
-        >
-          Vào Command Center
-        </Button>
+        <Space>
+          <Button
+            icon={<MessageOutlined />}
+            onClick={() => setChatProject(record)}
+          >
+            Chat
+          </Button>
+          <Button
+            type="primary"
+            ghost
+            icon={<FolderOpenOutlined />}
+            // BÙM! Khi bấm nút này, nó sẽ nhảy vào cái Command Center bạn làm hôm trước
+            onClick={() => navigate(`/pm/projects/${record.id}`)}
+          >
+            Vào Command Center
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -228,6 +240,14 @@ export const ProjectsPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+      {chatProject && (
+        <ProjectChatDrawer
+          open={!!chatProject}
+          onClose={() => setChatProject(null)}
+          projectId={chatProject.id}
+          projectName={chatProject.name}
+        />
+      )}
     </Card>
   );
 };

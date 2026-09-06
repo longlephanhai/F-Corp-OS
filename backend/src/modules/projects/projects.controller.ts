@@ -17,14 +17,13 @@ import { AddProjectManagerDto } from './dto/add-project-manager.dto';
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(private readonly projectsService: ProjectsService) { }
 
   @UseGuards(JwtAuthGuard)
   @SkipCheckPermission()
   @Post()
   async createProject(@Body() body: any) {
     const data = await this.projectsService.createProject(body);
-    return { statusCode: 201, message: 'Tạo dự án thành công', data };
   }
 
   @UseGuards(JwtAuthGuard)

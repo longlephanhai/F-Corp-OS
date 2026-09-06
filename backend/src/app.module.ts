@@ -42,6 +42,11 @@ import { Notification } from 'modules/notifications/entities/notification.entity
 import { WebsocketModule } from 'websockets/websocket.module';
 import { Websocket } from 'websockets/entities/websocket.entity';
 import { PmRealtimeModule } from './modules/pm-realtime/pm-realtime.module';
+
+
+import { ChatModule } from 'modules/chat/chat.module';
+import { ChatMessage } from 'modules/chat/entities/chat-message.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -77,6 +82,7 @@ import { PmRealtimeModule } from './modules/pm-realtime/pm-realtime.module';
           TransactionHistory,
           Notification,
           Websocket,
+          ChatMessage,
         ],
         synchronize: false,
       }),
@@ -101,8 +107,9 @@ import { PmRealtimeModule } from './modules/pm-realtime/pm-realtime.module';
     NotificationsModule,
     WebsocketModule,
     PmRealtimeModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

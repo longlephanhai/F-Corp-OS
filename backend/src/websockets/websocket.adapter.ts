@@ -35,7 +35,7 @@ export class WebsocketAdapter extends IoAdapter {
 
         return server;
     }
-
+    
     // async authMiddleware(socket: Socket, next: (err?: any) => void) {
     //     const { authorization } = socket.handshake.headers;
     //     if (!authorization) {
@@ -60,34 +60,74 @@ export class WebsocketAdapter extends IoAdapter {
     //     }
     // }
 
+    // async authMiddleware(socket: Socket, next: (err?: any) => void) {
+    //     try {
+    //         const authHeader = socket.handshake.headers?.authorization;
+    //         const authPayload = socket.handshake.auth?.token;
+    //         const rawToken = authHeader || authPayload;
+
+    //         if (!rawToken) {
+    //             return next(new Error('Unauthorized: Missing token'));
+    //         }
+
+    //         const accessToken = rawToken.replace(/^Bearer\s+/i, '').trim();
+
+    //         if (!accessToken) {
+    //             return next(new Error('Unauthorized: Access token is missing'));
+    //         }
+    //         const payload = await this.jwtService.verifyAsync(accessToken, {
+    //             secret: process.env.JWT_SECRET_KEY
+    //         });
+
+    //         socket.data.user = payload;
+
+    //         const userId = payload.id;
+    //         if (userId) {
+    //             socket.join(generatedRoomUserId(userId));
+    //         }
+
+    //         next();
+    //     } catch (error) {
+    //         next(error);
+    //     }
+
     async authMiddleware(socket: Socket, next: (err?: any) => void) {
+        const authToken = socket.handshake.auth?.token;
+        const { authorization } = socket.handshake.headers;
+
+        const accessToken = authToken || (authorization ? authorization.split(' ')[1] : undefined);
+
+        if (!accessToken) {
+            return next(new Error('Access token is missing'));
+
+        }
+
         try {
-            const authHeader = socket.handshake.headers?.authorization;
-            const authPayload = socket.handshake.auth?.token;
-            const rawToken = authHeader || authPayload;
-
-            if (!rawToken) {
-                return next(new Error('Unauthorized: Missing token'));
-            }
-
-            const accessToken = rawToken.replace(/^Bearer\s+/i, '').trim();
-
-            if (!accessToken) {
-                return next(new Error('Unauthorized: Access token is missing'));
-            }
             const payload = await this.jwtService.verifyAsync(accessToken, {
                 secret: process.env.JWT_SECRET_KEY
-            });
-
-            socket.data.user = payload;
-
+            })
             const userId = payload.id;
-            if (userId) {
-                socket.join(generatedRoomUserId(userId));
-            }
 
+            socket.data.user = {
+                id: payload.id,
+                email: payload.email,
+                fullName: payload.fullName,
+                role: payload.role,
+            };
+
+            await this.webSocketRepository.save({
+                id: socket.id,
+                userId: userId
+            })
+
+            socket.on('disconnect', async () => {
+                await this.webSocketRepository.delete({ id: socket.id }).catch((error) => {
+                    console.error(`Error deleting websocket with id ${socket.id}:`, error);
+                });
+            })
             next();
-        } catch (error) {
+        }
+        catch (error) {
             next(error);
         }
     }
