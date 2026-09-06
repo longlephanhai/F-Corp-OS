@@ -64,8 +64,6 @@ export interface CreateReviewCyclePaylod {
   name: string;
   startDate: string; // ISO date string "YYYY-MM-DD"
   endDate: string;   // ISO date string "YYYY-MM-DD"
-  description?: string;
-  /** Mảng UUID nhân viên sẽ được gán vào kỳ đánh giá (backend tự tạo ReviewRecord PENDING) */
   employeeIds?: string[];
 }
 

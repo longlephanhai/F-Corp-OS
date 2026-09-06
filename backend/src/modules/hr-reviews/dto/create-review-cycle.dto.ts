@@ -21,12 +21,6 @@ export class CreateReviewCycleDto {
   @IsDateString({}, { message: 'endDate must be a valid ISO date string' })
   endDate: string;
 
-  /** Mô tả tùy chọn cho chu kỳ đánh giá */
-  @IsOptional()
-  @IsString({ message: 'description must be a string' })
-  @MaxLength(1000, { message: 'description must be at most 1000 characters' })
-  description?: string;
-
   /**
    * Danh sách UUID của các nhân viên tham gia kỳ đánh giá.
    * Hệ thống sẽ tự động tạo ReviewRecord (PENDING) cho từng người.

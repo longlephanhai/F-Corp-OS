@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import type { IUser } from 'common/types/user.interface';
-import { Public, ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
-import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
+import {
+  ResponseMessage,
+  User,
+} from 'decorator/customize'; import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
 import { UpdateReviewScoreDto } from './dto/update-review-score.dto';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
@@ -13,7 +15,7 @@ import { HrReviewsService } from './hr-reviews.service';
  */
 @Controller('hr-reviews')
 export class HrReviewsController {
-  constructor(private readonly hrReviewsService: HrReviewsService) {}
+  constructor(private readonly hrReviewsService: HrReviewsService) { }
 
   /**
    * POST /api/v1/hr-reviews/cycles
@@ -26,20 +28,6 @@ export class HrReviewsController {
     @User() user: IUser,
   ) {
     return this.hrReviewsService.createCycle(createDto, user);
-  }
-
-  /**
-   * POST /api/v1/hr-reviews/seed
-   * [DEV ONLY] Tạo dữ liệu mẫu vào database để test UI frontend.
-   * Dùng @Public() và @SkipCheckPermission() để bỏ qua JWT và phân quyền trong giai đoạn test.
-   * Xóa route này trước khi deploy lên production.
-   */
-  @Post('seed')
-  @Public()
-  @SkipCheckPermission()
-  @ResponseMessage('Seed dữ liệu thành công')
-  seedData() {
-    return this.hrReviewsService.seedData();
   }
 
   /**

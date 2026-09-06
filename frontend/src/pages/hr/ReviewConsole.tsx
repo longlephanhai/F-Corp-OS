@@ -85,7 +85,6 @@ const ReviewConsole: React.FC = () => {
     const [createForm] = Form.useForm<{
         name: string;
         dateRange: [any, any];
-        description?: string;
         employeeIds?: string[];
     }>();
     // State cho Drawer xem chi tiết
@@ -205,7 +204,6 @@ const ReviewConsole: React.FC = () => {
                 name:        values.name.trim(),
                 startDate:   start.format('YYYY-MM-DD'),
                 endDate:     end.format('YYYY-MM-DD'),
-                description: values.description?.trim() || undefined,
                 employeeIds: values.employeeIds?.length ? values.employeeIds : undefined,
             };
             await hrReviewsApi.createCycle(payload);
@@ -329,7 +327,7 @@ const ReviewConsole: React.FC = () => {
             ),
         },
         {
-            title: 'Điểm cuối (Final Score)', dataIndex: 'finalScore', key: 'finalScore',
+            title: 'Điểm chốt cuối cùng', dataIndex: 'finalScore', key: 'finalScore',
             width: 170, align: 'center',
             render: (v: number | null) => <ScoreCell value={v} />,
             sorter: (a, b) => (a.finalScore ?? -1) - (b.finalScore ?? -1),
@@ -603,19 +601,6 @@ const ReviewConsole: React.FC = () => {
                         style={{ width: '100%', borderRadius: 8 }}
                         allowClear
                         maxTagCount="responsive"
-                    />
-                </Form.Item>
-
-                <Form.Item
-                    name="description"
-                    label={<Text strong>Mô tả <Text type="secondary" style={{ fontWeight: 400 }}>(tùy chọn)</Text></Text>}
-                >
-                    <TextArea
-                        placeholder="Mô tả ngắn về mục tiêu của kỳ đánh giá..."
-                        rows={3}
-                        maxLength={1000}
-                        showCount
-                        style={{ borderRadius: 8 }}
                     />
                 </Form.Item>
             </Form>

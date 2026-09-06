@@ -30,8 +30,7 @@ export class HrReviewsService {
     @InjectRepository(ReviewRecord)
     private readonly reviewRecordRepository: Repository<ReviewRecord>,
 
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+
 
     private readonly dataSource: DataSource,
     private readonly rewardRuleService: RewardRuleService,
@@ -691,99 +690,5 @@ export class HrReviewsService {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // SEED — CHỈ DÙNG CHO MỤC ĐÍCH TEST, KHÔNG DÙNG TRONG PRODUCTION
-  // ---------------------------------------------------------------------------
 
-  /**
-   * Tạo dữ liệu mẫu (2 ReviewCycle + 8 ReviewRecord) vào database để test UI.
-   * Endpoint này được bảo vệ bằng @Public() và chỉ nên dùng trong môi trường dev.
-   */
-  async seedData(): Promise<{ message: string; cyclesCreated: number; recordsCreated: number }> {
-    // 1. Lấy tối đa 5 user hiện có trong DB
-    const users = await this.userRepository.find({
-      take: 5,
-      where: { isDeleted: false },
-    });
-
-    if (users.length === 0) {
-      throw new BadRequestException(
-        'Không tìm thấy user nào trong DB. Vui lòng tạo ít nhất 1 user trước khi chạy seed.',
-      );
-    }
-
-    // Identity ảo dùng cho audit field (endpoint này bỏ qua JWT)
-    const SEED_USER = { id: 'seed-script', email: 'seed@system.local' };
-
-    // 2. Tạo 2 Review Cycles mẫu
-    const cycleDefinitions = [
-      {
-        name: 'Đánh giá Năng lực Quý 3/2026',
-        startDate: new Date('2026-07-01'),
-        endDate: new Date('2026-09-30'),
-        status: ReviewCycleStatus.ACTIVE,
-      },
-      {
-        name: 'Đánh giá Năng lực Quý 4/2026',
-        startDate: new Date('2026-10-01'),
-        endDate: new Date('2026-12-31'),
-        status: ReviewCycleStatus.DRAFT,
-      },
-    ];
-
-    const savedCycles: ReviewCycle[] = [];
-    for (const def of cycleDefinitions) {
-      const cycle = this.reviewCycleRepository.create({
-        ...def,
-        createdBy: SEED_USER,
-        updatedBy: SEED_USER,
-      });
-      savedCycles.push(await this.reviewCycleRepository.save(cycle));
-    }
-
-    // 3. Tạo 8 Review Records: phân bổ đều các trạng thái và điểm số ngẫu nhiên
-    const STATUS_POOL: ReviewRecordStatus[] = [
-      ReviewRecordStatus.PENDING,
-      ReviewRecordStatus.PENDING,
-      ReviewRecordStatus.PENDING,
-      ReviewRecordStatus.IN_REVIEW,
-      ReviewRecordStatus.IN_REVIEW,
-      ReviewRecordStatus.COMPLETED,
-      ReviewRecordStatus.COMPLETED,
-      ReviewRecordStatus.COMPLETED,
-    ];
-
-    const recordsToCreate: ReviewRecord[] = [];
-    for (let i = 0; i < 8; i++) {
-      const status = STATUS_POOL[i];
-      const cycle = savedCycles[i % savedCycles.length]; // xoay vòng giữa 2 cycle
-      const employee = users[i % users.length];           // xoay vòng qua danh sách user
-
-      // finalScore chỉ có nghĩa khi đã COMPLETED
-      const finalScore =
-        status === ReviewRecordStatus.COMPLETED
-          ? Math.round(Math.random() * 40 + 60) // điểm 60–100 khi hoàn thành
-          : undefined;
-
-      recordsToCreate.push(
-        this.reviewRecordRepository.create({
-          status,
-          // Chỉ đính kèm finalScore khi có giá trị; nếu không thì để DB tự lưu NULL
-          ...(finalScore !== undefined ? { finalScore } : {}),
-          reviewCycle: cycle,
-          employee,
-          createdBy: SEED_USER,
-          updatedBy: SEED_USER,
-        }),
-      );
-    }
-
-    await this.reviewRecordRepository.save(recordsToCreate);
-
-    return {
-      message: `Seed thành công! Đã tạo ${savedCycles.length} chu kỳ và ${recordsToCreate.length} bản ghi đánh giá.`,
-      cyclesCreated: savedCycles.length,
-      recordsCreated: recordsToCreate.length,
-    };
-  }
 }
