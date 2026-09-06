@@ -9,21 +9,18 @@ import {
   UserSprintStatus,
 } from 'modules/user-sprints/entities/user-sprint.entity';
 import { User } from 'modules/users/entities/user.entity';
+import { ProjectManager } from 'modules/projects/entities/project-manager.entity';
 
 @Injectable()
 export class ChatService {
   constructor(
-    @InjectRepository(ChatMessage)
-    private readonly chatMessageRepo: Repository<ChatMessage>,
-    @InjectRepository(Project)
-    private readonly projectRepo: Repository<Project>,
-    @InjectRepository(Sprint)
-    private readonly sprintRepo: Repository<Sprint>,
-    @InjectRepository(UserSprint)
-    private readonly userSprintRepo: Repository<UserSprint>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-  ) {}
+    @InjectRepository(ChatMessage) private readonly chatMessageRepo: Repository<ChatMessage>,
+    @InjectRepository(Project) private readonly projectRepo: Repository<Project>,
+    @InjectRepository(Sprint) private readonly sprintRepo: Repository<Sprint>,
+    @InjectRepository(UserSprint) private readonly userSprintRepo: Repository<UserSprint>,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(ProjectManager) private readonly projectManagerRepo: Repository<ProjectManager>,
+  ) { }
 
   // Lấy danh sách ID của tất cả nhân sự "thuộc" 1 Dự án:
   // - Chủ dự án (PM)
@@ -40,6 +37,7 @@ export class ChatService {
       where: { projectId },
       select: { id: true },
     });
+
     const sprintIds = sprints.map((s) => s.id);
 
     const memberIds = new Set<string>();
@@ -55,6 +53,12 @@ export class ChatService {
       });
       userSprints.forEach((us) => memberIds.add(us.userId));
     }
+
+    const projectManagers = await this.projectManagerRepo.find({
+      where: { projectId },
+      select: { userId: true },
+    });
+    projectManagers.forEach((pm) => memberIds.add(pm.userId));
 
     return Array.from(memberIds);
   }

@@ -8,13 +8,14 @@ import { Sprint } from 'modules/sprints/entities/sprint.entity';
 import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
 import { User } from 'modules/users/entities/user.entity';
 import { ChatGateway } from 'websockets/chat.gateway';
+import { ProjectManager } from 'modules/projects/entities/project-manager.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatMessage, Project, Sprint, UserSprint, User]),
+    TypeOrmModule.forFeature([ChatMessage, Project, Sprint, UserSprint, User, ProjectManager]),
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway],
   exports: [ChatService],
 })
-export class ChatModule {}
+export class ChatModule { }

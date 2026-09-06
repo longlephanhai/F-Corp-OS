@@ -84,7 +84,7 @@ import { ChatMessage } from 'modules/chat/entities/chat-message.entity';
           Websocket,
           ChatMessage,
         ],
-        synchronize: false,
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),
