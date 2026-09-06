@@ -12,6 +12,7 @@ import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 import { PmAccessModule } from '../pm-access/pm-access.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
+import { SprintAllocationResponseService } from './sprint-allocation-response.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserSprint, Sprint, User, Task]),
@@ -22,6 +23,10 @@ import { SprintAllocationInvitationService } from './sprint-allocation-invitatio
 
   controllers: [UserSprintController],
 
-  providers: [UserSprintService, SprintAllocationInvitationService],
+  providers: [
+    UserSprintService,
+    SprintAllocationInvitationService,
+    SprintAllocationResponseService,
+  ],
 })
 export class UserSprintsModule {}

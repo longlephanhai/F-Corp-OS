@@ -53,6 +53,11 @@ const STATUS_CONFIG: Record<
     label: "Đã kết thúc",
     color: "default",
   },
+  DECLINED: {
+    label: "Dev đã từ chối",
+
+    color: "red",
+  },
 };
 
 export const SprintAllocationTable: React.FC<Props> = ({
@@ -273,6 +278,9 @@ export const SprintAllocationTable: React.FC<Props> = ({
         // ------------------------------------
         // ASSIGNED
         // ------------------------------------
+        if (status === "DECLINED") {
+          return <Text type="danger">Dev đã từ chối</Text>;
+        }
 
         if (status === "ASSIGNED") {
           return (

@@ -513,131 +513,38 @@ export class UserSprintService {
       where: {
         id,
       },
-
-      relations: {
-        sprint: true,
-      },
     });
 
     if (!record) {
-      throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
-    }
+      throw new NotFoundException({
+        code: 'ALLOCATION_NOT_FOUND',
 
-    if (!record.sprint) {
-      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
-    }
-
-    // ==========================================
-    // VALID TARGET STATUS
-    // ==========================================
-
-    const validStatuses = Object.values(UserSprintStatus);
-
-    if (!validStatuses.includes(status)) {
-      throw new BadRequestException({
-        code: 'INVALID_ALLOCATION_STATUS',
-
-        message: 'Trạng thái allocation không hợp lệ.',
-
-        requestedStatus: status,
+        message: 'Không tìm thấy bản ghi phân bổ.',
       });
     }
 
-    // ==========================================
-    // TERMINAL SPRINT
-    // ==========================================
+    // ========================================
+    // PM CANNOT ACCEPT FOR DEV
+    // ========================================
 
-    this.assertSprintMutable(record.sprint);
+    if (status === UserSprintStatus.ASSIGNED) {
+      throw new ForbiddenException({
+        code: 'DEV_RESPONSE_REQUIRED',
 
-    // ==========================================
-    // SAME STATUS
-    // ==========================================
-
-    if (record.status === status) {
-      return record;
-    }
-
-    // ==========================================
-    // RELEASE KHÔNG ĐƯỢC BYPASS
-    // ==========================================
-    //
-    // Release phải đi qua:
-    //
-    // PATCH /user-sprint/:id/release
-    //
-    // vì endpoint đó:
-    // - check unfinished Task
-    // - lưu hard skill
-    // - lưu soft skill
-    // - lưu review
-    // ==========================================
-
-    if (status === UserSprintStatus.RELEASED) {
-      throw new ConflictException({
-        code: 'USE_RELEASE_WORKFLOW',
-
-        message:
-          'Không thể chuyển trực tiếp allocation sang RELEASED. Hãy sử dụng quy trình Release & Review.',
+        message: 'Nhân sự phải tự chấp nhận lời mời Sprint.',
       });
     }
 
-    // ==========================================
-    // STATE MACHINE
-    // ==========================================
-    //
-    // REQUESTED
-    //      ↓ dedicated endpoint submit-approval
-    //
-    // PENDING_APPROVAL
-    //      ↓
-    // ASSIGNED
-    //
-    // ASSIGNED
-    //      ↓ dedicated release endpoint
-    //
-    // RELEASED
-    //      terminal
-    // ==========================================
+    throw new ConflictException({
+      code: 'INVALID_ALLOCATION_TRANSITION',
 
-    if (
-      record.status !== UserSprintStatus.PENDING_APPROVAL ||
-      status !== UserSprintStatus.ASSIGNED
-    ) {
-      throw new ConflictException({
-        code: 'INVALID_ALLOCATION_TRANSITION',
+      message: 'Không thể thay đổi Allocation bằng endpoint này.',
 
-        message: `Không thể chuyển allocation từ ${record.status} sang ${status}.`,
+      currentStatus: record.status,
 
-        currentStatus: record.status,
-
-        requestedStatus: status,
-
-        allowedTransition:
-          record.status === UserSprintStatus.PENDING_APPROVAL
-            ? UserSprintStatus.ASSIGNED
-            : null,
-      });
-    }
-
-    // ==========================================
-    // RE-CHECK CAPACITY
-    // ==========================================
-
-    await this.assertAllocationCapacityBeforeAssign(record);
-
-    // ==========================================
-    // APPROVE
-    // ==========================================
-
-    record.status = UserSprintStatus.ASSIGNED;
-
-    const savedAllocation = await this.userSprintRepo.save(record);
-
-    await this.publishAllocationChanged(savedAllocation, 'ASSIGNED');
-
-    return savedAllocation;
+      requestedStatus: status,
+    });
   }
-
   private async assertUserCanBeReleasedFromSprint(
     sprintId: string,
     userId: string,

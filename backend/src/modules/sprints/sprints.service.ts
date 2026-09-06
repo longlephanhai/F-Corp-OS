@@ -763,7 +763,9 @@ export class SprintsService {
     // ==========================================
 
     const unresolvedAllocations = allocations.filter(
-      (allocation) => allocation.status !== UserSprintStatus.RELEASED,
+      (allocation) =>
+        allocation.status !== UserSprintStatus.RELEASED &&
+        allocation.status !== UserSprintStatus.DECLINED,
     );
 
     if (unresolvedAllocations.length > 0) {

@@ -1,11 +1,22 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { User } from 'modules/users/entities/user.entity';
 import { Sprint } from 'modules/sprints/entities/sprint.entity';
 
 export enum UserSprintStatus {
   REQUESTED = 'requested',
+
   PENDING_APPROVAL = 'pending_approval',
+
   ASSIGNED = 'assigned',
+
+  DECLINED = 'declined',
+
   RELEASED = 'released',
 }
 
@@ -23,7 +34,11 @@ export class UserSprint {
   @Column({ type: 'float', default: 100 })
   percitant: number; // Phần trăm công suất tham gia sprint
 
-  @Column({ type: 'enum', enum: UserSprintStatus, default: UserSprintStatus.REQUESTED })
+  @Column({
+    type: 'enum',
+    enum: UserSprintStatus,
+    default: UserSprintStatus.REQUESTED,
+  })
   status: UserSprintStatus;
 
   @ManyToOne(() => User)
@@ -42,4 +57,21 @@ export class UserSprint {
 
   @Column({ name: 'review_comment', type: 'text', nullable: true })
   reviewComment: string;
+  // ==========================================
+  // DEV INVITATION RESPONSE
+  // ==========================================
+
+  @Column({
+    name: 'response_reason',
+    type: 'text',
+    nullable: true,
+  })
+  responseReason: string | null;
+
+  @Column({
+    name: 'responded_at',
+    type: 'datetime',
+    nullable: true,
+  })
+  respondedAt: Date | null;
 }

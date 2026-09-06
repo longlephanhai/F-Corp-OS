@@ -21,6 +21,9 @@ import { PmAccessService } from '../pm-access/pm-access.service';
 import { UserSprintService } from './user-sprints.service';
 
 import { UserSprintStatus } from './entities/user-sprint.entity';
+import { SprintAllocationResponseService } from './sprint-allocation-response.service';
+
+import { RespondSprintInvitationDto } from './dto/respond-sprint-invitation.dto';
 
 @UseGuards(JwtAuthGuard)
 @SkipCheckPermission()
@@ -30,6 +33,8 @@ export class UserSprintController {
     private readonly userSprintService: UserSprintService,
 
     private readonly pmAccessService: PmAccessService,
+
+    private readonly sprintAllocationResponseService: SprintAllocationResponseService,
   ) {}
 
   // ==========================================
@@ -148,6 +153,68 @@ export class UserSprintController {
   //
   // PM phải quản lý Project chứa Sprint.
   // ==========================================
+  // ==========================================
+  // DEV - MY SPRINT INVITATIONS
+  //
+  // GET /user-sprint/my-invitations
+  // ==========================================
+
+  @Get('my-invitations')
+  async getMySprintInvitations(
+    @Req()
+    req: any,
+  ) {
+    const data = await this.sprintAllocationResponseService.getMyInvitations(
+      req.user.id,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy danh sách lời mời Sprint thành công',
+
+      data,
+    };
+  }
+
+  // ==========================================
+  // DEV - RESPOND INVITATION
+  //
+  // PATCH /user-sprint/:id/respond
+  // ==========================================
+
+  @Patch(':id/respond')
+  async respondSprintInvitation(
+    @Param('id')
+    id: string,
+
+    @Body()
+    body: RespondSprintInvitationDto,
+
+    @Req()
+    req: any,
+  ) {
+    const data = await this.sprintAllocationResponseService.respond(
+      req.user.id,
+
+      id,
+
+      body.decision,
+
+      body.reason,
+    );
+
+    return {
+      statusCode: 200,
+
+      message:
+        body.decision === 'ACCEPT'
+          ? 'Đã chấp nhận lời mời Sprint'
+          : 'Đã từ chối lời mời Sprint',
+
+      data,
+    };
+  }
 
   @Post()
   async assignUserToSprint(
