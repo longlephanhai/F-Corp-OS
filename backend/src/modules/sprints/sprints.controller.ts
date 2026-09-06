@@ -7,9 +7,15 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 
 import { SkipCheckPermission } from 'decorator/customize';
+
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+
+import { PmAccessService } from '../pm-access/pm-access.service';
 
 import { SprintsService } from './sprints.service';
 
@@ -19,22 +25,48 @@ import { UpdateSprintDto } from './dto/update-sprint.dto';
 
 import { UpdateSprintStatusDto } from './dto/update-sprint-status.dto';
 
+@UseGuards(JwtAuthGuard)
 @SkipCheckPermission()
 @Controller('sprints')
 export class SprintsController {
-  constructor(private readonly sprintsService: SprintsService) {}
+  constructor(
+    private readonly sprintsService: SprintsService,
+
+    private readonly pmAccessService: PmAccessService,
+  ) {}
 
   // ==========================================
-  // CREATE
+  // CREATE SPRINT
   //
   // POST /sprints
+  //
+  // Primary PM hoặc Co-PM của Project
+  // mới được tạo Sprint.
   // ==========================================
 
   @Post()
   async create(
     @Body()
     createSprintDto: CreateSprintDto,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // PROJECT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertProjectAccess(
+      currentUserId,
+      createSprintDto.projectId,
+    );
+
+    // ========================================
+    // BUSINESS
+    // ========================================
+
     const data = await this.sprintsService.create(createSprintDto);
 
     return {
@@ -47,26 +79,7 @@ export class SprintsController {
   }
 
   // ==========================================
-  // GET ALL
-  //
-  // GET /sprints
-  // ==========================================
-
-  @Get()
-  async findAll() {
-    const data = await this.sprintsService.findAll();
-
-    return {
-      statusCode: 200,
-
-      message: 'Lấy danh sách Sprint thành công',
-
-      data,
-    };
-  }
-
-  // ==========================================
-  // GET BY PROJECT
+  // GET SPRINTS BY PROJECT
   //
   // GET /sprints/project/:projectId
   // ==========================================
@@ -75,7 +88,18 @@ export class SprintsController {
   async getSprintsByProject(
     @Param('projectId')
     projectId: string,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // PROJECT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertProjectAccess(currentUserId, projectId);
+
     const data = await this.sprintsService.getSprintsByProject(projectId);
 
     return {
@@ -88,16 +112,75 @@ export class SprintsController {
   }
 
   // ==========================================
-  // GET ONE
+  // PROJECT SPRINT RETROSPECTIVE TRENDS
   //
-  // GET /sprints/:id
+  // GET
+  // /sprints/project/:projectId/retrospective-trends
+  //
+  // Đây là Project-level API nên guard
+  // bằng assertProjectAccess().
+  // ==========================================
+
+  @Get('project/:projectId/retrospective-trends')
+  async getProjectSprintTrends(
+    @Param('projectId')
+    projectId: string,
+
+    @Query('limit')
+    limit: string | undefined,
+
+    @Req()
+    req: any,
+  ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // PROJECT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertProjectAccess(currentUserId, projectId);
+
+    const parsedLimit = Number(limit);
+
+    const safeLimit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5;
+
+    const data = await this.sprintsService.getProjectSprintTrends(
+      projectId,
+      safeLimit,
+    );
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy xu hướng Sprint thành công',
+
+      data,
+    };
+  }
+
+  // ==========================================
+  // START READINESS
+  //
+  // GET /sprints/:id/readiness
   // ==========================================
 
   @Get(':id/readiness')
   async getStartReadiness(
     @Param('id')
     id: string,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
     const data = await this.sprintsService.getStartReadiness(id);
 
     return {
@@ -109,11 +192,28 @@ export class SprintsController {
     };
   }
 
+  // ==========================================
+  // COMPLETION READINESS
+  //
+  // GET /sprints/:id/completion-readiness
+  // ==========================================
+
   @Get(':id/completion-readiness')
   async getCompletionReadiness(
     @Param('id')
     id: string,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
     const data = await this.sprintsService.getCompletionReadiness(id);
 
     return {
@@ -124,11 +224,29 @@ export class SprintsController {
       data,
     };
   }
+
+  // ==========================================
+  // SPRINT RETROSPECTIVE
+  //
+  // GET /sprints/:id/retrospective
+  // ==========================================
+
   @Get(':id/retrospective')
   async getRetrospective(
     @Param('id')
     id: string,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
     const data = await this.sprintsService.getSprintRetrospective(id);
 
     return {
@@ -139,32 +257,29 @@ export class SprintsController {
       data,
     };
   }
-  @Get('project/:projectId/retrospective-trends')
-  async getProjectSprintTrends(
-    @Param('projectId')
-    projectId: string,
 
-    @Query('limit')
-    limit?: string,
-  ) {
-    const data = await this.sprintsService.getProjectSprintTrends(
-      projectId,
-      Number(limit) || 5,
-    );
+  // ==========================================
+  // PLANNING FORECAST
+  //
+  // GET /sprints/:id/planning-forecast
+  // ==========================================
 
-    return {
-      statusCode: 200,
-
-      message: 'Lấy xu hướng Sprint thành công',
-
-      data,
-    };
-  }
   @Get(':id/planning-forecast')
   async getPlanningForecast(
     @Param('id')
     id: string,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
     const data = await this.sprintsService.getSprintPlanningForecast(id);
 
     return {
@@ -176,28 +291,12 @@ export class SprintsController {
     };
   }
 
-  @Get(':id')
-  async findOne(
-    @Param('id')
-    id: string,
-  ) {
-    const data = await this.sprintsService.findOne(id);
-
-    return {
-      statusCode: 200,
-
-      message: 'Lấy Sprint thành công',
-
-      data,
-    };
-  }
-
   // ==========================================
-  // UPDATE STATUS
+  // UPDATE SPRINT STATUS
   //
   // PATCH /sprints/:id/status
   //
-  // Đặt trước PATCH :id
+  // Đặt trước PATCH /:id
   // ==========================================
 
   @Patch(':id/status')
@@ -207,7 +306,25 @@ export class SprintsController {
 
     @Body()
     updateSprintStatusDto: UpdateSprintStatusDto,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
+    // ========================================
+    // BUSINESS LIFECYCLE
+    //
+    // Lifecycle validation vẫn nằm Service.
+    // Access layer không duplicate logic này.
+    // ========================================
+
     const data = await this.sprintsService.updateStatus(
       id,
       updateSprintStatusDto,
@@ -223,7 +340,7 @@ export class SprintsController {
   }
 
   // ==========================================
-  // UPDATE INFORMATION
+  // UPDATE SPRINT INFORMATION
   //
   // PATCH /sprints/:id
   // ==========================================
@@ -235,7 +352,18 @@ export class SprintsController {
 
     @Body()
     updateSprintDto: UpdateSprintDto,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
     const data = await this.sprintsService.update(id, updateSprintDto);
 
     return {
@@ -248,7 +376,7 @@ export class SprintsController {
   }
 
   // ==========================================
-  // DELETE
+  // DELETE / ARCHIVE SPRINT
   //
   // DELETE /sprints/:id
   // ==========================================
@@ -257,13 +385,59 @@ export class SprintsController {
   async remove(
     @Param('id')
     id: string,
+
+    @Req()
+    req: any,
   ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
     const data = await this.sprintsService.remove(id);
 
     return {
       statusCode: 200,
 
       message: 'Xóa Sprint thành công',
+
+      data,
+    };
+  }
+
+  // ==========================================
+  // GET ONE
+  //
+  // GET /sprints/:id
+  //
+  // Generic :id route để CUỐI controller.
+  // ==========================================
+
+  @Get(':id')
+  async findOne(
+    @Param('id')
+    id: string,
+
+    @Req()
+    req: any,
+  ) {
+    const currentUserId = req.user.id;
+
+    // ========================================
+    // SPRINT OWNERSHIP
+    // ========================================
+
+    await this.pmAccessService.assertSprintAccess(currentUserId, id);
+
+    const data = await this.sprintsService.findOne(id);
+
+    return {
+      statusCode: 200,
+
+      message: 'Lấy Sprint thành công',
 
       data,
     };

@@ -10,6 +10,8 @@ import { User } from '../users/entities/user.entity';
 
 import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 
+import { PmAccessModule } from '../pm-access/pm-access.module';
+
 @Module({
   imports: [
     // Entity của ProjectsService
@@ -17,6 +19,8 @@ import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 
     // Module cung cấp PmRealtimeService
     PmRealtimeModule,
+
+    PmAccessModule,
   ],
 
   controllers: [ProjectsController],
