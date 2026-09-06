@@ -15,6 +15,8 @@ import { HrBenchTalentPoolService } from './services/bench/hr-bench-talent-pool.
 import { HrBenchTalentQueryService } from './services/bench/hr-bench-talent-query.service';
 import { HrBenchPerformanceService } from './services/bench/hr-bench-performance.service';
 import { HrBenchReadinessService } from './services/bench/readiness/hr-bench-readiness.service';
+import { HrSkillSupplyQueryService } from './services/skill-supply/hr-skill-supply-query.service';
+import { HrSkillSupplyRiskService } from './services/skill-supply/risk/hr-skill-supply-risk.service';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { HrBenchReadinessService } from './services/bench/readiness/hr-bench-rea
     HrBenchPerformanceService,
     HrBenchTalentQueryService,
     HrBenchReadinessService,
+    HrSkillSupplyQueryService,
+    HrSkillSupplyRiskService,
   ],
 
   exports: [

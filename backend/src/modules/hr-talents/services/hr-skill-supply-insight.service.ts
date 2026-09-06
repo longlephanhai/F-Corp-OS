@@ -1,207 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { UserStatusType } from 'common/enum/user.enum';
-import { Skill } from 'modules/skills/entities/skill.entity';
-import { Repository } from 'typeorm';
+import { HrSkillSupplyQueryService } from './skill-supply/hr-skill-supply-query.service';
 
-interface SkillSupplyRow {
-  skillId: string;
-  name: string;
 
-  totalEmployees: number;
-  level4Plus: number;
-
-  verifiedEmployees: number;
-
-  availableEmployees: number;
-  inProjectEmployees: number;
-  benchEmployees: number;
-}
 
 @Injectable()
 export class HrSkillSupplyInsightService {
   constructor(
-    @InjectRepository(Skill)
-    private readonly skillRepository:
-      Repository<Skill>,
-  ) {}
+    private readonly skillSupplyQueryService:
+      HrSkillSupplyQueryService,
+  ) { }
 
   async getSummary() {
-    const rawRows =
-      await this.skillRepository
-        .createQueryBuilder('skill')
-
-        .leftJoin(
-          'skill.userSkills',
-          'userSkill',
-          'userSkill.isDeleted = :userSkillDeleted',
-          {
-            userSkillDeleted: false,
-          },
-        )
-
-        .leftJoin(
-          'userSkill.user',
-          'user',
-          'user.isDeleted = :userDeleted',
-          {
-            userDeleted: false,
-          },
-        )
-
-        .leftJoin(
-          'userSkill.evidences',
-          'evidence',
-          'evidence.isDeleted = :evidenceDeleted',
-          {
-            evidenceDeleted: false,
-          },
-        )
-
-        .where(
-          'skill.isDeleted = :skillDeleted',
-          {
-            skillDeleted: false,
-          },
-        )
-
-        .select(
-          'skill.id',
-          'skillId',
-        )
-
-        .addSelect(
-          'skill.name',
-          'skillName',
-        )
-
-        .addSelect(
-          'COUNT(DISTINCT user.id)',
-          'totalEmployees',
-        )
-
-        .addSelect(
-          `
-            COUNT(
-              DISTINCT CASE
-                WHEN userSkill.level >= 4
-                THEN user.id
-              END
-            )
-          `,
-          'level4Plus',
-        )
-
-        /*
-         * Một employee-skill pair được coi là verified
-         * nếu UserSkill đó có ít nhất một evidence APPROVED.
-         */
-        .addSelect(
-          `
-            COUNT(
-              DISTINCT CASE
-                WHEN
-                  user.id IS NOT NULL
-                  AND evidence.status = :approvedStatus
-                THEN user.id
-              END
-            )
-          `,
-          'verifiedEmployees',
-        )
-
-        .addSelect(
-          `
-            COUNT(
-              DISTINCT CASE
-                WHEN user.status = :availableStatus
-                THEN user.id
-              END
-            )
-          `,
-          'availableEmployees',
-        )
-
-        .addSelect(
-          `
-            COUNT(
-              DISTINCT CASE
-                WHEN user.status = :inProjectStatus
-                THEN user.id
-              END
-            )
-          `,
-          'inProjectEmployees',
-        )
-
-        .addSelect(
-          `
-            COUNT(
-              DISTINCT CASE
-                WHEN user.status = :benchStatus
-                THEN user.id
-              END
-            )
-          `,
-          'benchEmployees',
-        )
-
-        .setParameters({
-          approvedStatus: 'APPROVED',
-
-          availableStatus:
-            UserStatusType.AVAILABLE,
-
-          inProjectStatus:
-            UserStatusType.IN_PROJECT,
-
-          benchStatus:
-            UserStatusType.BENCH,
-        })
-
-        .groupBy('skill.id')
-        .addGroupBy('skill.name')
-
-        .getRawMany();
-
-    const rows: SkillSupplyRow[] =
-      rawRows.map((row) => ({
-        skillId:
-          row.skillId,
-
-        name:
-          row.skillName,
-
-        totalEmployees:
-          Number(
-            row.totalEmployees ?? 0,
-          ),
-
-        level4Plus:
-          Number(
-            row.level4Plus ?? 0,
-          ),
-
-        verifiedEmployees:
-          Number(
-            row.verifiedEmployees ?? 0,
-          ),
-
-        availableEmployees:
-          Number(
-            row.availableEmployees ?? 0,
-          ),
-
-        inProjectEmployees:
-          Number(
-            row.inProjectEmployees ?? 0,
-          ),
-
-        benchEmployees:
-          Number(
-            row.benchEmployees ?? 0,
-          ),
-      }));
+    const rows =
+      await this.skillSupplyQueryService
+        .findAll();
 
     const totalSkills =
       rows.length;
@@ -221,7 +33,7 @@ export class HrSkillSupplyInsightService {
     const skillsWithBenchSupply =
       rows.filter(
         (row) =>
-          row.benchEmployees > 0,
+          row.workforce.bench > 0,
       ).length;
 
     /*
@@ -252,20 +64,20 @@ export class HrSkillSupplyInsightService {
       employeeSkillPairs === 0
         ? 0
         : Number(
+          (
             (
-              (
-                verifiedEmployeeSkillPairs /
-                employeeSkillPairs
-              ) *
-              100
-            ).toFixed(1),
-          );
+              verifiedEmployeeSkillPairs /
+              employeeSkillPairs
+            ) *
+            100
+          ).toFixed(1),
+        );
 
     const availableSkillPairs =
       rows.reduce(
         (total, row) =>
           total +
-          row.availableEmployees,
+          row.workforce.available,
         0,
       );
 
@@ -273,7 +85,7 @@ export class HrSkillSupplyInsightService {
       rows.reduce(
         (total, row) =>
           total +
-          row.inProjectEmployees,
+          row.workforce.inProject,
         0,
       );
 
@@ -281,7 +93,7 @@ export class HrSkillSupplyInsightService {
       rows.reduce(
         (total, row) =>
           total +
-          row.benchEmployees,
+          row.workforce.bench,
         0,
       );
 
@@ -335,16 +147,16 @@ export class HrSkillSupplyInsightService {
     ]
       .filter(
         (row) =>
-          row.benchEmployees > 0,
+          row.workforce.bench > 0,
       )
       .sort((a, b) => {
         if (
-          b.benchEmployees !==
-          a.benchEmployees
+          b.workforce.bench !==
+          a.workforce.bench
         ) {
           return (
-            b.benchEmployees -
-            a.benchEmployees
+            b.workforce.bench -
+            a.workforce.bench
           );
         }
 
@@ -365,7 +177,7 @@ export class HrSkillSupplyInsightService {
           row.totalEmployees,
 
         benchEmployees:
-          row.benchEmployees,
+          row.workforce.bench,
       }));
 
     return {

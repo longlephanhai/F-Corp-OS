@@ -12,6 +12,8 @@ import { GetHrBenchTalentsDto } from './dto/get-hr-bench-talents.dto';
 import { HrBenchTalentPoolService } from './services/bench/hr-bench-talent-pool.service';
 import { GetHrBenchReadinessDto } from './dto/get-hr-bench-readiness.dto';
 import { HrBenchReadinessService } from './services/bench/readiness/hr-bench-readiness.service';
+import { GetHrSkillSupplyRiskDto } from './dto/get-hr-skill-supply-risk.dto';
+import { HrSkillSupplyRiskService } from './services/skill-supply/risk/hr-skill-supply-risk.service';
 
 @Injectable()
 export class HrTalentsService {
@@ -27,6 +29,9 @@ export class HrTalentsService {
 
     private readonly skillSupplyInsightService:
       HrSkillSupplyInsightService,
+
+    private readonly skillSupplyRiskService:
+      HrSkillSupplyRiskService,
 
     private readonly talentDataQualityService:
       HrTalentDataQualityService,
@@ -97,5 +102,12 @@ export class HrTalentsService {
   ) {
     return this.benchReadinessService
       .findAll(query);
+  }
+
+  getSkillSupplyRisk(
+    query: GetHrSkillSupplyRiskDto,
+  ) {
+    return this.skillSupplyRiskService
+      .getRiskAnalysis(query);
   }
 }

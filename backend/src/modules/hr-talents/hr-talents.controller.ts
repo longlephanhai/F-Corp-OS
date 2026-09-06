@@ -14,6 +14,7 @@ import { GetHrSkillEmployeesDto } from './dto/get-hr-skill-employees.dto';
 import { GetHrTalentDataQualityDto } from './dto/get-hr-talent-data-quality.dto';
 import { GetHrBenchTalentsDto } from './dto/get-hr-bench-talents.dto';
 import { GetHrBenchReadinessDto } from './dto/get-hr-bench-readiness.dto';
+import { GetHrSkillSupplyRiskDto } from './dto/get-hr-skill-supply-risk.dto';
 
 @Controller('hr-talents')
 export class HrTalentsController {
@@ -44,9 +45,9 @@ export class HrTalentsController {
 
   @Get('bench')
   @Header(
-  'Cache-Control',
-  'no-store',
-)
+    'Cache-Control',
+    'no-store',
+  )
   @ResponseMessage(
     'Lấy danh sách nhân sự Bench thành công',
   )
@@ -67,6 +68,22 @@ export class HrTalentsController {
     return this.hrTalentsService.getSkillSupplySummary();
   }
 
+  @Get('analytics/skill-supply-risk')
+  @Header(
+    'Cache-Control',
+    'no-store',
+  )
+  @ResponseMessage(
+    'Lấy rủi ro nguồn cung kỹ năng thành công',
+  )
+  getSkillSupplyRisk(
+    @Query()
+    query: GetHrSkillSupplyRiskDto,
+  ) {
+    return this.hrTalentsService
+      .getSkillSupplyRisk(query);
+  }
+
   @Get('analytics/data-quality')
   @ResponseMessage(
     'Lấy chất lượng dữ liệu hồ sơ năng lực thành công',
@@ -82,9 +99,9 @@ export class HrTalentsController {
 
   @Get('analytics/skill-matrix')
   @Header(
-  'Cache-Control',
-  'no-store',
-)
+    'Cache-Control',
+    'no-store',
+  )
   @ResponseMessage(
     'Lấy ma trận kỹ năng nhân sự thành công',
   )
