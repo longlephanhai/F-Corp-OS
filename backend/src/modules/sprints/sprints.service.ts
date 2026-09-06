@@ -912,6 +912,10 @@ export class SprintsService {
         isDeleted: true,
       },
 
+      // Task Carry-over/archive có deletedAt.
+      // TypeORM mặc định sẽ ẩn nếu không bật.
+      withDeleted: true,
+
       order: {
         createdAt: 'ASC',
       },
@@ -1006,15 +1010,31 @@ export class SprintsService {
       },
     });
 
-    const releasedAllocations = allocations.filter(
+    // ==========================================
+    // ACTUAL PARTICIPATION
+    //
+    // Chỉ ASSIGNED / RELEASED mới được xem là
+    // resource thực sự tham gia Sprint.
+    //
+    // REQUESTED / PENDING_APPROVAL / DECLINED
+    // không được đưa vào retrospective workload.
+    // ==========================================
+
+    const participatingAllocations = allocations.filter(
+      (allocation) =>
+        allocation.status === UserSprintStatus.ASSIGNED ||
+        allocation.status === UserSprintStatus.RELEASED,
+    );
+
+    const releasedAllocations = participatingAllocations.filter(
       (allocation) => allocation.status === UserSprintStatus.RELEASED,
     );
 
     const participantUserIds = new Set(
-      allocations.map((allocation) => allocation.userId),
+      participatingAllocations.map((allocation) => allocation.userId),
     );
 
-    const totalAllocationPercent = allocations.reduce(
+    const totalAllocationPercent = participatingAllocations.reduce(
       (total, allocation) => total + Number(allocation.percitant ?? 0),
       0,
     );
