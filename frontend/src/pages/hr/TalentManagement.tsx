@@ -8,6 +8,8 @@ import TalentDirectoryView from '../../components/hr/talents/TalentDirectoryView
 import SkillMatrixView from '../../components/hr/talents/SkillMatrixView';
 import TalentDataQualityView from '../../components/hr/talents/TalentDataQualityView';
 import BenchTalentPoolView from '../../components/hr/talents/bench/BenchTalentPoolView';
+import SkillSupplyRiskView
+  from '../../components/hr/talents/skill-supply-risk/SkillSupplyRiskView';
 
 const {
   Title,
@@ -70,6 +72,14 @@ const TalentManagement: React.FC =
                 'Ma trận kỹ năng',
               children: (
                 <SkillMatrixView />
+              ),
+            },
+            {
+              key: 'skill-risk',
+              label:
+                'Rủi ro nguồn cung',
+              children: (
+                <SkillSupplyRiskView />
               ),
             },
             {
