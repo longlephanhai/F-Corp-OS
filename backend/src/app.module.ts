@@ -42,7 +42,7 @@ import { Notification } from 'modules/notifications/entities/notification.entity
 import { WebsocketModule } from 'websockets/websocket.module';
 import { Websocket } from 'websockets/entities/websocket.entity';
 import { PmRealtimeModule } from './modules/pm-realtime/pm-realtime.module';
-
+import { PmActionCenterModule } from './modules/pm-action-center/pm-action-center.module';
 
 import { ChatModule } from 'modules/chat/chat.module';
 import { ChatMessage } from 'modules/chat/entities/chat-message.entity';
@@ -108,8 +108,9 @@ import { ChatMessage } from 'modules/chat/entities/chat-message.entity';
     WebsocketModule,
     PmRealtimeModule,
     ChatModule,
+    PmActionCenterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

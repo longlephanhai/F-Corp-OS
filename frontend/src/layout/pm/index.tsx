@@ -1,4 +1,3 @@
-
 import {
   Layout,
   Menu,
@@ -8,7 +7,7 @@ import {
   theme,
   message,
   type GetProp,
-  type MessageArgsProps
+  type MessageArgsProps,
 } from "antd";
 
 import {
@@ -18,6 +17,7 @@ import {
   MenuUnfoldOutlined,
   ProjectOutlined,
   TeamOutlined,
+  AlertOutlined,
 } from "@ant-design/icons";
 
 import { useState, useEffect } from "react";
@@ -30,26 +30,23 @@ const { Text } = Typography;
 
 import { connectSocket, getSocket } from "../../config/socket.config";
 
-
-
-const defaultStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
+const defaultStyles: GetProp<MessageArgsProps, "styles", "Return"> = {
   root: {
-    backgroundColor: '#f6ffed',
-    border: '2px solid #95de64',
+    backgroundColor: "#f6ffed",
+    border: "2px solid #95de64",
     borderRadius: 16,
-    boxShadow: '4px 4px 0 #d9f7be',
+    boxShadow: "4px 4px 0 #d9f7be",
   },
   icon: {
-    color: '#237804',
+    color: "#237804",
   },
   title: {
-    color: '#237804',
+    color: "#237804",
     fontWeight: 600,
   },
 };
 
 const LayoutPM = () => {
-
   const [messageApi, contextHolder] = message.useMessage();
   // const socketRef = useRef<Socket | null>(null);
 
@@ -91,19 +88,18 @@ const LayoutPM = () => {
   // }, []);
 
   useEffect(() => {
-    const namespace = 'user-skills';
+    const namespace = "user-skills";
     connectSocket(namespace);
-    const socket = getSocket('user-skills');
-    socket.on('user-skill-updated', (message) => {
-      console.log('Nhận thông báo từ server:', message);
+    const socket = getSocket("user-skills");
+    socket.on("user-skill-updated", (message) => {
+      console.log("Nhận thông báo từ server:", message);
       messageApi.open({
-        type: 'success',
+        type: "success",
         content: message.message,
         styles: defaultStyles,
       });
     });
   }, [messageApi]);
-
 
   const [collapsed, setCollapsed] = useState(false);
 
@@ -125,6 +121,8 @@ const LayoutPM = () => {
 
     if (path === "/pm" || path.includes("/pm/dashboard")) {
       setSelectedKey("dashboard");
+    } else if (path.includes("/pm/action-center")) {
+      setSelectedKey("action-center");
     } else if (path.includes("/pm/my-team")) {
       setSelectedKey("my-team");
     } else if (path.includes("/pm/sprints")) {
@@ -143,13 +141,7 @@ const LayoutPM = () => {
       ========================================== */}
 
       {contextHolder}
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        width={260}
-      >
-
+      <Sider trigger={null} collapsible collapsed={collapsed} width={260}>
         {/* LOGO */}
         <div
           style={{
@@ -184,6 +176,15 @@ const LayoutPM = () => {
               label: "Tổng quan",
 
               onClick: () => navigate("/pm/dashboard"),
+            },
+            {
+              key: "action-center",
+
+              icon: <AlertOutlined />,
+
+              label: "Việc cần xử lý",
+
+              onClick: () => navigate("/pm/action-center"),
             },
             {
               key: "projects",

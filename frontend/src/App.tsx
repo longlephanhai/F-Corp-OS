@@ -15,6 +15,7 @@ import HRDashboard from "./pages/hr/Dashboard";
 import WalletAdmin from "./pages/hr/WalletAdmin";
 import ReviewConsole from "./pages/hr/ReviewConsole";
 import LayoutPM from "./layout/pm";
+import { PMActionCenterPage } from "./pages/pm/PMActionCenterPage";
 
 import { SprintManagementPage } from "./pages/pm/SprintManagement";
 import { MyTeamPage } from "./pages/pm/MyTeamPage"; // (Trang ở sprint trước)
@@ -31,7 +32,6 @@ import { PMDashboardPage } from "./pages/pm/PMDashboardPage";
 
 import BenchForecast from "./pages/hr/BenchForecast";
 import TalentManagement from "./pages/hr/TalentManagement";
-
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: 48, textAlign: "center", color: "#8c8c8c" }}>
@@ -88,6 +88,10 @@ function App() {
         {
           path: "dashboard",
           element: <PMDashboardPage />,
+        },
+        {
+          path: "action-center",
+          element: <PMActionCenterPage />,
         },
         {
           path: "projects",
