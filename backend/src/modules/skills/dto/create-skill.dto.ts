@@ -1,4 +1,4 @@
-import { IsNotEmpty } from "class-validator";
+import { IsNotEmpty, IsOptional, IsUUID } from "class-validator";
 
 export class CreateSkillDto {
     @IsNotEmpty({ message: 'Skill name is required' })
@@ -6,4 +6,8 @@ export class CreateSkillDto {
 
     @IsNotEmpty({ message: 'Description is required' })
     description: string;
+
+    @IsOptional()
+    @IsUUID()
+    parentId?: string | null;
 }

@@ -26,6 +26,7 @@ export class SkillsService {
     }
     const skills = this.skillsRepository.create({
       ...createSkillDto,
+      parentId: createSkillDto.parentId ?? null,
       createdBy: {
         id: user.id,
         email: user.email

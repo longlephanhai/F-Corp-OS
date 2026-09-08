@@ -11,6 +11,12 @@ export class SkillEvidence {
   @Column({ name: 'user_skill_id' })
   userSkillId: string;
 
+  @Column({ name: 'task_id', type: 'uuid', nullable: true })
+  taskId: string | null;
+
+  @Column({ name: 'xp_granted', type: 'int', default: 0 })
+  xpGranted: number;
+
   @ManyToOne(() => UserSkill, (userSkill) => userSkill.evidences, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_skill_id' })
   userSkill: UserSkill;

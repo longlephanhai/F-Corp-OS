@@ -132,6 +132,39 @@ export class UserSkillService {
     return await this.recalculateUserSkill(savedUserSkill.id);
   }
 
+  async getSkillTree(user: IUser) {
+    // 1. Lấy toàn bộ skills trong hệ thống
+    const allSkills = await this.userSkillsRepository.manager
+      .getRepository('skills')
+      .createQueryBuilder('skill')
+      .where('skill.isDeleted = false')
+      .getMany();
+
+    // 2. Lấy user_skills của user hiện tại (XP + level)
+    const userSkills = await this.userSkillsRepository.find({
+      where: { userId: user.id, isDeleted: false },
+    });
+
+    // Map user_skills theo skillId để lookup nhanh
+    const userSkillMap = new Map(userSkills.map((us) => [us.skillId, us]));
+
+    // 3. Transform thành định dạng node cho frontend
+    const nodes = allSkills.map((skill: any) => {
+      const userSkill = userSkillMap.get(skill.id);
+      return {
+        id: skill.id,
+        parentId: skill.parentId ?? null,
+        name: skill.name,
+        description: skill.description,
+        level: userSkill?.level ?? 0,
+        currentXp: userSkill?.currentXp ?? 0,
+        userSkillId: userSkill?.id ?? null,
+      };
+    });
+
+    return nodes;
+  }
+
   findAll() {
     return `This action returns all userSkill`;
   }

@@ -26,6 +26,9 @@ import {
   PmRealtimeService,
   PmRealtimeAction,
 } from '../pm-realtime/pm-realtime.service';
+import { SkillEvidence } from '../skill-evidences/entities/skill-evidence.entity';
+import { UserSkill } from '../user-skill/entities/user-skill.entity';
+import { EvidenceType } from 'common/enum/evidence.enum';
 
 @Injectable()
 export class TasksService {
@@ -38,6 +41,10 @@ export class TasksService {
     private userRepo: Repository<User>,
     @InjectRepository(UserSprint)
     private readonly userSprintRepo: Repository<UserSprint>,
+    @InjectRepository(SkillEvidence)
+    private readonly skillEvidenceRepo: Repository<SkillEvidence>,
+    @InjectRepository(UserSkill)
+    private readonly userSkillRepo: Repository<UserSkill>,
 
     private readonly taskDependenciesService: TaskDependenciesService,
     private readonly pmRealtimeService: PmRealtimeService,
@@ -1371,6 +1378,8 @@ export class TasksService {
     // UPDATE STATUS
     // ==========================================
 
+    const oldStatus = task.status;
+
     if (data.status !== undefined) {
       task.status = data.status;
 
@@ -1402,6 +1411,40 @@ export class TasksService {
       if (data.progress < 100 && task.status === TaskStatus.DONE) {
         task.status =
           data.progress === 0 ? TaskStatus.TODO : TaskStatus.IN_PROGRESS;
+      }
+    }
+
+    // ==========================================
+    // AUTO-LEVELING: GRANT XP ON COMPLETION
+    // ==========================================
+    if (oldStatus !== TaskStatus.DONE && task.status === TaskStatus.DONE && task.userId) {
+      if (task.requiredSkills && task.requiredSkills.length > 0) {
+        for (const reqSkill of task.requiredSkills) {
+          let userSkill = await this.userSkillRepo.findOne({
+            where: { userId: task.userId, skillId: reqSkill.skill_id },
+          });
+
+          if (!userSkill) {
+            userSkill = this.userSkillRepo.create({
+              userId: task.userId,
+              skillId: reqSkill.skill_id,
+              level: 1,
+              currentXp: 0,
+            });
+            await this.userSkillRepo.save(userSkill);
+          }
+
+          const evidence = this.skillEvidenceRepo.create({
+            userSkillId: userSkill.id,
+            taskId: task.id,
+            type: EvidenceType.TASK_COMPLETION,
+            title: `Hoàn thành task: ${task.title || 'Untitled'}`,
+            description: `Auto-generated evidence from task completion.`,
+            status: 'PENDING',
+            xpGranted: reqSkill.weight || 10,
+          });
+          await this.skillEvidenceRepo.save(evidence);
+        }
       }
     }
 

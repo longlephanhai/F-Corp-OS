@@ -6,6 +6,7 @@ export const EVIDENCE_WEIGHTS: Record<EvidenceType, number> = {
     [EvidenceType.PROJECT_LINK]: 0.3,
     [EvidenceType.ASSESSMENT]: 0.3,
     [EvidenceType.WORK_HISTORY]: 0.2,
+    [EvidenceType.TASK_COMPLETION]: 0.3,
     [EvidenceType.OTHER]: 0.1,
 };
 

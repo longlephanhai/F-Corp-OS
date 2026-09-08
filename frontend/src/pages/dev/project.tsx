@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Typography, Button, Space } from "antd";
+import { Table, Tag, Typography, Button } from "antd";
 import { MessageOutlined } from "@ant-design/icons";
 import { callFetchUserSprintProjects } from "../../api";
 import { ProjectChatDrawer } from "../../components/pm/ProjectChatDrawer";

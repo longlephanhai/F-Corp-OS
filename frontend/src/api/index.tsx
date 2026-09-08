@@ -72,7 +72,7 @@ export const callFetchSkillsWithoutPaginate = async (): Promise<IBackendRes<IMod
     return await axios.get(`/skills/all`);
 }
 
-export const callCreateSkill = async (data: { name: string; description: string }): Promise<IBackendRes<ISkills>> => {
+export const callCreateSkill = async (data: { name: string; description: string; parentId?: string | null }): Promise<IBackendRes<ISkills>> => {
     return await axios.post('/skills', data);
 }
 
@@ -139,4 +139,9 @@ export const callDeletePermission = (id: string) => {
 
 export const callFetchUserSprintProjects = () => {
     return axios.get('/user-sprint/user');
+}
+
+// API SKILL TREE
+export const callFetchSkillTree = () => {
+    return axios.get('/user-skill/skill-tree');
 }

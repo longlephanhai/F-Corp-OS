@@ -32,6 +32,7 @@ import { PMDashboardPage } from "./pages/pm/PMDashboardPage";
 import BenchForecast from "./pages/hr/BenchForecast";
 import TalentManagement from "./pages/hr/TalentManagement";
 import UserPorjectPage from "./pages/dev/project";
+import SkillTreePage from "./pages/dev/skill-tree";
 
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -133,6 +134,10 @@ function App() {
         {
           path: "user-project",
           element: <UserPorjectPage />,
+        },
+        {
+          path: "skill-tree",
+          element: <SkillTreePage />,
         }
       ],
     },

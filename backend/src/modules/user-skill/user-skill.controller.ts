@@ -16,6 +16,13 @@ export class UserSkillController {
     return this.userSkillService.create(createUserSkillDto, user);
   }
 
+  @Get('skill-tree')
+  @ResponseMessage('Get skill tree successfully')
+  @SkipCheckPermission()
+  getSkillTree(@User() user: IUser) {
+    return this.userSkillService.getSkillTree(user);
+  }
+
   @Get()
   findAll() {
     return this.userSkillService.findAll();

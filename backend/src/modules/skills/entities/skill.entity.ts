@@ -12,6 +12,9 @@ export class Skill {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ name: 'parent_id', type: 'uuid', nullable: true })
+  parentId: string | null;
+
   @OneToMany(() => UserSkill, (userSkill) => userSkill.skill)
   userSkills: UserSkill[];
 

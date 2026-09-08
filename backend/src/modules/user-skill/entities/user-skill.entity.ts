@@ -20,6 +20,9 @@ export class UserSkill {
   @Column({ type: 'int', default: 1 })
   level: number; // 1-5
 
+  @Column({ name: 'current_xp', type: 'int', default: 0 })
+  currentXp: number;
+
   @Column({ type: 'float', nullable: true })
   years: number;
 
