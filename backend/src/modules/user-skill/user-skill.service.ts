@@ -148,17 +148,56 @@ export class UserSkillService {
     // Map user_skills theo skillId để lookup nhanh
     const userSkillMap = new Map(userSkills.map((us) => [us.skillId, us]));
 
+    const childrenByParent = new Map<string, string[]>();
+    allSkills.forEach((skill: any) => {
+      if (!skill.parentId) return;
+      const parentChildren = childrenByParent.get(skill.parentId) ?? [];
+      parentChildren.push(skill.id);
+      childrenByParent.set(skill.parentId, parentChildren);
+    });
+
+    const visited = new Set<string>();
+    const getEffectiveSkillState = (skillId: string): { level: number; xp: number } => {
+      if (visited.has(skillId)) {
+        return { level: 0, xp: 0 };
+      }
+
+      visited.add(skillId);
+
+      const directUserSkill = userSkillMap.get(skillId);
+      const directLevel = directUserSkill?.level ?? 0;
+      const directXp = directUserSkill?.currentXp ?? 0;
+      const children = childrenByParent.get(skillId) ?? [];
+
+      let maxChildLevel = 0;
+      let maxChildXp = 0;
+
+      for (const childId of children) {
+        const childState = getEffectiveSkillState(childId);
+        maxChildLevel = Math.max(maxChildLevel, childState.level);
+        maxChildXp = Math.max(maxChildXp, childState.xp);
+      }
+
+      visited.delete(skillId);
+
+      return {
+        level: Math.max(directLevel, maxChildLevel),
+        xp: Math.max(directXp, maxChildXp),
+      };
+    };
+
     // 3. Transform thành định dạng node cho frontend
     const nodes = allSkills.map((skill: any) => {
-      const userSkill = userSkillMap.get(skill.id);
+      const effectiveState = getEffectiveSkillState(skill.id);
+
       return {
         id: skill.id,
         parentId: skill.parentId ?? null,
         name: skill.name,
         description: skill.description,
-        level: userSkill?.level ?? 0,
-        currentXp: userSkill?.currentXp ?? 0,
-        userSkillId: userSkill?.id ?? null,
+        level: effectiveState.level,
+        currentXp: effectiveState.xp,
+        userSkillId: userSkillMap.get(skill.id)?.id ?? null,
       };
     });
 
