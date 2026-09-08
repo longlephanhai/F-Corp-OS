@@ -91,17 +91,22 @@ const LayoutPM = () => {
   // }, []);
 
   useEffect(() => {
-    const namespace = 'user-skills';
-    connectSocket(namespace);
-    const socket = getSocket('user-skills');
-    socket.on('user-skill-updated', (message) => {
+    connectSocket('/user-skills');
+    const socket = getSocket('/user-skills');
+    const handleUpdated = (message: any) => {
       console.log('Nhận thông báo từ server:', message);
       messageApi.open({
         type: 'success',
         content: message.message,
         styles: defaultStyles,
       });
-    });
+    };
+
+    socket.on('user-skill-updated', handleUpdated);
+
+    return () => {
+      socket.off('user-skill-updated', handleUpdated);
+    };
   }, [messageApi]);
 
 

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { socket } from "../config/socket";
-
+import { socket } from "../config/socket.config";
 export interface PmProjectChangedEvent {
   type: "PM_PROJECT_CHANGED";
 

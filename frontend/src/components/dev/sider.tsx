@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router";
 import { DashboardOutlined } from '@ant-design/icons';
 import { GiSkills } from "react-icons/gi";
 import { RiCertificate2Fill } from "react-icons/ri";
+import { FaProjectDiagram } from "react-icons/fa";
 
 interface IProps {
     collapsed: boolean;
@@ -68,6 +69,12 @@ const SiderDev = (props: IProps) => {
                         icon: <RiCertificate2Fill />,
                         label: 'Evidence',
                         onClick: () => navigate('user-skill')
+                    },
+                    {
+                        key: 'user-project',
+                        icon: <FaProjectDiagram />,
+                        label: 'Project',
+                        onClick: () => navigate('user-project')
                     }
                 ]}
             />

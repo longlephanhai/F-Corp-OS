@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Drawer, Input, Button, Avatar, Typography, Spin, Empty, Tooltip } from "antd";
 import { SendOutlined, TeamOutlined } from "@ant-design/icons";
-import { chatSocket } from "../../config/socket";
+import { chatSocket } from "../../config/socket.config";
 import { chatApi } from "../../api/chat";
 import type { ChatMember, ChatMessage } from "../../common/types/pm";
 import { useAppSelector } from "../../hooks/hooks";
@@ -129,6 +129,7 @@ export const ProjectChatDrawer: React.FC<ProjectChatDrawerProps> = ({
     if (!trimmed || sending) return;
 
     setSending(true);
+
     chatSocket.emit(
       "send-message",
       { projectId, content: trimmed },

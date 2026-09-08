@@ -28,7 +28,7 @@ export class SkillEvidencesController {
   @SkipCheckPermission()
   @Post()
   async submitEvidence(@Body() body: any) {
-    console.log('📬 Đã nhận data nộp bằng chứng từ Postman:', body);
+   
     Logger.debug('tao là khánh', body);
     // Gọi hàm uploadEvidence trong Service.
     // Hàm này sẽ tự động: Lưu DB -> Lấy ra ID mới -> Bắn Socket rung chuông!

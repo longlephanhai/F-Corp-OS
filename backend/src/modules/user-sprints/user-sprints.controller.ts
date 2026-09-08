@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { SkipCheckPermission } from 'decorator/customize';
+import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
 
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
@@ -21,6 +21,7 @@ import { PmAccessService } from '../pm-access/pm-access.service';
 import { UserSprintService } from './user-sprints.service';
 
 import { UserSprintStatus } from './entities/user-sprint.entity';
+import  type { IUser } from 'common/types/user.interface';
 
 @UseGuards(JwtAuthGuard)
 @SkipCheckPermission()
@@ -30,16 +31,8 @@ export class UserSprintController {
     private readonly userSprintService: UserSprintService,
 
     private readonly pmAccessService: PmAccessService,
-  ) {}
+  ) { }
 
-  // ==========================================
-  // GET SPRINT ALLOCATIONS
-  //
-  // GET /user-sprint/sprint/:sprintId
-  //
-  // Primary PM hoặc Co-PM của Project
-  // chứa Sprint mới được xem.
-  // ==========================================
 
   @Get('sprint/:sprintId')
   async getSprintUsers(
@@ -364,5 +357,11 @@ export class UserSprintController {
 
       data,
     };
+  }
+
+  @Get('user')
+  @ResponseMessage('Lấy danh sách phân bổ Sprint của nhân sự thành công')
+  async getUserSprints(@User() user: IUser) {
+    return await this.userSprintService.getUserSprints(user);
   }
 }

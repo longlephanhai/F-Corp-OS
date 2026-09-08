@@ -81,14 +81,16 @@ export class ChatGateway {
     }
 
     const content = (data?.content || '').trim();
+
     if (!content) {
       return { error: 'Nội dung tin nhắn không được để trống' };
     }
-
+    
     const isMember = await this.chatService.isProjectMember(
       data.projectId,
       user.id,
     );
+
     if (!isMember) {
       return { error: 'Bạn không thuộc phòng chat của Dự án này' };
     }
@@ -98,7 +100,6 @@ export class ChatGateway {
       user.id,
       content,
     );
-
     // Phát tin nhắn tới toàn bộ thành viên đang trong phòng (kể cả người gửi)
     this.server.to(projectRoom(data.projectId)).emit('receive-message', message);
 

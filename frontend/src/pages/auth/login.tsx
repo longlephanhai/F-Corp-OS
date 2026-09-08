@@ -18,7 +18,7 @@ import { callApiLogin } from "../../api";
 import { useAppDispatch, useAppSelector } from "../../hooks/hooks";
 import { setUserLoginInfo } from "../../redux/account/accountSlice";
 import CompanyLogo from "../../components/auth/logo-company";
-import { reconnectSocketWithAuth } from "../../config/socket";
+import { reconnectSocketWithAuth } from "../../config/socket.config";
 const { Title, Text, Link } = Typography;
 
 const LoginPage = () => {

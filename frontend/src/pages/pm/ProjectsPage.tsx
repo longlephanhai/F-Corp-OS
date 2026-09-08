@@ -34,7 +34,7 @@ export const ProjectsPage: React.FC = () => {
   const fetchProjects = async () => {
     setLoading(true);
     try {
- 
+
       const res = await pmApi.getMyProjects();
       setProjects(res?.data?.data ?? res?.data ?? []);
     } catch (error) {
@@ -52,7 +52,7 @@ export const ProjectsPage: React.FC = () => {
 
   // Xử lý submit form tạo dự án mới
   const handleCreateProject = async (values: any) => {
-    
+
     try {
       setLoading(true);
       const payload = {
@@ -61,7 +61,7 @@ export const ProjectsPage: React.FC = () => {
         startDate: values.dateRange[0].format("YYYY-MM-DD"),
         endDate: values.dateRange[1].format("YYYY-MM-DD"),
         // Tạm thời hardcode ID của PM (Lấy từ bảng users trong DB của bác)
-        pmId: values.id , 
+        pmId: values.id,
       };
 
       // Gọi API tạo dự án
@@ -126,7 +126,7 @@ export const ProjectsPage: React.FC = () => {
         );
       },
     },
-        {
+    {
       title: "THAO TÁC",
       key: "action",
       align: "right" as const,
@@ -240,6 +240,7 @@ export const ProjectsPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
       {chatProject && (
         <ProjectChatDrawer
           open={!!chatProject}
@@ -248,6 +249,7 @@ export const ProjectsPage: React.FC = () => {
           projectName={chatProject.name}
         />
       )}
+
     </Card>
   );
 };

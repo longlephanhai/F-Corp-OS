@@ -26,7 +26,7 @@ export class NotificationsGateway
       const token = client.handshake.auth?.token;
 
       if (!token) {
-        console.log(`[Socket] Reject client chưa đăng nhập: ${client.id}`);
+     
         client.disconnect(true);
         return;
       }
@@ -41,15 +41,15 @@ export class NotificationsGateway
       // Mỗi user vào room riêng
       await client.join(`user:${payload.id}`);
 
-      console.log(`[Socket] Connected ${client.id} → user:${payload.id}`);
+     
     } catch (error) {
-      console.log(`[Socket] Token không hợp lệ: ${client.id}`);
+  
       client.disconnect(true);
     }
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`[Socket] Disconnected: ${client.id}`);
+    
   }
 
   // ==========================================

@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UserSprint, UserSprintStatus } from './entities/user-sprint.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { User } from '../users/entities/user.entity';
@@ -15,6 +15,8 @@ import {
   PmRealtimeAction,
   PmRealtimeService,
 } from '../pm-realtime/pm-realtime.service';
+import { IUser } from 'common/types/user.interface';
+import { Project } from 'modules/projects/entities/project.entity';
 
 @Injectable()
 export class UserSprintService {
@@ -30,7 +32,10 @@ export class UserSprintService {
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
     private readonly pmRealtimeService: PmRealtimeService,
-  ) {}
+
+    @InjectRepository(Project)
+    private readonly projectRepo: Repository<Project>,
+  ) { }
 
   // ==========================================
   // PM REALTIME
@@ -53,7 +58,7 @@ export class UserSprintService {
   async getSprintUsers(sprintId: string) {
     const records = await this.userSprintRepo.find({
       where: { sprintId },
-      relations: { user: true }, // Tự động móc thông tin user từ DB lên
+      relations: { user: true },
       select: {
         user: {
           id: true,
@@ -968,6 +973,36 @@ export class UserSprintService {
         sprintId: sprint.id,
         sprintStatus: sprint.status,
       });
+    }
+  }
+
+
+  async getUserSprints(user: IUser) {
+    const isExist = await this.userSprintRepo.find({
+      where: {
+        userId: user.id
+      }
+    })
+    if (!isExist) {
+      throw new BadRequestException('Người dùng chưa được phân bổ vào Sprint nào');
+    }
+
+    const sprintIds = isExist.map((item) => item.sprintId);
+    const sprints = await this.sprintRepo.find({
+      where: {
+        id: In(sprintIds)
+      }
+    })
+    // return sprints;
+    const projectIds = sprints.map((item) => item.projectId);
+    const projects = await this.projectRepo.find({
+      where: {
+        id: In(projectIds)
+      }
+    })
+    return {
+      sprints,
+      projects
     }
   }
 }

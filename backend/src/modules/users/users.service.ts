@@ -77,7 +77,7 @@ export class UsersService {
     }
 
     const costRate = TITLE_COST_RATE[title];
-    console.log(user.id, user.email);
+   
 
     const newUser = await this.usersRepository.save({
       ...createUserDto,
@@ -99,8 +99,7 @@ export class UsersService {
 
   async findAll(currentPage: number, limit: number, qs: string) {
     const { filter, sort } = aqp(qs);
-    // console.log('filter', filter);
-    // console.log('sort', sort);
+   
     delete filter.current;
     delete filter.pageSize;
 
@@ -225,8 +224,7 @@ export class UsersService {
     const existUser = await this.usersRepository.findOne({
       where: { id },
     });
-    console.log(`User with id "${id}" `);
-    console.log(`User with id "${user.fullName}" `);
+
     if (!existUser) {
 
       throw new BadRequestException(`User with id "${id}" not found`);

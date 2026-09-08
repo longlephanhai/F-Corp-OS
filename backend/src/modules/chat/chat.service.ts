@@ -39,7 +39,6 @@ export class ChatService {
     });
 
     const sprintIds = sprints.map((s) => s.id);
-
     const memberIds = new Set<string>();
     if (project.pmId) memberIds.add(project.pmId);
 
@@ -47,10 +46,12 @@ export class ChatService {
       const userSprints = await this.userSprintRepo.find({
         where: {
           sprintId: In(sprintIds),
+
           status: UserSprintStatus.ASSIGNED,
         },
         select: { userId: true },
       });
+
       userSprints.forEach((us) => memberIds.add(us.userId));
     }
 
@@ -59,11 +60,11 @@ export class ChatService {
       select: { userId: true },
     });
     projectManagers.forEach((pm) => memberIds.add(pm.userId));
-
     return Array.from(memberIds);
   }
 
   async isProjectMember(projectId: string, userId: string): Promise<boolean> {
+
     const memberIds = await this.getProjectMemberIds(projectId);
     return memberIds.includes(userId);
   }

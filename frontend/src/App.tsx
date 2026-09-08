@@ -31,6 +31,7 @@ import { PMDashboardPage } from "./pages/pm/PMDashboardPage";
 
 import BenchForecast from "./pages/hr/BenchForecast";
 import TalentManagement from "./pages/hr/TalentManagement";
+import UserPorjectPage from "./pages/dev/project";
 
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -129,6 +130,10 @@ function App() {
           path: "user-skill",
           element: <UserSkillPage />,
         },
+        {
+          path: "user-project",
+          element: <UserPorjectPage />,
+        }
       ],
     },
 

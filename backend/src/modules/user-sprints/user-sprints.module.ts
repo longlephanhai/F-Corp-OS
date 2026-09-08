@@ -10,11 +10,14 @@ import { User } from '../users/entities/user.entity';
 import { Task } from '../task/entities/task.entity';
 import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 import { PmAccessModule } from '../pm-access/pm-access.module';
+import { ProjectsModule } from 'modules/projects/projects.module';
+import { Project } from 'modules/projects/entities/project.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserSprint, Sprint, User, Task]),
+    TypeOrmModule.forFeature([UserSprint, Sprint, User, Task,Project]),
     PmRealtimeModule,
     PmAccessModule,
+    ProjectsModule
   ],
 
   controllers: [UserSprintController],

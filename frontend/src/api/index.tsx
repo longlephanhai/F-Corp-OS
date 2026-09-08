@@ -137,3 +137,6 @@ export const callDeletePermission = (id: string) => {
     return axios.delete(`/permissions/${id}`);
 }
 
+export const callFetchUserSprintProjects = () => {
+    return axios.get('/user-sprint/user');
+}

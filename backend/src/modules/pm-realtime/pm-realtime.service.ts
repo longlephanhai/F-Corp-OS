@@ -148,9 +148,7 @@ export class PmRealtimeService {
         );
       });
 
-      console.log(
-        `[PM Realtime] ${input.entity}:${input.action} project:${project.id} → ${userIds.size} PM(s)`,
-      );
+
     } catch (error) {
       console.error(
         `[PM Realtime] Không publish được Project ${input.projectId}`,

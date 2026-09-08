@@ -10,7 +10,7 @@ import {
 } from "@ant-design/icons";
 
 // Socket dùng chung toàn app
-import { socket, connectSocket } from "../../config/socket";
+// import { socket, connectSocket } from "../../config/socket";
 
 // API của PM
 import { pmApi } from "../../api/pm";
@@ -129,38 +129,38 @@ export const NotificationBell: React.FC = () => {
   // 2. SOCKET REALTIME
   // =========================================================
 
-  useEffect(() => {
-    fetchNotificationHistory();
+  // useEffect(() => {
+  //   fetchNotificationHistory();
 
-    connectSocket();
+  //   // connectSocket();
 
-    const handleNewNotification = (data: any) => {
-      const newNotification = formatNotification(data);
+  //   const handleNewNotification = (data: any) => {
+  //     const newNotification = formatNotification(data);
 
-      newNotification.read = false;
+  //     newNotification.read = false;
 
-      setNotifications((prev) => {
-        const exists = prev.some((item) => item.id === newNotification.id);
+  //     setNotifications((prev) => {
+  //       const exists = prev.some((item) => item.id === newNotification.id);
 
-        if (exists) {
-          return prev;
-        }
+  //       if (exists) {
+  //         return prev;
+  //       }
 
-        return [newNotification, ...prev];
-      });
+  //       return [newNotification, ...prev];
+  //     });
 
-      message.info({
-        content: `Thông báo mới: ${newNotification.title}`,
-        duration: 3,
-      });
-    };
+  //     message.info({
+  //       content: `Thông báo mới: ${newNotification.title}`,
+  //       duration: 3,
+  //     });
+  //   };
 
-    socket.on("new_notification", handleNewNotification);
+  //   socket.on("new_notification", handleNewNotification);
 
-    return () => {
-      socket.off("new_notification", handleNewNotification);
-    };
-  }, []);
+  //   return () => {
+  //     socket.off("new_notification", handleNewNotification);
+  //   };
+  // }, []);
 
   // =========================================================
   // 3. UNREAD COUNT
@@ -212,9 +212,9 @@ export const NotificationBell: React.FC = () => {
         prev.map((item) =>
           item.id === id
             ? {
-                ...item,
-                read: true,
-              }
+              ...item,
+              read: true,
+            }
             : item,
         ),
       );
@@ -330,10 +330,9 @@ export const NotificationBell: React.FC = () => {
                 border-b border-gray-100
                 px-4 py-4
                 transition-all duration-200
-                ${
-                  item.read
-                    ? "bg-white hover:bg-gray-50"
-                    : "bg-blue-50/50 hover:bg-blue-50"
+                ${item.read
+                  ? "bg-white hover:bg-gray-50"
+                  : "bg-blue-50/50 hover:bg-blue-50"
                 }
               `}
             >
