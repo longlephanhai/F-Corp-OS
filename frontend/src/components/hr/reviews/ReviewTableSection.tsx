@@ -4,6 +4,7 @@ import {
     Button,
     Dropdown,
     Flex,
+    Grid,
     Progress,
     Select,
     Space,
@@ -168,12 +169,17 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
     onComplete,
     onStatusChange,
 }) => {
+    const screens = Grid.useBreakpoint();
+
+    const isDesktop = Boolean(screens.lg);
+    const isTablet = Boolean(screens.md);
+
     const columns: ColumnsType<ReviewRecordItem> = [
         {
             title: 'Nhân viên',
             key: 'employee',
-            fixed: 'left',
-            width: 230,
+            fixed: isDesktop ? 'left' : undefined,
+            width: isDesktop ? 230 : 190,
             render: (_, record) => {
                 const employee = record.employee;
 
@@ -211,6 +217,7 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
             title: 'Vị trí / Phòng ban',
             key: 'title',
             width: 180,
+            responsive: ['md'],
             render: (_, record) => (
                 <Flex vertical gap={4}>
                     <Text style={{ fontSize: 13 }}>
@@ -235,9 +242,12 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
             ),
         },
         {
-            title: 'Chu kỳ đánh giá',
-            key: 'cycle',
+            title: 'Điểm chốt cuối cùng',
+            dataIndex: 'finalScore',
+            key: 'finalScore',
             width: 170,
+            align: 'center',
+            responsive: ['md'],
             render: (_, record) => (
                 <Flex vertical gap={5}>
                     <Text
@@ -315,9 +325,9 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
         {
             title: 'Hành động',
             key: 'actions',
-            width: 120,
+            width: isDesktop ? 120 : 90,
             align: 'center',
-            fixed: 'right',
+            fixed: isDesktop ? 'right' : undefined,
             render: (_, record) => {
                 const menuItems: MenuProps['items'] = [];
 
@@ -450,7 +460,7 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
                 columns={columns}
                 dataSource={records}
                 rowKey="id"
-                scrollX={900}
+                scrollX={isDesktop ? 980 : isTablet ? 760 : 520}
                 searchPlaceholder="Tìm kiếm nhân viên..."
                 onSearch={(record, query) => {
                     const term = query.toLowerCase();
