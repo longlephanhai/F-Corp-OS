@@ -65,15 +65,27 @@ const STATUS_FILTER_OPTIONS = [
     { value: 'COMPLETED', label: 'Hoàn thành' },
 ];
 
-const AVATAR_COLORS = [
-    '#0057c2',
-    '#266d00',
-    '#7d5400',
-    '#614000',
-    '#5c0a83',
-    '#ba1a1a',
-    '#006874',
-];
+const ROLE_LABELS: Record<string, string> = {
+    DEVELOPER: 'Lập trình viên',
+    PM: 'Quản lý dự án',
+    HR: 'Nhân sự',
+    ADMIN: 'Quản trị viên',
+};
+
+const getRoleLabel = (role?: string) =>
+    role ? ROLE_LABELS[role] ?? role : '—';
+
+const getCycleStatusLabel = (status?: string) => {
+    if (!status) return '—';
+
+    const labels: Record<string, string> = {
+        DRAFT: 'Bản nháp',
+        ACTIVE: 'Đang diễn ra',
+        COMPLETED: 'Hoàn thành',
+    };
+
+    return labels[status] ?? status;
+};
 
 const getInitials = (fullName: string) => {
     const parts = fullName.trim().split(/\s+/);
@@ -85,34 +97,63 @@ const getInitials = (fullName: string) => {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-const getAvatarColor = (id: string) =>
-    AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length];
-
 const ScoreCell = ({ value }: { value: number | null }) => {
     if (value === null || value === undefined) {
-        return <Text type="secondary">—</Text>;
+        return (
+            <Tag
+                bordered={false}
+                style={{
+                    margin: 0,
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    color: '#667085',
+                    background: '#f2f4f7',
+                    fontSize: 11,
+                    fontWeight: 500,
+                }}
+            >
+                Chưa chấm
+            </Tag>
+        );
     }
 
     const numericValue = Number(value);
+
     const color =
         numericValue >= 85
-            ? '#52c41a'
+            ? '#16a34a'
             : numericValue >= 70
-                ? '#faad14'
-                : '#ff4d4f';
+                ? '#d97706'
+                : '#dc2626';
 
     return (
-        <Flex vertical gap={2} style={{ minWidth: 90 }}>
-            <Text strong style={{ color, fontSize: 13 }}>
-                {numericValue.toFixed(1)}/100
-            </Text>
+        <Flex vertical gap={4} style={{ minWidth: 100 }}>
+            <Flex align="baseline" gap={3}>
+                <Text
+                    strong
+                    style={{
+                        color,
+                        fontSize: 14,
+                    }}
+                >
+                    {numericValue.toFixed(1)}
+                </Text>
+
+                <Text
+                    type="secondary"
+                    style={{ fontSize: 10 }}
+                >
+                    / 100
+                </Text>
+            </Flex>
 
             <Progress
                 percent={numericValue}
                 size="small"
                 showInfo={false}
                 strokeColor={color}
-                trailColor="#f0f0f0"
+                trailColor="#f2f4f7"
+                style={{ margin: 0 }}
             />
         </Flex>
     );
@@ -144,8 +185,11 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
                     <Flex align="center" gap={10}>
                         <Avatar
                             style={{
-                                background: getAvatarColor(employee.id),
+                                background: '#eff6ff',
+                                color: '#2563eb',
+                                border: '1px solid #dbeafe',
                                 flexShrink: 0,
+                                fontWeight: 700,
                             }}
                         >
                             {getInitials(employee.fullName)}
@@ -172,8 +216,20 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
                     <Text style={{ fontSize: 13 }}>
                         {record.employee?.title ?? '—'}
                     </Text>
-                    <Tag style={{ width: 'fit-content', fontSize: 11 }}>
-                        {record.employee?.role?.name ?? '—'}
+                    <Tag
+                        bordered={false}
+                        style={{
+                            width: 'fit-content',
+                            margin: 0,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            color: '#475467',
+                            background: '#f2f4f7',
+                            fontSize: 10,
+                            fontWeight: 600,
+                        }}
+                    >
+                        {getRoleLabel(record.employee?.role?.name)}
                     </Tag>
                 </Flex>
             ),
@@ -183,13 +239,36 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
             key: 'cycle',
             width: 170,
             render: (_, record) => (
-                <Flex vertical gap={2}>
-                    <Text style={{ fontSize: 13 }}>
+                <Flex vertical gap={5}>
+                    <Text
+                        strong
+                        style={{
+                            color: '#344054',
+                            fontSize: 13,
+                        }}
+                    >
                         {record.reviewCycle?.name ?? '—'}
                     </Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                        {record.reviewCycle?.status ?? ''}
-                    </Text>
+
+                    {record.reviewCycle?.status && (
+                        <Tag
+                            bordered={false}
+                            style={{
+                                width: 'fit-content',
+                                margin: 0,
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                                color: '#667085',
+                                background: '#f2f4f7',
+                                fontSize: 10,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {getCycleStatusLabel(
+                                record.reviewCycle.status,
+                            )}
+                        </Tag>
+                    )}
                 </Flex>
             ),
         },
@@ -219,10 +298,13 @@ const ReviewTableSection: React.FC<ReviewTableSectionProps> = ({
                     <Tag
                         icon={config.icon}
                         color={config.color}
+                        bordered={false}
                         style={{
+                            margin: 0,
                             borderRadius: 999,
-                            padding: '2px 10px',
-                            fontWeight: 500,
+                            padding: '3px 10px',
+                            fontSize: 11,
+                            fontWeight: 600,
                         }}
                     >
                         {config.label}
