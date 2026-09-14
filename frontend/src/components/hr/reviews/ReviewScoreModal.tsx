@@ -11,11 +11,12 @@ import {
     Typography,
 } from 'antd';
 import type { FormInstance } from 'antd';
-import { StarOutlined } from '@ant-design/icons';
+import {
+    SafetyCertificateOutlined,
+    StarOutlined,
+} from '@ant-design/icons';
 
-import type {
-    ReviewRecordItem,
-} from '../../../api/hrReviews';
+import type { ReviewRecordItem } from '../../../api/hrReviews';
 
 const { Text } = Typography;
 
@@ -34,7 +35,23 @@ interface Props {
     onCancel: () => void;
 }
 
-const getInitials = (fullName: string): string => {
+const labelStyle: React.CSSProperties = {
+    color: '#344054',
+    fontSize: 13,
+    fontWeight: 600,
+};
+
+const helperStyle: React.CSSProperties = {
+    color: '#98a2b3',
+    fontSize: 11,
+};
+
+const sectionStyle: React.CSSProperties = {
+    padding: 16,
+    borderRadius: 12,
+};
+
+const getInitials = (fullName: string) => {
     const parts = fullName.trim().split(/\s+/);
 
     if (parts.length === 1) {
@@ -59,54 +76,90 @@ const ReviewScoreModal: React.FC<Props> = ({
     return (
         <Modal
             title={
-                <Flex align="center" gap={8}>
-                    <StarOutlined style={{ color: '#7c3aed' }} />
+                <Flex align="flex-start" gap={12}>
+                    <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                            width: 40,
+                            height: 40,
+                            flexShrink: 0,
+                            borderRadius: 11,
+                            background: '#f5f3ff',
+                            color: '#7c3aed',
+                            fontSize: 18,
+                        }}
+                    >
+                        <StarOutlined />
+                    </Flex>
 
-                    <span style={{ fontWeight: 600, fontSize: 16 }}>
-                        Chấm điểm đánh giá
-                    </span>
+                    <div>
+                        <Text
+                            style={{
+                                display: 'block',
+                                color: '#101828',
+                                fontSize: 17,
+                                fontWeight: 700,
+                            }}
+                        >
+                            Chấm điểm đánh giá
+                        </Text>
+
+                        <Text
+                            style={{
+                                display: 'block',
+                                marginTop: 3,
+                                color: '#667085',
+                                fontSize: 12,
+                            }}
+                        >
+                            Xem kết quả từ PM và chốt điểm cuối cùng.
+                        </Text>
+                    </div>
                 </Flex>
             }
             open={open}
-            onCancel={onCancel}
-            onOk={onSubmit}
-            okText="Lưu điểm"
-            cancelText="Hủy"
-            confirmLoading={loading}
-            width={480}
+            width={520}
+            centered
             destroyOnClose
+            confirmLoading={loading}
+            okText="Lưu điểm chốt"
+            cancelText="Hủy"
+            onOk={onSubmit}
+            onCancel={onCancel}
             okButtonProps={{
                 disabled: waitingForPm,
                 style: {
-                    borderRadius: 8,
-                    background: waitingForPm
-                        ? undefined
-                        : '#7c3aed',
-                    borderColor: waitingForPm
-                        ? undefined
-                        : '#7c3aed',
+                    height: 40,
+                    borderRadius: 9,
+                    fontWeight: 600,
+                    background: waitingForPm ? undefined : '#7c3aed',
+                    borderColor: waitingForPm ? undefined : '#7c3aed',
                 },
             }}
             cancelButtonProps={{
-                style: { borderRadius: 8 },
+                style: { height: 40, borderRadius: 9 },
             }}
         >
             {record && (
                 <Flex
                     align="center"
-                    gap={10}
+                    gap={12}
                     style={{
-                        marginBottom: 16,
+                        margin: '22px 0 16px',
                         padding: '12px 14px',
-                        background: '#f5f3ff',
-                        borderRadius: 10,
-                        border: '1px solid #ddd6fe',
+                        borderRadius: 12,
+                        background: '#f8fafc',
+                        border: '1px solid #eaecf0',
                     }}
                 >
                     <Avatar
+                        size={42}
                         style={{
-                            background: '#7c3aed',
-                            flexShrink: 0,
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #dbeafe',
+                            fontWeight: 700,
                         }}
                     >
                         {record.employee
@@ -114,17 +167,20 @@ const ReviewScoreModal: React.FC<Props> = ({
                             : '?'}
                     </Avatar>
 
-                    <Flex vertical>
-                        <Text strong>
+                    <Flex vertical gap={2}>
+                        <Text strong style={{ color: '#101828' }}>
                             {record.employee?.fullName ?? '—'}
                         </Text>
 
-                        <Text
-                            type="secondary"
-                            style={{ fontSize: 12 }}
-                        >
+                        <Text style={{ color: '#667085', fontSize: 12 }}>
                             {record.employee?.email ?? ''}
                         </Text>
+
+                        {record.reviewCycle?.name && (
+                            <Text style={helperStyle}>
+                                Kỳ đánh giá: {record.reviewCycle.name}
+                            </Text>
+                        )}
                     </Flex>
                 </Flex>
             )}
@@ -133,12 +189,9 @@ const ReviewScoreModal: React.FC<Props> = ({
                 <Alert
                     type="warning"
                     showIcon
-                    message="PM chưa chấm điểm đánh giá"
-                    description="Vui lòng yêu cầu PM chấm điểm đánh giá năng lực trước khi HR chốt điểm."
-                    style={{
-                        marginBottom: 16,
-                        borderRadius: 8,
-                    }}
+                    message="Chưa thể chốt điểm"
+                    description="PM chưa hoàn tất phần chấm điểm. HR chỉ có thể chốt điểm sau khi có điểm sơ bộ từ PM."
+                    style={{ marginBottom: 16, borderRadius: 10 }}
                 />
             )}
 
@@ -147,86 +200,137 @@ const ReviewScoreModal: React.FC<Props> = ({
                 layout="vertical"
                 requiredMark={false}
             >
-                <Form.Item
-                    name="tempScore"
-                    label={
-                        <Flex gap={6} align="center">
-                            <Text strong>Điểm sơ bộ của PM</Text>
-                            <Tag
-                                color="orange"
-                                style={{ margin: 0, fontSize: 11 }}
-                            >
-                                Chỉ đọc
-                            </Tag>
-                        </Flex>
-                    }
+                <div
+                    style={{
+                        ...sectionStyle,
+                        marginBottom: 18,
+                        background: '#f9fafb',
+                        border: '1px solid #eaecf0',
+                    }}
                 >
-                    <InputNumber
-                        min={0}
-                        max={100}
-                        disabled
-                        style={{ width: '100%' }}
-                        placeholder="PM chưa chấm điểm"
-                    />
-                </Form.Item>
-
-                <Form.Item
-                    name="reviewerNote"
-                    label={
-                        <Flex gap={6} align="center">
-                            <Text strong>Nhận xét của PM</Text>
-                            <Tag
-                                color="orange"
-                                style={{ margin: 0, fontSize: 11 }}
+                    <Flex
+                        justify="space-between"
+                        align="center"
+                        style={{ marginBottom: 14 }}
+                    >
+                        <div>
+                            <Text
+                                style={{
+                                    display: 'block',
+                                    color: '#344054',
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                }}
                             >
-                                Chỉ đọc
-                            </Tag>
-                        </Flex>
-                    }
-                >
-                    <Input.TextArea
-                        disabled
-                        rows={3}
-                        placeholder="PM chưa có nhận xét"
-                    />
-                </Form.Item>
+                                Kết quả đánh giá từ PM
+                            </Text>
 
-                <Form.Item
-                    name="finalScore"
-                    label={
-                        <Text strong style={{ color: '#7c3aed' }}>
-                            Điểm chốt cuối cùng của HR
-                        </Text>
-                    }
-                    rules={[
-                        {
-                            required: true,
-                            message:
-                                'Vui lòng nhập điểm chốt trước khi lưu',
-                        },
-                    ]}
-                    extra={
-                        <Text
-                            type="secondary"
-                            style={{ fontSize: 12 }}
+                            <Text style={helperStyle}>
+                                HR chỉ xem, không chỉnh sửa.
+                            </Text>
+                        </div>
+
+                        <Tag
+                            bordered={false}
+                            style={{
+                                margin: 0,
+                                borderRadius: 999,
+                                color: '#b54708',
+                                background: '#fffaeb',
+                                fontSize: 10,
+                                fontWeight: 600,
+                            }}
                         >
-                            Điểm này sẽ được dùng khi hoàn tất đánh giá.
-                        </Text>
-                    }
+                            Chỉ đọc
+                        </Tag>
+                    </Flex>
+
+                    <Form.Item
+                        name="tempScore"
+                        label={<Text style={labelStyle}>Điểm sơ bộ</Text>}
+                    >
+                        <InputNumber
+                            min={0}
+                            max={100}
+                            disabled
+                            style={{ width: '100%' }}
+                            placeholder="PM chưa chấm điểm"
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="reviewerNote"
+                        label={<Text style={labelStyle}>Nhận xét của PM</Text>}
+                        style={{ marginBottom: 0 }}
+                    >
+                        <Input.TextArea
+                            disabled
+                            rows={3}
+                            placeholder="PM chưa có nhận xét"
+                        />
+                    </Form.Item>
+                </div>
+
+                <div
+                    style={{
+                        ...sectionStyle,
+                        background: '#faf5ff',
+                        border: '1px solid #e9d5ff',
+                    }}
                 >
-                    <InputNumber
-                        min={0}
-                        max={100}
-                        disabled={waitingForPm}
-                        style={{ width: '100%' }}
-                        placeholder={
-                            waitingForPm
-                                ? 'Chờ PM chấm điểm trước'
-                                : 'Nhập điểm từ 0 đến 100'
+                    <Flex align="center" gap={8} style={{ marginBottom: 14 }}>
+                        <SafetyCertificateOutlined
+                            style={{ color: '#7c3aed', fontSize: 16 }}
+                        />
+
+                        <div>
+                            <Text
+                                style={{
+                                    display: 'block',
+                                    color: '#6d28d9',
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                }}
+                            >
+                                Điểm chốt của HR
+                            </Text>
+
+                            <Text style={{ color: '#7e22ce', fontSize: 11 }}>
+                                Dùng khi hoàn tất đánh giá.
+                            </Text>
+                        </div>
+                    </Flex>
+
+                    <Form.Item
+                        name="finalScore"
+                        label={
+                            <Text style={labelStyle}>
+                                Điểm chốt cuối cùng
+                            </Text>
                         }
-                        size="large"
-                    />
-                </Form.Item>
+                        rules={[
+                            {
+                                required: true,
+                                message:
+                                    'Vui lòng nhập điểm chốt trước khi lưu',
+                            },
+                        ]}
+                        style={{ marginBottom: 0 }}
+                    >
+                        <InputNumber
+                            min={0}
+                            max={100}
+                            size="large"
+                            disabled={waitingForPm}
+                            style={{ width: '100%' }}
+                            placeholder={
+                                waitingForPm
+                                    ? 'Chờ PM chấm điểm trước'
+                                    : 'Nhập điểm từ 0 đến 100'
+                            }
+                        />
+                    </Form.Item>
+                </div>
             </Form>
         </Modal>
     );

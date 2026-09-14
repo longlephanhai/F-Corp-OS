@@ -10,7 +10,11 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { PlusOutlined } from '@ant-design/icons';
+import {
+    CalendarOutlined,
+    PlusOutlined,
+    TeamOutlined,
+} from '@ant-design/icons';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -34,6 +38,47 @@ interface Props {
     onCancel: () => void;
 }
 
+const labelStyle: React.CSSProperties = {
+    color: '#344054',
+    fontSize: 13,
+    fontWeight: 600,
+};
+
+const helperStyle: React.CSSProperties = {
+    color: '#98a2b3',
+    fontSize: 11,
+};
+
+const inputStyle: React.CSSProperties = {
+    borderRadius: 9,
+};
+
+interface FieldLabelProps {
+    icon?: React.ReactNode;
+    children: React.ReactNode;
+    optional?: boolean;
+}
+
+const FieldLabel: React.FC<FieldLabelProps> = ({
+    icon,
+    children,
+    optional,
+}) => (
+    <Flex align="center" gap={6}>
+        {icon}
+
+        <Text style={labelStyle}>
+            {children}
+        </Text>
+
+        {optional && (
+            <Text style={helperStyle}>
+                Tùy chọn
+            </Text>
+        )}
+    </Flex>
+);
+
 const CreateReviewCycleModal: React.FC<Props> = ({
     open,
     loading,
@@ -45,33 +90,84 @@ const CreateReviewCycleModal: React.FC<Props> = ({
 }) => (
     <Modal
         title={
-            <Flex align="center" gap={8}>
-                <PlusOutlined style={{ color: '#2563eb' }} />
-                <span style={{ fontWeight: 600, fontSize: 16 }}>
-                    Tạo kỳ đánh giá mới
-                </span>
+            <Flex align="flex-start" gap={12}>
+                <Flex
+                    align="center"
+                    justify="center"
+                    style={{
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                        borderRadius: 11,
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        fontSize: 18,
+                    }}
+                >
+                    <PlusOutlined />
+                </Flex>
+
+                <div>
+                    <Text
+                        style={{
+                            display: 'block',
+                            color: '#101828',
+                            fontSize: 17,
+                            fontWeight: 700,
+                        }}
+                    >
+                        Tạo kỳ đánh giá mới
+                    </Text>
+
+                    <Text
+                        style={{
+                            display: 'block',
+                            marginTop: 3,
+                            color: '#667085',
+                            fontSize: 12,
+                        }}
+                    >
+                        Thiết lập thời gian và nhân sự tham gia kỳ đánh giá.
+                    </Text>
+                </div>
             </Flex>
         }
         open={open}
-        onCancel={onCancel}
-        onOk={onSubmit}
-        okText="Tạo ngay"
-        cancelText="Hủy"
-        confirmLoading={loading}
-        width={520}
+        width={560}
+        centered
         destroyOnClose
-        okButtonProps={{ style: { borderRadius: 8 } }}
-        cancelButtonProps={{ style: { borderRadius: 8 } }}
+        confirmLoading={loading}
+        okText="Tạo kỳ đánh giá"
+        cancelText="Hủy"
+        onOk={onSubmit}
+        onCancel={onCancel}
+        okButtonProps={{
+            style: {
+                height: 40,
+                borderRadius: 9,
+                fontWeight: 600,
+            },
+        }}
+        cancelButtonProps={{
+            style: {
+                height: 40,
+                borderRadius: 9,
+            },
+        }}
     >
         <Form
             form={form}
             layout="vertical"
-            style={{ marginTop: 16 }}
             requiredMark={false}
+            style={{ marginTop: 24 }}
         >
             <Form.Item
                 name="name"
-                label={<Text strong>Tên kỳ đánh giá</Text>}
+                label={
+                    <FieldLabel>
+                        Tên kỳ đánh giá
+                    </FieldLabel>
+                }
                 rules={[
                     {
                         required: true,
@@ -82,17 +178,35 @@ const CreateReviewCycleModal: React.FC<Props> = ({
                         message: 'Tên không được vượt quá 255 ký tự',
                     },
                 ]}
+                extra={
+                    <Text style={helperStyle}>
+                        Đặt tên ngắn gọn để dễ nhận biết kỳ đánh giá.
+                    </Text>
+                }
             >
                 <Input
-                    placeholder="Ví dụ: Đánh giá năng lực Q3/2026"
                     size="large"
-                    style={{ borderRadius: 8 }}
+                    placeholder="Ví dụ: Đánh giá năng lực Q3/2026"
+                    style={inputStyle}
                 />
             </Form.Item>
 
             <Form.Item
                 name="dateRange"
-                label={<Text strong>Thời gian kỳ đánh giá</Text>}
+                label={
+                    <FieldLabel
+                        icon={
+                            <CalendarOutlined
+                                style={{
+                                    color: '#667085',
+                                    fontSize: 13,
+                                }}
+                            />
+                        }
+                    >
+                        Thời gian kỳ đánh giá
+                    </FieldLabel>
+                }
                 rules={[
                     {
                         required: true,
@@ -103,9 +217,15 @@ const CreateReviewCycleModal: React.FC<Props> = ({
             >
                 <RangePicker
                     size="large"
-                    style={{ width: '100%', borderRadius: 8 }}
                     format="DD/MM/YYYY"
-                    placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
+                    placeholder={[
+                        'Ngày bắt đầu',
+                        'Ngày kết thúc',
+                    ]}
+                    style={{
+                        width: '100%',
+                        ...inputStyle,
+                    }}
                     disabledDate={(current) =>
                         current &&
                         current.isBefore(new Date(), 'day')
@@ -116,20 +236,33 @@ const CreateReviewCycleModal: React.FC<Props> = ({
             <Form.Item
                 name="employeeIds"
                 label={
-                    <Text strong>
-                        Nhân sự tham gia{' '}
-                        <Text
-                            type="secondary"
-                            style={{ fontWeight: 400 }}
-                        >
-                            (tùy chọn)
-                        </Text>
+                    <FieldLabel
+                        optional
+                        icon={
+                            <TeamOutlined
+                                style={{
+                                    color: '#667085',
+                                    fontSize: 13,
+                                }}
+                            />
+                        }
+                    >
+                        Nhân sự tham gia
+                    </FieldLabel>
+                }
+                extra={
+                    <Text style={helperStyle}>
+                        Chọn một hoặc nhiều nhân sự cần đưa vào kỳ đánh giá.
                     </Text>
                 }
             >
                 <Select
                     mode="multiple"
-                    placeholder="Chọn nhân viên tham gia kỳ đánh giá..."
+                    size="large"
+                    showSearch
+                    allowClear
+                    maxTagCount="responsive"
+                    placeholder="Tìm và chọn nhân sự..."
                     options={employeeOptions}
                     loading={fetchingEmployees}
                     filterOption={(input, option) =>
@@ -137,9 +270,11 @@ const CreateReviewCycleModal: React.FC<Props> = ({
                             .toLowerCase()
                             .includes(input.toLowerCase())
                     }
-                    style={{ width: '100%' }}
-                    allowClear
-                    maxTagCount="responsive"
+                    notFoundContent={
+                        fetchingEmployees
+                            ? 'Đang tải danh sách nhân sự...'
+                            : 'Không tìm thấy nhân sự phù hợp'
+                    }
                 />
             </Form.Item>
         </Form>

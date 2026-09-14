@@ -13,6 +13,8 @@ import {
     ClockCircleOutlined,
     ExclamationCircleOutlined,
     EyeOutlined,
+    SafetyCertificateOutlined,
+    StarOutlined,
 } from '@ant-design/icons';
 
 import type {
@@ -22,7 +24,7 @@ import type {
 
 const { Text } = Typography;
 
-interface ReviewDetailDrawerProps {
+interface Props {
     open: boolean;
     loading: boolean;
     record: ReviewRecordItem | null;
@@ -47,17 +49,39 @@ const STATUS_CONFIG = {
     },
 } as const;
 
-const AVATAR_COLORS = [
-    '#0057c2',
-    '#266d00',
-    '#7d5400',
-    '#614000',
-    '#5c0a83',
-    '#ba1a1a',
-    '#006874',
-];
+const ROLE_LABELS: Record<string, string> = {
+    DEVELOPER: 'Lập trình viên',
+    PM: 'Quản lý dự án',
+    HR: 'Nhân sự',
+    ADMIN: 'Quản trị viên',
+};
 
-const getInitials = (fullName: string): string => {
+const CYCLE_STATUS_LABELS: Record<string, string> = {
+    DRAFT: 'Bản nháp',
+    ACTIVE: 'Đang diễn ra',
+    COMPLETED: 'Hoàn thành',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+    display: 'block',
+    marginBottom: 10,
+    color: '#344054',
+    fontSize: 13,
+    fontWeight: 700,
+};
+
+const cardStyle: React.CSSProperties = {
+    padding: 14,
+    borderRadius: 12,
+    border: '1px solid #eaecf0',
+};
+
+const helperStyle: React.CSSProperties = {
+    color: '#98a2b3',
+    fontSize: 11,
+};
+
+const getInitials = (fullName: string) => {
     const parts = fullName.trim().split(/\s+/);
 
     if (parts.length === 1) {
@@ -67,16 +91,11 @@ const getInitials = (fullName: string): string => {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-const getAvatarColor = (id: string): string =>
-    AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length];
-
 const formatDate = (
     value: string | Date | null | undefined,
     withTime = false,
 ) => {
-    if (!value) {
-        return '—';
-    }
+    if (!value) return '—';
 
     const date = new Date(value);
 
@@ -85,7 +104,75 @@ const formatDate = (
         : date.toLocaleDateString('vi-VN');
 };
 
-const ReviewDetailDrawer: React.FC<ReviewDetailDrawerProps> = ({
+const getScoreColor = (score: number) =>
+    score >= 85
+        ? '#16a34a'
+        : score >= 70
+          ? '#d97706'
+          : '#dc2626';
+
+const ScoreBlock = ({
+    label,
+    score,
+    icon,
+    variant = 'neutral',
+}: {
+    label: string;
+    score: number | null | undefined;
+    icon: React.ReactNode;
+    variant?: 'neutral' | 'purple';
+}) => {
+    const purple = variant === 'purple';
+
+    return (
+        <Flex
+            vertical
+            gap={8}
+            style={{
+                ...cardStyle,
+                flex: 1,
+                background: purple ? '#faf5ff' : '#f9fafb',
+                borderColor: purple ? '#e9d5ff' : '#eaecf0',
+            }}
+        >
+            <Flex align="center" gap={7}>
+                {icon}
+
+                <Text
+                    style={{
+                        color: purple ? '#6d28d9' : '#475467',
+                        fontSize: 12,
+                        fontWeight: 600,
+                    }}
+                >
+                    {label}
+                </Text>
+            </Flex>
+
+            {score != null ? (
+                <Text
+                    style={{
+                        color: getScoreColor(Number(score)),
+                        fontSize: 22,
+                        fontWeight: 700,
+                    }}
+                >
+                    {Number(score).toFixed(1)}
+                    <Text style={helperStyle}>
+                        {' '}
+                        / 100
+                    </Text>
+                </Text>
+            ) : (
+                <Text style={{ color: '#98a2b3', fontSize: 12 }}>
+                    {purple ? 'Chưa chốt' : 'Chưa chấm'}
+                </Text>
+            )}
+        </Flex>
+    );
+};
+
+const ReviewDetailDrawer: React.FC<Props> = ({
     open,
     loading,
     record,
@@ -93,22 +180,50 @@ const ReviewDetailDrawer: React.FC<ReviewDetailDrawerProps> = ({
 }) => {
     const statusConfig = record
         ? STATUS_CONFIG[
-        record.status as keyof typeof STATUS_CONFIG
-        ]
+              record.status as keyof typeof STATUS_CONFIG
+          ]
         : undefined;
+
+    const roleName = record?.employee?.role?.name;
 
     return (
         <Drawer
             title={
-                <Flex align="center" gap={8}>
-                    <EyeOutlined style={{ color: '#2563eb' }} />
-                    <span style={{ fontWeight: 600 }}>
-                        Chi tiết đánh giá
-                    </span>
+                <Flex align="center" gap={10}>
+                    <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 9,
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                        }}
+                    >
+                        <EyeOutlined />
+                    </Flex>
+
+                    <div>
+                        <Text
+                            style={{
+                                display: 'block',
+                                color: '#101828',
+                                fontSize: 16,
+                                fontWeight: 700,
+                            }}
+                        >
+                            Chi tiết đánh giá
+                        </Text>
+
+                        <Text style={helperStyle}>
+                            Thông tin tổng hợp của bản ghi đánh giá
+                        </Text>
+                    </div>
                 </Flex>
             }
             placement="right"
-            width={600}
+            width={620}
             open={open}
             onClose={onClose}
             destroyOnClose
@@ -122,143 +237,208 @@ const ReviewDetailDrawer: React.FC<ReviewDetailDrawerProps> = ({
                     <Spin size="large" tip="Đang tải..." />
                 </Flex>
             ) : record ? (
-                <>
+                <Flex vertical gap={22}>
                     <Flex
                         align="center"
-                        gap={14}
+                        justify="space-between"
+                        gap={16}
                         style={{
-                            marginBottom: 24,
                             padding: 16,
-                            background: '#f8faff',
-                            borderRadius: 12,
-                            border: '1px solid #eef2ff',
+                            borderRadius: 14,
+                            background: '#f8fafc',
+                            border: '1px solid #eaecf0',
                         }}
                     >
-                        <Avatar
-                            size={56}
-                            style={{
-                                background: getAvatarColor(
-                                    record.employee?.id ?? '0',
-                                ),
-                                fontSize: 20,
-                                flexShrink: 0,
-                            }}
-                        >
-                            {record.employee
-                                ? getInitials(record.employee.fullName)
-                                : '?'}
-                        </Avatar>
-
-                        <Flex vertical gap={2}>
-                            <Text
-                                strong
-                                style={{ fontSize: 16 }}
-                            >
-                                {record.employee?.fullName ?? '—'}
-                            </Text>
-
-                            <Text
-                                type="secondary"
-                                style={{ fontSize: 13 }}
-                            >
-                                {record.employee?.email ?? ''}
-                            </Text>
-
-                            <Tag
+                        <Flex align="center" gap={12}>
+                            <Avatar
+                                size={52}
                                 style={{
-                                    width: 'fit-content',
-                                    marginTop: 2,
+                                    background: '#eff6ff',
+                                    color: '#2563eb',
+                                    border: '1px solid #dbeafe',
+                                    fontSize: 17,
+                                    fontWeight: 700,
                                 }}
                             >
-                                {record.employee?.role?.name ??
-                                    record.employee?.title ??
-                                    '—'}
-                            </Tag>
-                        </Flex>
-                    </Flex>
+                                {record.employee
+                                    ? getInitials(record.employee.fullName)
+                                    : '?'}
+                            </Avatar>
 
-                    <Descriptions
-                        bordered
-                        column={1}
-                        size="small"
-                        labelStyle={{
-                            width: 170,
-                            fontWeight: 600,
-                            background: '#fafafa',
-                        }}
-                        contentStyle={{
-                            background: '#ffffff',
-                        }}
-                    >
-                        <Descriptions.Item label="Tên kỳ đánh giá">
-                            {record.reviewCycle?.name ?? '—'}
-                        </Descriptions.Item>
-
-                        <Descriptions.Item label="Trạng thái chu kỳ">
-                            <Tag color="blue">
-                                {record.reviewCycle?.status ?? '—'}
-                            </Tag>
-                        </Descriptions.Item>
-
-                        <Descriptions.Item label="Ngày bắt đầu">
-                            {formatDate(record.reviewCycle?.startDate)}
-                        </Descriptions.Item>
-
-                        <Descriptions.Item label="Ngày kết thúc">
-                            {formatDate(record.reviewCycle?.endDate)}
-                        </Descriptions.Item>
-
-                        <Descriptions.Item label="Điểm chốt cuối cùng">
-                            {record.finalScore != null ? (
+                            <Flex vertical gap={2}>
                                 <Text
                                     strong
                                     style={{
-                                        color:
-                                            record.finalScore >= 85
-                                                ? '#52c41a'
-                                                : record.finalScore >= 70
-                                                    ? '#faad14'
-                                                    : '#ff4d4f',
+                                        color: '#101828',
+                                        fontSize: 15,
                                     }}
                                 >
-                                    {Number(record.finalScore).toFixed(1)} / 100
+                                    {record.employee?.fullName ?? '—'}
                                 </Text>
-                            ) : (
-                                <Text type="secondary">
-                                    — Chưa có điểm
-                                </Text>
-                            )}
-                        </Descriptions.Item>
 
-                        <Descriptions.Item label="Trạng thái">
-                            {statusConfig ? (
-                                <Tag
-                                    icon={statusConfig.icon}
-                                    color={statusConfig.color}
+                                <Text
                                     style={{
-                                        borderRadius: 999,
-                                        padding: '2px 10px',
-                                        fontWeight: 500,
+                                        color: '#667085',
+                                        fontSize: 12,
                                     }}
                                 >
-                                    {statusConfig.label}
-                                </Tag>
-                            ) : (
-                                <Tag>
-                                    {record.status as ReviewRecordStatus}
-                                </Tag>
-                            )}
-                        </Descriptions.Item>
+                                    {record.employee?.email ?? ''}
+                                </Text>
 
-                        <Descriptions.Item label="Ngày tạo">
-                            {formatDate(record.createdAt, true)}
-                        </Descriptions.Item>
+                                <Text style={helperStyle}>
+                                    {roleName
+                                        ? ROLE_LABELS[roleName] ?? roleName
+                                        : record.employee?.title ?? '—'}
+                                </Text>
+                            </Flex>
+                        </Flex>
 
-                        <Descriptions.Item label="Cập nhật lần cuối">
-                            {formatDate(record.updatedAt, true)}
-                        </Descriptions.Item>
-                    </Descriptions>
-                </>
+                        {statusConfig ? (
+                            <Tag
+                                icon={statusConfig.icon}
+                                color={statusConfig.color}
+                                bordered={false}
+                                style={{
+                                    margin: 0,
+                                    borderRadius: 999,
+                                    padding: '4px 10px',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                }}
+                            >
+                                {statusConfig.label}
+                            </Tag>
+                        ) : (
+                            <Tag>
+                                {record.status as ReviewRecordStatus}
+                            </Tag>
+                        )}
+                    </Flex>
+
+                    <div>
+                        <Text style={sectionTitleStyle}>
+                            Thông tin kỳ đánh giá
+                        </Text>
+
+                        <Descriptions
+                            bordered
+                            column={1}
+                            size="small"
+                            labelStyle={{
+                                width: 170,
+                                color: '#475467',
+                                fontWeight: 600,
+                                background: '#f9fafb',
+                            }}
+                            contentStyle={{
+                                color: '#344054',
+                                background: '#ffffff',
+                            }}
+                        >
+                            <Descriptions.Item label="Tên kỳ đánh giá">
+                                {record.reviewCycle?.name ?? '—'}
+                            </Descriptions.Item>
+
+                            <Descriptions.Item label="Trạng thái chu kỳ">
+                                {record.reviewCycle?.status ? (
+                                    <Tag
+                                        bordered={false}
+                                        style={{
+                                            margin: 0,
+                                            color: '#475467',
+                                            background: '#f2f4f7',
+                                        }}
+                                    >
+                                        {CYCLE_STATUS_LABELS[
+                                            record.reviewCycle.status
+                                        ] ?? record.reviewCycle.status}
+                                    </Tag>
+                                ) : (
+                                    '—'
+                                )}
+                            </Descriptions.Item>
+
+                            <Descriptions.Item label="Ngày bắt đầu">
+                                {formatDate(
+                                    record.reviewCycle?.startDate,
+                                )}
+                            </Descriptions.Item>
+
+                            <Descriptions.Item label="Ngày kết thúc">
+                                {formatDate(
+                                    record.reviewCycle?.endDate,
+                                )}
+                            </Descriptions.Item>
+                        </Descriptions>
+                    </div>
+
+                    <div>
+                        <Text style={sectionTitleStyle}>
+                            Kết quả đánh giá
+                        </Text>
+
+                        <Flex gap={12}>
+                            <ScoreBlock
+                                label="Điểm sơ bộ của PM"
+                                score={record.tempScore}
+                                icon={
+                                    <StarOutlined
+                                        style={{ color: '#d97706' }}
+                                    />
+                                }
+                            />
+
+                            <ScoreBlock
+                                label="Điểm chốt của HR"
+                                score={record.finalScore}
+                                variant="purple"
+                                icon={
+                                    <SafetyCertificateOutlined
+                                        style={{ color: '#7c3aed' }}
+                                    />
+                                }
+                            />
+                        </Flex>
+                    </div>
+
+                    {record.reviewerNote && (
+                        <div>
+                            <Text style={sectionTitleStyle}>
+                                Nhận xét của PM
+                            </Text>
+
+                            <div
+                                style={{
+                                    ...cardStyle,
+                                    background: '#f9fafb',
+                                    color: '#475467',
+                                    fontSize: 12,
+                                    lineHeight: 1.6,
+                                }}
+                            >
+                                {record.reviewerNote}
+                            </div>
+                        </div>
+                    )}
+
+                    <Flex
+                        justify="space-between"
+                        gap={16}
+                        wrap="wrap"
+                        style={{
+                            paddingTop: 16,
+                            borderTop: '1px solid #eaecf0',
+                        }}
+                    >
+                        <Text style={helperStyle}>
+                            Tạo lúc: {formatDate(record.createdAt, true)}
+                        </Text>
+
+                        <Text style={helperStyle}>
+                            Cập nhật: {formatDate(record.updatedAt, true)}
+                        </Text>
+                    </Flex>
+                </Flex>
             ) : (
                 <Flex
                     justify="center"
