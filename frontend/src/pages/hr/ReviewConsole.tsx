@@ -1,16 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Dropdown, Drawer, Flex, Form, Input, InputNumber, message,
-    Modal, Progress, Row, Select, Skeleton, Space, Spin, Statistic, Tag,
-    Tooltip, Typography,
+    Button, Flex, Form, message, Typography,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import {
-    CheckCircleOutlined, ClockCircleOutlined,
-    ExclamationCircleOutlined, EyeOutlined, FilterOutlined, MoreOutlined, PlusOutlined,
-    StarOutlined, TeamOutlined, TrophyOutlined,
+    PlusOutlined,
 } from '@ant-design/icons';
-import ActionTable from '../../components/ui/ActionTable';
 import { callFetchUsers } from '../../api/index';
 import {
     hrReviewsApi,
@@ -20,61 +14,24 @@ import {
     type ReviewRecordStats,
     type ReviewRecordStatus,
 } from '../../api/hrReviews';
+import ReviewStatsSection from '../../components/hr/reviews/ReviewStatsSection';
+import ReviewTableSection from '../../components/hr/reviews/ReviewTableSection';
+import CreateReviewCycleModal, {
+    type CreateReviewCycleFormValues,
+} from '../../components/hr/reviews/CreateReviewCycleModal';
+
+import ReviewScoreModal, {
+    type ReviewScoreFormValues,
+} from '../../components/hr/reviews/ReviewScoreModal';
+import ReviewDetailDrawer from '../../components/hr/reviews/ReviewDetailDrawer';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
-const { RangePicker } = DatePicker;
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Lấy 2 chữ cái đầu tên để làm Avatar initials */
-const getInitials = (fullName: string): string => {
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
-
-/** Màu avatar nhất quán dựa trên hash của id */
-const AVATAR_COLORS = ['#0057c2', '#266d00', '#7d5400', '#614000', '#5c0a83', '#ba1a1a', '#006874'];
-const getAvatarColor = (id: string): string =>
-    AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length];
-
-// ─── Status config (ánh xạ giá trị enum backend → UI) ────────────────────────
-
-type UiStatus = 'PENDING' | 'IN_REVIEW' | 'COMPLETED';
-
-const STATUS_CONFIG: Record<UiStatus, { label: string; color: string; icon: React.ReactNode }> = {
-    PENDING:   { label: 'Chờ duyệt',      color: 'orange', icon: <ClockCircleOutlined /> },
-    IN_REVIEW: { label: 'Đang xét duyệt', color: 'blue',   icon: <ExclamationCircleOutlined /> },
-    COMPLETED: { label: 'Hoàn thành',     color: 'green',  icon: <CheckCircleOutlined /> },
-};
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-const ScoreCell: React.FC<{ value: number | null }> = ({ value }) => {
-    if (value === null || value === undefined) return <Text type="secondary">—</Text>;
-    const color = value >= 85 ? '#52c41a' : value >= 70 ? '#faad14' : '#ff4d4f';
-    return (
-        <Flex vertical gap={2} style={{ minWidth: 90 }}>
-            <Text strong style={{ color, fontSize: 13 }}>{Number(value).toFixed(1)}/100</Text>
-            <Progress percent={Number(value)} size="small" showInfo={false} strokeColor={color} trailColor="#f0f0f0" />
-        </Flex>
-    );
-};
-
-// ─── Status filter options (dùng cho Select server-side bên ngoài ActionTable) ──
-const STATUS_FILTER_OPTIONS = [
-    { value: 'PENDING',   label: 'Chờ duyệt' },
-    { value: 'IN_REVIEW', label: 'Đang xét duyệt' },
-    { value: 'COMPLETED', label: 'Hoàn thành' },
-];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 const ReviewConsole: React.FC = () => {
     // ── State ────────────────────────────────────────────────────────────────
     const [records, setRecords] = useState<ReviewRecordItem[]>([]);
-    const [loading, setLoading] = useState(false);
     const [approvingId, setApprovingId] = useState<string | null>(null);
     // Số liệu tổng hợp từ server — phản ánh TOÀN BỘ database, không phụ thuộc vào trang hiện tại
     const [cardStats, setCardStats] = useState<ReviewRecordStats>({ total: 0, pending: 0, inReview: 0, completed: 0 });
@@ -82,11 +39,8 @@ const ReviewConsole: React.FC = () => {
     // State cho Modal tạo kỳ đánh giá
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
-    const [createForm] = Form.useForm<{
-        name: string;
-        dateRange: [any, any];
-        employeeIds?: string[];
-    }>();
+    const [createForm] =
+        Form.useForm<CreateReviewCycleFormValues>();
     // State cho Drawer xem chi tiết
     const [isDetailDrawerVisible, setIsDetailDrawerVisible] = useState(false);
     const [detailData, setDetailData] = useState<ReviewRecordItem | null>(null);
@@ -106,11 +60,10 @@ const ReviewConsole: React.FC = () => {
     const [isScoringModalVisible, setIsScoringModalVisible] = useState(false);
     const [isSubmittingScore, setIsSubmittingScore] = useState(false);
     const [scoringRecord, setScoringRecord] = useState<ReviewRecordItem | null>(null);
-    const [scoringForm] = Form.useForm<{ tempScore?: number; reviewerNote?: string; finalScore?: number }>();
-
+    const [scoringForm] =
+        Form.useForm<ReviewScoreFormValues>();
     // ── Fetch danh sách records (phân trang) ─────────────────────────────────
     const fetchRecords = useCallback(async () => {
-        setLoading(true);
         try {
             const res = await hrReviewsApi.getRecords(queryParams);
             const payload = (res as any)?.data;
@@ -119,8 +72,6 @@ const ReviewConsole: React.FC = () => {
             }
         } catch (err: any) {
             message.error(err?.message ?? 'Không thể tải danh sách đánh giá');
-        } finally {
-            setLoading(false);
         }
     }, [queryParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -168,13 +119,7 @@ const ReviewConsole: React.FC = () => {
         if (isCreateModalVisible) fetchEmployeeOptions();
     }, [isCreateModalVisible, fetchEmployeeOptions]);
 
-    // ── Stat card values từ dữ liệu TOÀN BỘ database (endpoint /records/stats) ─
-    const statCards = [
-        { label: 'Tổng bản ghi',  value: cardStats.total,     icon: <TeamOutlined />,              color: '#0057c2', bg: '#e6f0ff' },
-        { label: 'Hoàn thành',    value: cardStats.completed,  icon: <CheckCircleOutlined />,       color: '#266d00', bg: '#edffd6' },
-        { label: 'Chờ duyệt',     value: cardStats.pending,    icon: <ClockCircleOutlined />,       color: '#b35c00', bg: '#fff3e0' },
-        { label: 'Đang xét duyệt',value: cardStats.inReview,   icon: <ExclamationCircleOutlined />, color: '#ba1a1a', bg: '#ffecea' },
-    ];
+
 
     // ── Action handlers (theo state machine: PENDING → IN_REVIEW → COMPLETED) ───
     /** Mở Drawer chi tiết: fetch record theo id rồi hiển thị */
@@ -201,9 +146,9 @@ const ReviewConsole: React.FC = () => {
             setIsCreating(true);
             const [start, end] = values.dateRange;
             const payload: CreateReviewCyclePaylod = {
-                name:        values.name.trim(),
-                startDate:   start.format('YYYY-MM-DD'),
-                endDate:     end.format('YYYY-MM-DD'),
+                name: values.name.trim(),
+                startDate: start.format('YYYY-MM-DD'),
+                endDate: end.format('YYYY-MM-DD'),
                 employeeIds: values.employeeIds?.length ? values.employeeIds : undefined,
             };
             await hrReviewsApi.createCycle(payload);
@@ -260,9 +205,9 @@ const ReviewConsole: React.FC = () => {
     const handleOpenScoreModal = (record: ReviewRecordItem) => {
         setScoringRecord(record);
         scoringForm.setFieldsValue({
-            tempScore:    record.tempScore    ?? undefined,
+            tempScore: record.tempScore ?? undefined,
             reviewerNote: record.reviewerNote ?? undefined,
-            finalScore:   record.finalScore   ?? undefined,
+            finalScore: record.finalScore ?? undefined,
         });
         setIsScoringModalVisible(true);
     };
@@ -288,135 +233,6 @@ const ReviewConsole: React.FC = () => {
         }
     };
 
-    // ── Columns definition ───────────────────────────────────────────────────
-    const columns: ColumnsType<ReviewRecordItem> = [
-        {
-            title: 'Nhân viên', key: 'employee', fixed: 'left', width: 230,
-            render: (_, r) => {
-                const emp = r.employee;
-                if (!emp) return <Text type="secondary">—</Text>;
-                return (
-                    <Flex align="center" gap={10}>
-                        <Avatar style={{ background: getAvatarColor(emp.id), flexShrink: 0 }}>
-                            {getInitials(emp.fullName)}
-                        </Avatar>
-                        <Flex vertical gap={0}>
-                            <Text strong style={{ fontSize: 13 }}>{emp.fullName}</Text>
-                            <Text type="secondary" style={{ fontSize: 11 }}>{emp.email}</Text>
-                        </Flex>
-                    </Flex>
-                );
-            },
-        },
-        {
-            title: 'Vị trí / Phòng ban', key: 'title', width: 180,
-            render: (_, r) => (
-                <Flex vertical gap={4}>
-                    <Text style={{ fontSize: 13 }}>{r.employee?.title ?? '—'}</Text>
-                    <Tag style={{ width: 'fit-content', fontSize: 11 }}>{r.employee?.role?.name ?? '—'}</Tag>
-                </Flex>
-            ),
-        },
-        {
-            title: 'Chu kỳ đánh giá', key: 'cycle', width: 160,
-            render: (_, r) => (
-                <Flex vertical gap={2}>
-                    <Text style={{ fontSize: 13 }}>{r.reviewCycle?.name ?? '—'}</Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{r.reviewCycle?.status ?? ''}</Text>
-                </Flex>
-            ),
-        },
-        {
-            title: 'Điểm chốt cuối cùng', dataIndex: 'finalScore', key: 'finalScore',
-            width: 170, align: 'center',
-            render: (v: number | null) => <ScoreCell value={v} />,
-            sorter: (a, b) => (a.finalScore ?? -1) - (b.finalScore ?? -1),
-        },
-        {
-            title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 140,
-            render: (v: UiStatus) => {
-                const cfg = STATUS_CONFIG[v] ?? { label: v, color: 'default', icon: null };
-                return (
-                    <Tag icon={cfg.icon} color={cfg.color} style={{ borderRadius: 999, padding: '2px 10px', fontWeight: 500 }}>
-                        {cfg.label}
-                    </Tag>
-                );
-            },
-        },
-        {
-            title: 'Hành động', key: 'actions', width: 120, align: 'center', fixed: 'right',
-            render: (_, r) => {
-                // Khi COMPLETED: chỉ giữ nút "Chi tiết", ẩn toàn bộ thao tác còn lại
-                const isCompleted = r.status === 'COMPLETED';
-
-                // Xây dựng danh sách menu động theo trạng thái hiện tại của record
-                const menuItems: NonNullable<React.ComponentProps<typeof Dropdown>['menu']>['items'] = [];
-
-                if (r.status === 'PENDING') {
-                    menuItems.push({
-                        key: 'move-to-review',
-                        icon: <ExclamationCircleOutlined style={{ color: '#0057c2' }} />,
-                        label: 'Xét duyệt',
-                        onClick: () => handleMoveToReview(r),
-                    });
-                }
-
-                if (r.status === 'IN_REVIEW') {
-                    menuItems.push(
-                        {
-                            key: 'score',
-                            icon: <StarOutlined style={{ color: '#722ed1' }} />,
-                            label: 'Chấm điểm',
-                            onClick: () => handleOpenScoreModal(r),
-                        },
-                        { type: 'divider' },
-                        {
-                            key: 'complete',
-                            icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-                            label: 'Hoàn tất',
-                            // Guard frontend: bắt buộc phải có finalScore trước khi COMPLETED
-                            onClick: () => handleComplete(r),
-                        },
-                    );
-                }
-
-                return (
-                    <Space size={4}>
-                        {/* Nút "Chi tiết" luôn hiển thị dạng link */}
-                        <Tooltip title="Xem chi tiết">
-                            <Button
-                                type="link"
-                                size="small"
-                                icon={<EyeOutlined />}
-                                style={{ padding: '0 4px' }}
-                                onClick={() => handleOpenDetail(r)}
-                            />
-                        </Tooltip>
-
-                        {/* Dropdown thao tác — ẩn hoàn toàn khi COMPLETED */}
-                        {!isCompleted && menuItems.length > 0 && (
-                            <Dropdown
-                                menu={{ items: menuItems }}
-                                trigger={['click']}
-                                placement="bottomRight"
-                            >
-                                <Tooltip title="Thao tác">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<MoreOutlined style={{ fontSize: 16 }} />}
-                                        loading={approvingId === r.id}
-                                        style={{ padding: '0 4px' }}
-                                    />
-                                </Tooltip>
-                            </Dropdown>
-                        )}
-                    </Space>
-                );
-            },
-        },
-    ];
-
     // ── Server-side status filter handler ───────────────────────────────────
     /**
      * Được gọi trực tiếp từ sự kiện onChange của Select dropdown bên ngoài ActionTable.
@@ -434,388 +250,138 @@ const ReviewConsole: React.FC = () => {
     // ── Render ───────────────────────────────────────────────────────────────
     return (
         <>
-        <div style={{ fontFamily: 'Inter, sans-serif' }}>
-            {/* Header */}
-            <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16} style={{ marginBottom: 24 }}>
-                <div>
-                    <Title level={3} style={{ margin: 0, letterSpacing: '-0.02em' }}>Quản lý Kỳ Đánh Giá &amp; KPI</Title>
-                    <Text type="secondary" style={{ fontSize: 14 }}>Dữ liệu thực từ hệ thống backend</Text>
-                </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    size="large"
-                    style={{ borderRadius: 8, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,87,194,0.25)' }}
-                    onClick={() => setIsCreateModalVisible(true)}
-                >
-                    Tạo kỳ đánh giá mới
-                </Button>
-            </Flex>
-
-            {/* Stat Cards — số liệu lấy từ /records/stats, phản ánh toàn bộ database */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                {statCards.map(s => (
-                    <Col xs={12} sm={12} md={6} key={s.label}>
-                        <Card
-                            bordered={false}
-                            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', height: '100%' }}
-                            styles={{ body: { padding: '16px 20px' } }}
-                        >
-                            <Flex align="center" gap={12}>
-                                <div style={{
-                                    width: 44, height: 44, borderRadius: 10, background: s.bg,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 20, color: s.color, flexShrink: 0,
-                                }}>
-                                    {s.icon}
-                                </div>
-                                {statsLoading
-                                    ? <Skeleton.Input active style={{ width: 80 }} size="small" />
-                                    : <Statistic
-                                        title={<Text style={{ fontSize: 12, color: '#6b7280' }}>{s.label}</Text>}
-                                        value={s.value}
-                                        valueStyle={{ fontSize: 26, fontWeight: 700, color: s.color, lineHeight: 1.2 }}
-                                    />
-                                }
-                            </Flex>
-                            <Progress
-                                percent={cardStats.total > 0 ? Math.round((s.value / cardStats.total) * 100) : 0}
-                                size="small"
-                                showInfo={false}
-                                strokeColor={s.color}
-                                trailColor="#f0f0f0"
-                                style={{ marginTop: 10 }}
-                            />
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
-
-            {/* Server-side Status Filter — đặt bên ngoài ActionTable để tránh anti-pattern
-                 gọi setState bên trong filterPredicates (vi phạm React render phase) */}
-            <Flex justify="flex-end" style={{ marginBottom: 4 }}>
-                <Select
-                    allowClear
-                    placeholder="Trạng thái: Tất cả"
-                    suffixIcon={<FilterOutlined />}
-                    style={{ width: 200 }}
-                    options={STATUS_FILTER_OPTIONS}
-                    onChange={(value: ReviewRecordStatus | undefined) => handleStatusFilter(value)}
-                    onClear={() => handleStatusFilter(undefined)}
-                />
-            </Flex>
-
-            {/* Data Table */}
-            <ActionTable<ReviewRecordItem>
-                columns={columns}
-                dataSource={records}
-                rowKey="id"
-                scrollX={900}
-                searchPlaceholder="Tìm kiếm nhân viên..."
-                onSearch={(r, q) => {
-                    const term = q.toLowerCase();
-                    return (
-                        r.employee?.fullName?.toLowerCase().includes(term) ||
-                        r.employee?.email?.toLowerCase().includes(term) ||
-                        false
-                    );
+            <div
+                style={{
+                    minHeight: '100%',
+                    background:
+                        'linear-gradient(180deg, #f8fafc 0%, #ffffff 420px)',
+                    padding: '28px 28px 48px',
+                    fontFamily: 'Inter, sans-serif',
                 }}
-                tableTitle={
-                    <Flex align="center" gap={8}>
-                        <TrophyOutlined style={{ color: '#0057c2' }} />
-                        <Text strong style={{ fontSize: 15 }}>Danh sách đánh giá</Text>
-                    </Flex>
-                }
-            />
-        </div>
-
-        {/* ── Modal: Tạo kỳ đánh giá mới ─────────────────────────────────── */}
-        <Modal
-            title={
-                <Flex align="center" gap={8}>
-                    <PlusOutlined style={{ color: '#0057c2' }} />
-                    <span style={{ fontWeight: 600, fontSize: 16 }}>Tạo kỳ đánh giá mới</span>
-                </Flex>
-            }
-            open={isCreateModalVisible}
-            onCancel={() => {
-                setIsCreateModalVisible(false);
-                createForm.resetFields();
-            }}
-            onOk={handleCreateCycle}
-            okText="Tạo ngay"
-            cancelText="Hủy"
-            confirmLoading={isCreating}
-            okButtonProps={{ style: { borderRadius: 6 } }}
-            cancelButtonProps={{ style: { borderRadius: 6 } }}
-            width={520}
-            destroyOnClose
-        >
-            <Form
-                form={createForm}
-                layout="vertical"
-                style={{ marginTop: 16 }}
-                requiredMark={false}
             >
-                <Form.Item
-                    name="name"
-                    label={<Text strong>Tên kỳ đánh giá</Text>}
-                    rules={[
-                        { required: true, message: 'Vui lòng nhập tên kỳ đánh giá' },
-                        { max: 255, message: 'Tên không được vượt quá 255 ký tự' },
-                    ]}
+                <div
+                    style={{
+                        width: '100%',
+                        maxWidth: 1480,
+                        margin: '0 auto',
+                    }}
                 >
-                    <Input
-                        placeholder="Ví dụ: Đánh giá năng lực Q3/2026"
-                        size="large"
-                        style={{ borderRadius: 8 }}
-                    />
-                </Form.Item>
-
-                <Form.Item
-                    name="dateRange"
-                    label={<Text strong>Thời gian kỳ đánh giá</Text>}
-                    rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu và kết thúc' }]}
-                >
-                    <RangePicker
-                        size="large"
-                        style={{ width: '100%', borderRadius: 8 }}
-                        format="DD/MM/YYYY"
-                        placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
-                        disabledDate={(current) => current && current.isBefore(new Date(), 'day')}
-                    />
-                </Form.Item>
-
-                <Form.Item
-                    name="employeeIds"
-                    label={<Text strong>Nhân sự tham gia <Text type="secondary" style={{ fontWeight: 400 }}>(tùy chọn)</Text></Text>}
-                >
-                    <Select
-                        mode="multiple"
-                        placeholder="Chọn nhân viên tham gia kỳ đánh giá..."
-                        options={employeeOptions}
-                        loading={isFetchingUsers}
-                        filterOption={(input, option) =>
-                            (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
-                        }
-                        style={{ width: '100%', borderRadius: 8 }}
-                        allowClear
-                        maxTagCount="responsive"
-                    />
-                </Form.Item>
-            </Form>
-        </Modal>
-
-        {/* ── Modal: Chấm điểm (HR Scoring) ───────────────────────────────── */}
-        <Modal
-            title={
-                <Flex align="center" gap={8}>
-                    <StarOutlined style={{ color: '#722ed1' }} />
-                    <span style={{ fontWeight: 600, fontSize: 16 }}>Chấm điểm đánh giá (HR)</span>
-                </Flex>
-            }
-            open={isScoringModalVisible}
-            onCancel={() => {
-                setIsScoringModalVisible(false);
-                scoringForm.resetFields();
-                setScoringRecord(null);
-            }}
-            onOk={handleSubmitScore}
-            okText="Lưu điểm"
-            cancelText="Hủy"
-            confirmLoading={isSubmittingScore}
-            okButtonProps={{
-                style: { borderRadius: 6, background: '#722ed1', borderColor: '#722ed1' },
-                // Vô hiệu hoá nút Lưu nếu PM chưa chấm điểm
-                disabled: scoringRecord?.tempScore === null || scoringRecord?.tempScore === undefined,
-            }}
-            cancelButtonProps={{ style: { borderRadius: 6 } }}
-            width={480}
-            destroyOnClose
-        >
-            {/* ── Thẻ thông tin nhân viên ── */}
-            {scoringRecord && (
-                <Flex
-                    align="center" gap={10}
-                    style={{ marginBottom: 16, padding: '10px 14px', background: '#f9f0ff', borderRadius: 8, border: '1px solid #d3adf7' }}
-                >
-                    <Avatar style={{ background: getAvatarColor(scoringRecord.employee?.id ?? '0'), flexShrink: 0 }}>
-                        {scoringRecord.employee ? getInitials(scoringRecord.employee.fullName) : '?'}
-                    </Avatar>
-                    <Flex vertical gap={0}>
-                        <Text strong>{scoringRecord.employee?.fullName ?? '—'}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{scoringRecord.employee?.email ?? ''}</Text>
-                    </Flex>
-                </Flex>
-            )}
-
-            {/* ── Cảnh báo khi PM chưa chấm điểm — khóa toàn bộ form finalScore ── */}
-            {scoringRecord && (scoringRecord.tempScore === null || scoringRecord.tempScore === undefined) && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message="PM chưa chấm điểm đánh giá"
-                    description="Vui lòng yêu cầu PM chấm điểm đánh giá năng lực trước khi HR chốt điểm!"
-                    style={{ marginBottom: 16, borderRadius: 8 }}
-                />
-            )}
-
-            <Form
-                form={scoringForm}
-                layout="vertical"
-                style={{ marginTop: 4 }}
-                requiredMark={false}
-            >
-                {/* Điểm PM (read-only — chỉ HR xem, không sửa) */}
-                <Form.Item
-                    name="tempScore"
-                    label={
-                        <Flex gap={6} align="center">
-                            <Text strong>Điểm sơ bộ (PM)</Text>
-                            <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Chỉ đọc</Tag>
-                        </Flex>
-                    }
-                >
-                    <InputNumber
-                        min={0}
-                        max={100}
-                        disabled={true}
-                        style={{ width: '100%', borderRadius: 8 }}
-                        placeholder="PM chưa chấm điểm"
-                        addonAfter="/ 100"
-                    />
-                </Form.Item>
-
-                {/* Ghi chú PM (read-only) */}
-                <Form.Item
-                    name="reviewerNote"
-                    label={
-                        <Flex gap={6} align="center">
-                            <Text strong>Nhận xét của PM</Text>
-                            <Tag color="orange" style={{ fontSize: 11, margin: 0 }}>Chỉ đọc</Tag>
-                        </Flex>
-                    }
-                >
-                    <Input.TextArea
-                        disabled={true}
-                        rows={3}
-                        style={{ borderRadius: 8 }}
-                        placeholder="PM chưa có nhận xét"
-                    />
-                </Form.Item>
-
-                {/* Điểm chốt HR — bị khóa nếu PM chưa chấm */}
-                <Form.Item
-                    name="finalScore"
-                    label={<Text strong style={{ color: '#722ed1' }}>Điểm chốt cuối cùng (HR) <Text type="danger">*</Text></Text>}
-                    rules={[
-                        { required: true, message: 'Vui lòng nhập điểm chốt trước khi lưu' },
-                    ]}
-                    extra={<Text type="secondary" style={{ fontSize: 12 }}>Điểm này sẽ được dùng để Hoàn tất đánh giá.</Text>}
-                >
-                    <InputNumber
-                        min={0}
-                        max={100}
-                        disabled={scoringRecord?.tempScore === null || scoringRecord?.tempScore === undefined}
-                        style={{ width: '100%', borderRadius: 8 }}
-                        placeholder={scoringRecord?.tempScore != null ? 'Nhập điểm từ 0 đến 100' : 'Chờ PM chấm điểm trước'}
-                        addonAfter="/ 100"
-                        size="large"
-                    />
-                </Form.Item>
-            </Form>
-        </Modal>
-        <Drawer
-            title={
-                <Flex align="center" gap={8}>
-                    <EyeOutlined style={{ color: '#0057c2' }} />
-                    <span style={{ fontWeight: 600 }}>Chi tiết Đánh giá</span>
-                </Flex>
-            }
-            placement="right"
-            width={600}
-            open={isDetailDrawerVisible}
-            onClose={() => { setIsDetailDrawerVisible(false); setDetailData(null); }}
-            destroyOnClose
-        >
-            {isDetailLoading ? (
-                <Flex justify="center" align="center" style={{ height: 300 }}>
-                    <Spin size="large" tip="Đang tải..." />
-                </Flex>
-            ) : detailData ? (
-                <>
-                    {/* ── Thông tin nhân viên ── */}
-                    <Flex align="center" gap={14} style={{ marginBottom: 24, padding: '16px', background: '#f8faff', borderRadius: 12 }}>
-                        <Avatar
-                            size={56}
-                            style={{ background: getAvatarColor(detailData.employee?.id ?? '0'), fontSize: 20, flexShrink: 0 }}
-                        >
-                            {detailData.employee ? getInitials(detailData.employee.fullName) : '?'}
-                        </Avatar>
-                        <Flex vertical gap={2}>
-                            <Text strong style={{ fontSize: 16 }}>{detailData.employee?.fullName ?? '—'}</Text>
-                            <Text type="secondary" style={{ fontSize: 13 }}>{detailData.employee?.email ?? ''}</Text>
-                            <Tag style={{ width: 'fit-content', marginTop: 2 }}>
-                                {detailData.employee?.role?.name ?? detailData.employee?.title ?? '—'}
-                            </Tag>
-                        </Flex>
-                    </Flex>
-
-                    {/* ── Thông tin đánh giá ── */}
-                    <Descriptions
-                        bordered
-                        column={1}
-                        size="small"
-                        labelStyle={{ fontWeight: 600, width: 170, background: '#fafafa' }}
-                        contentStyle={{ background: '#fff' }}
+                    {/* Header */}
+                    {/* Header */}
+                    <Flex
+                        justify="space-between"
+                        align="flex-start"
+                        wrap="wrap"
+                        gap={20}
+                        style={{ marginBottom: 24 }}
                     >
-                        <Descriptions.Item label="Tên kỳ đánh giá">
-                            {detailData.reviewCycle?.name ?? '—'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Trạng thái chu kỳ">
-                            <Tag color="blue">{detailData.reviewCycle?.status ?? '—'}</Tag>
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Ngày bắt đầu">
-                            {detailData.reviewCycle?.startDate
-                                ? new Date(detailData.reviewCycle.startDate).toLocaleDateString('vi-VN')
-                                : '—'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Ngày kết thúc">
-                            {detailData.reviewCycle?.endDate
-                                ? new Date(detailData.reviewCycle.endDate).toLocaleDateString('vi-VN')
-                                : '—'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Điểm số (Final)">
-                            {detailData.finalScore != null
-                                ? <Text strong style={{ color: detailData.finalScore >= 85 ? '#52c41a' : detailData.finalScore >= 70 ? '#faad14' : '#ff4d4f' }}>
-                                    {Number(detailData.finalScore).toFixed(1)} / 100
-                                  </Text>
-                                : <Text type="secondary">— Chưa có điểm</Text>}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Trạng thái">
-                            {(() => {
-                                const cfg = STATUS_CONFIG[detailData.status as UiStatus] ?? { label: detailData.status, color: 'default', icon: null };
-                                return <Tag icon={cfg.icon} color={cfg.color} style={{ borderRadius: 999, padding: '2px 10px', fontWeight: 500 }}>{cfg.label}</Tag>;
-                            })()}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Người tạo">
-                            {detailData.createdAt
-                                ? new Date(detailData.createdAt).toLocaleString('vi-VN')
-                                : '—'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Cập nhật lần cuối">
-                            {detailData.updatedAt
-                                ? new Date(detailData.updatedAt).toLocaleString('vi-VN')
-                                : '—'}
-                        </Descriptions.Item>
-                    </Descriptions>
-                </>
-            ) : (
-                <Flex justify="center" align="center" style={{ height: 200 }}>
-                    <Text type="secondary">Không tìm thấy dữ liệu</Text>
-                </Flex>
-            )}
-        </Drawer>
+                        <div>
+                            <Text
+                                style={{
+                                    display: 'block',
+                                    marginBottom: 4,
+                                    color: '#2563eb',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    letterSpacing: '0.08em',
+                                    textTransform: 'uppercase',
+                                }}
+                            >
+                                Đánh giá hiệu suất
+                            </Text>
+
+                            <Title
+                                level={2}
+                                style={{
+                                    margin: 0,
+                                    color: '#101828',
+                                    fontSize: 28,
+                                    lineHeight: 1.25,
+                                    letterSpacing: '-0.025em',
+                                }}
+                            >
+                                Quản lý kỳ đánh giá
+                            </Title>
+
+                            <Text
+                                style={{
+                                    display: 'block',
+                                    marginTop: 6,
+                                    color: '#667085',
+                                    fontSize: 14,
+                                }}
+                            >
+                                Theo dõi tiến độ đánh giá, điểm số và trạng thái của nhân sự.
+                            </Text>
+                        </div>
+
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            size="large"
+                            style={{
+                                height: 42,
+                                padding: '0 18px',
+                                borderRadius: 10,
+                                fontWeight: 600,
+                                boxShadow: '0 1px 2px rgba(16,24,40,0.08)',
+                            }}
+                            onClick={() => setIsCreateModalVisible(true)}
+                        >
+                            Tạo kỳ đánh giá
+                        </Button>
+                    </Flex>
+                    <ReviewStatsSection
+                        stats={cardStats}
+                        loading={statsLoading}
+                    />
+                    <ReviewTableSection
+                        records={records}
+                        approvingId={approvingId}
+                        onOpenDetail={handleOpenDetail}
+                        onMoveToReview={handleMoveToReview}
+                        onOpenScore={handleOpenScoreModal}
+                        onComplete={handleComplete}
+                        onStatusChange={handleStatusFilter}
+                    />
+                </div>
+            </div>
+
+            <CreateReviewCycleModal
+                open={isCreateModalVisible}
+                loading={isCreating}
+                form={createForm}
+                employeeOptions={employeeOptions}
+                fetchingEmployees={isFetchingUsers}
+                onSubmit={handleCreateCycle}
+                onCancel={() => {
+                    setIsCreateModalVisible(false);
+                    createForm.resetFields();
+                }}
+            />
+
+            <ReviewScoreModal
+                open={isScoringModalVisible}
+                loading={isSubmittingScore}
+                record={scoringRecord}
+                form={scoringForm}
+                onSubmit={handleSubmitScore}
+                onCancel={() => {
+                    setIsScoringModalVisible(false);
+                    scoringForm.resetFields();
+                    setScoringRecord(null);
+                }}
+            />
+
+            <ReviewDetailDrawer
+                open={isDetailDrawerVisible}
+                loading={isDetailLoading}
+                record={detailData}
+                onClose={() => {
+                    setIsDetailDrawerVisible(false);
+                    setDetailData(null);
+                }}
+            />
         </>
     );
 };
