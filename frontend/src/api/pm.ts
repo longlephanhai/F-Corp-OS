@@ -181,7 +181,10 @@ export const pmApi = {
   // 2. Duyệt hoặc Từ chối Bằng chứng kỹ năng (Thêm mới)
   verifyEvidence: (
     id: string,
-    data: { status: "verified" | "rejected"; rejectReason?: string },
+    data: {
+      status: "APPROVED" | "REJECTED";
+      rejectReason?: string;
+    },
   ) => {
     return axios.patch<IBackendRes<any>>(`/skill-evidences/${id}/verify`, data);
   },
