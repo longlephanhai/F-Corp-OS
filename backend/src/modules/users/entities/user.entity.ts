@@ -53,7 +53,7 @@ export class User {
   userSkills: UserSkill[];
 
   @Column({ type: 'text', nullable: true })
-  refreshToken: string;
+  refreshToken: string | null;
 
   @Column({
     type: 'enum',

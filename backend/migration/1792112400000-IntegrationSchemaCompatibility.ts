@@ -17,7 +17,12 @@ const USER_SPRINT_STATUSES = [
 
 export class IntegrationSchemaCompatibility1792112400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await this.ensureLegacyBaseline(queryRunner);
+    const hasLegacyBaseline = await this.ensureLegacyBaseline(queryRunner);
+
+    if (!hasLegacyBaseline) {
+      return;
+    }
+
     await this.ensureProjectManagers(queryRunner);
     await this.ensureUserSprintCompatibility(queryRunner);
     await this.ensureTaskCompatibility(queryRunner);
@@ -31,7 +36,9 @@ export class IntegrationSchemaCompatibility1792112400000 implements MigrationInt
     );
   }
 
-  private async ensureLegacyBaseline(queryRunner: QueryRunner): Promise<void> {
+  private async ensureLegacyBaseline(
+    queryRunner: QueryRunner,
+  ): Promise<boolean> {
     const requiredTables = ['projects', 'users', 'user_sprint', 'tasks'];
     const missingTables: string[] = [];
 
@@ -41,11 +48,17 @@ export class IntegrationSchemaCompatibility1792112400000 implements MigrationInt
       }
     }
 
+    if (missingTables.length === requiredTables.length) {
+      return false;
+    }
+
     if (missingTables.length > 0) {
       throw new Error(
         `Legacy database baseline is missing required tables: ${missingTables.join(', ')}. Restore the legacy baseline before running integration migrations.`,
       );
     }
+
+    return true;
   }
 
   private async ensureProjectManagers(queryRunner: QueryRunner): Promise<void> {

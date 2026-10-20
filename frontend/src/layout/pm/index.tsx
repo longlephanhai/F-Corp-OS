@@ -19,12 +19,14 @@ import {
   MenuUnfoldOutlined,
   ProjectOutlined,
   TeamOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
 
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { NotificationBell } from "../../components/pm/NotificationBell";
+import { useLogout } from "../../hooks/useLogout";
 
 const { Content, Sider, Header } = Layout;
 const { Text } = Typography;
@@ -50,6 +52,8 @@ const defaultStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
 };
 
 const LayoutPM = () => {
+
+  const { logout, isLoggingOut } = useLogout();
 
   const [messageApi, contextHolder] = message.useMessage();
   // const socketRef = useRef<Socket | null>(null);
@@ -291,6 +295,15 @@ const LayoutPM = () => {
 
                 <Text strong>Khanh Nguyễn (PM)</Text>
               </Flex>
+
+              <Button
+                type="text"
+                icon={<LogoutOutlined />}
+                loading={isLoggingOut}
+                onClick={logout}
+              >
+                Logout
+              </Button>
             </Flex>
           </Flex>
         </Header>

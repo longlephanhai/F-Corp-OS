@@ -7,6 +7,15 @@ export const callApiLogin = async (data: { email: string, password: string }): P
 export const callFetchAccount = async (): Promise<IBackendRes<IGetAccount>> => {
     return await axios.get('/auth/account');
 }
+
+export const callApiLogout = async (accessToken?: string | null): Promise<IBackendRes<{ success: boolean }>> => {
+    return await axios.post('/auth/logout', undefined, {
+        headers: accessToken
+            ? { Authorization: `Bearer ${accessToken}` }
+            : undefined,
+        timeout: 10_000,
+    });
+}
 //=============================== ADMIN-DASHBOARD ==========================================
 export const callCountUsers = () => {
     return axios.get('/users/count');

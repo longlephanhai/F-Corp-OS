@@ -1,126 +1,209 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
+import { getHashPassword } from 'helper';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { Role } from 'modules/roles/entities/role.entity';
 import { User } from 'modules/users/entities/user.entity';
-import { UsersService } from 'modules/users/users.service';
-import { Repository } from 'typeorm';
-import { INITIAL_PERMISSIONS } from './init';
-import { getHashPassword } from 'helper';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  ADMIN_ROLE,
+  CORE_ROLES,
+  CoreRole,
+  DEVELOPER_ROLE,
+  HR_ROLE,
+  PERMISSION_DEFINITIONS,
+  PM_ROLE,
+  PermissionDefinition,
+} from './init';
+
+const ROLE_DESCRIPTIONS: Record<CoreRole, string> = {
+  ADMIN: 'System administration access',
+  HR: 'HR talent, review, and wallet administration',
+  PM: 'Project and sprint management access',
+  DEVELOPER: 'Developer self-service access',
+};
+
+const DEMO_USERS: Array<{
+  email: string;
+  fullName: string;
+  roleName: CoreRole;
+}> = [
+  { email: 'admin@gmail.com', fullName: 'Admin', roleName: ADMIN_ROLE },
+  { email: 'hr@gmail.com', fullName: 'HR', roleName: HR_ROLE },
+  { email: 'pm@gmail.com', fullName: 'PM', roleName: PM_ROLE },
+  {
+    email: 'developer@gmail.com',
+    fullName: 'Developer',
+    roleName: DEVELOPER_ROLE,
+  },
+];
 
 @Injectable()
 export class DatabasesService implements OnModuleInit {
+  private readonly logger = new Logger(DatabasesService.name);
 
-    private readonly logger = new Logger(DatabasesService.name);
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
+  ) {}
 
-    constructor(
-        @InjectRepository(User) private userepository: Repository<User>,
-        @InjectRepository(Role) private roleRepository: Repository<Role>,
-        @InjectRepository(Permission) private permissionRepository: Repository<Permission>,
-        private readonly configService: ConfigService
-    ) { }
+  async onModuleInit(): Promise<void> {
+    const isInit = this.configService.get<boolean>('INIT_DATABASE', false);
 
-    async onModuleInit() {
-        const isInit = this.configService.get<boolean>("INIT_DATABASE", false);
-
-        if (isInit) {
-            const countUser = await this.userepository.count();
-            const countRole = await this.roleRepository.count();
-            const countPermission = await this.permissionRepository.count();
-
-            if (countPermission === 0) {
-                await this.permissionRepository.insert(INITIAL_PERMISSIONS);
-            }
-
-            if (countRole === 0) {
-                const permissions = await this.permissionRepository.find({
-                    select: {
-                        id: true
-                    }
-                });
-                await this.roleRepository.save({
-                    name: "ADMIN",
-                    description: "Có toàn bộ quyền của hệ thống",
-                    permissions: permissions.map(permission => ({ id: permission.id })),
-                })
-                await this.roleRepository.save({
-                    name: "HR",
-                    description: "Có toàn bộ quyền của hệ thống",
-                    permissions: permissions.map(permission => ({ id: permission.id })),
-                })
-                await this.roleRepository.save({
-                    name: "PM",
-                    description: "Có toàn bộ quyền của hệ thống",
-                    permissions: permissions.map(permission => ({ id: permission.id })),
-                })
-                await this.roleRepository.save({
-                    name: "DEVELOPER",
-                    description: "Có toàn bộ quyền của hệ thống",
-                    permissions: permissions.map(permission => ({ id: permission.id })),
-                })
-            }
-
-            if (countUser === 0) {
-                // admin
-                const adminRole = await this.roleRepository.findOne({
-                    where: { name: "ADMIN" },
-                    select: {
-                        id: true
-                    }
-                });
-                const initPassword = this.configService.get<string>("INIT_PASSWORD", "") ?? "";
-                await this.userepository.insert({
-                    email: "admin@gmail.com",
-                    password: getHashPassword(initPassword),
-                    fullName: "Admin",
-                    role: adminRole ? { id: adminRole.id } : undefined,
-                })
-                // hr
-                const hrRole = await this.roleRepository.findOne({
-                    where: { name: "HR" },
-                    select: {
-                        id: true
-                    }
-                });
-                await this.userepository.insert({
-                    email: "hr@gmail.com",
-                    password: getHashPassword(initPassword),
-                    fullName: "HR",
-                    role: hrRole ? { id: hrRole.id } : undefined,
-                })
-                // pm
-                const pmRole = await this.roleRepository.findOne({
-                    where: { name: "PM" },
-                    select: {
-                        id: true
-                    }
-                });
-                await this.userepository.insert({
-                    email: "pm@gmail.com",
-                    password: getHashPassword(initPassword),
-                    fullName: "PM",
-                    role: pmRole ? { id: pmRole.id } : undefined,
-                })
-                // developer
-                const developerRole = await this.roleRepository.findOne({
-                    where: { name: "DEVELOPER" },
-                    select: {
-                        id: true
-                    }
-                });
-                await this.userepository.insert({
-                    email: "developer@gmail.com",
-                    password: getHashPassword(initPassword),
-                    fullName: "Developer",
-                    role: developerRole ? { id: developerRole.id } : undefined,
-                })
-            }
-
-            if (countUser > 0 && countRole > 0 && countPermission > 0) {
-                this.logger.log("Database has been initialized before, skipping initialization.");
-            }
-        }
+    if (!isInit) {
+      return;
     }
 
+    this.assertPermissionDefinitionsAreUnique();
+
+    await this.dataSource.transaction(async (manager) => {
+      const permissions = await this.upsertPermissions(manager);
+      const roles = await this.upsertRoles(manager, permissions);
+      await this.createMissingDemoUsers(manager, roles);
+    });
+
+    this.logger.log('Database roles and permissions initialized.');
+  }
+
+  private async upsertPermissions(
+    manager: EntityManager,
+  ): Promise<Map<string, Permission>> {
+    const repository = manager.getRepository(Permission);
+    const existingPermissions = await repository.find({ withDeleted: true });
+    const permissionByKey = new Map<string, Permission>();
+
+    for (const existing of existingPermissions) {
+      const key = this.permissionKey(existing.method, existing.api_path);
+
+      if (!permissionByKey.has(key)) {
+        permissionByKey.set(key, existing);
+      }
+    }
+
+    for (const definition of PERMISSION_DEFINITIONS) {
+      const key = this.permissionKey(definition.method, definition.apiPath);
+      const existing = permissionByKey.get(key);
+
+      const permission = existing ?? repository.create();
+      permission.description = definition.description;
+      permission.api_path = definition.apiPath;
+      permission.method = definition.method;
+      permission.module = definition.module;
+      permission.isDeleted = false;
+      permission.deletedAt = null as unknown as Date;
+      permission.deletedBy = null as unknown as { id: string; email: string };
+
+      const savedPermission = await repository.save(permission);
+      permissionByKey.set(key, savedPermission);
+    }
+
+    return permissionByKey;
+  }
+
+  private async upsertRoles(
+    manager: EntityManager,
+    permissionByKey: Map<string, Permission>,
+  ): Promise<Map<CoreRole, Role>> {
+    const repository = manager.getRepository(Role);
+    const roleByName = new Map<CoreRole, Role>();
+
+    for (const roleName of CORE_ROLES) {
+      let role = await repository.findOne({
+        where: { name: roleName },
+        relations: { permissions: true },
+        withDeleted: true,
+      });
+
+      if (!role) {
+        role = repository.create({ name: roleName });
+      }
+
+      role.description = ROLE_DESCRIPTIONS[roleName];
+      role.isDeleted = false;
+      role.deletedAt = null as unknown as Date;
+      role.deletedBy = null as unknown as { id: string; email: string };
+      role.permissions = this.permissionsForRole(roleName, permissionByKey);
+
+      roleByName.set(roleName, await repository.save(role));
+    }
+
+    return roleByName;
+  }
+
+  private async createMissingDemoUsers(
+    manager: EntityManager,
+    roleByName: Map<CoreRole, Role>,
+  ): Promise<void> {
+    const initPassword = this.configService.get<string>('INIT_PASSWORD', '');
+
+    if (!initPassword) {
+      this.logger.warn(
+        'INIT_PASSWORD is empty; demo users were not created. Roles and permissions were still initialized.',
+      );
+      return;
+    }
+
+    const repository = manager.getRepository(User);
+    const password = getHashPassword(initPassword);
+
+    for (const definition of DEMO_USERS) {
+      const existing = await repository.findOne({
+        where: { email: definition.email },
+        withDeleted: true,
+      });
+
+      if (existing) {
+        continue;
+      }
+
+      await repository.save(
+        repository.create({
+          email: definition.email,
+          password,
+          fullName: definition.fullName,
+          role: roleByName.get(definition.roleName),
+        }),
+      );
+    }
+  }
+
+  private permissionsForRole(
+    roleName: CoreRole,
+    permissionByKey: Map<string, Permission>,
+  ): Permission[] {
+    return PERMISSION_DEFINITIONS.filter(
+      (definition) =>
+        roleName === ADMIN_ROLE || definition.roles.includes(roleName),
+    ).map((definition) => {
+      const permission = permissionByKey.get(
+        this.permissionKey(definition.method, definition.apiPath),
+      );
+
+      if (!permission) {
+        throw new Error(
+          `Permission was not initialized: ${definition.method} ${definition.apiPath}`,
+        );
+      }
+
+      return permission;
+    });
+  }
+
+  private assertPermissionDefinitionsAreUnique(): void {
+    const definitionsByKey = new Map<string, PermissionDefinition>();
+
+    for (const definition of PERMISSION_DEFINITIONS) {
+      const key = this.permissionKey(definition.method, definition.apiPath);
+
+      if (definitionsByKey.has(key)) {
+        throw new Error(`Duplicate permission definition: ${key}`);
+      }
+
+      definitionsByKey.set(key, definition);
+    }
+  }
+
+  private permissionKey(method: string, apiPath: string): string {
+    return `${method.toUpperCase()} ${apiPath}`;
+  }
 }

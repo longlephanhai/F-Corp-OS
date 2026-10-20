@@ -33,7 +33,7 @@ export class UsersService {
     return compareSync(password, hash);
   }
 
-  updateUserToken = async (refreshToken: string, id: string) => {
+  updateUserToken = async (refreshToken: string | null, id: string) => {
     return this.usersRepository.update(
       {
         id: id,

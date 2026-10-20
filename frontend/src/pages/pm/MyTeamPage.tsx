@@ -127,7 +127,7 @@ export const MyTeamPage: React.FC = () => {
     let count = 0;
     skills.forEach((sk) => {
       sk.evidences.forEach((ev) => {
-        if (ev.status === "pending") count++;
+        if (ev.status === "PENDING") count++;
       });
     });
     return count;

@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { IUser } from 'common/types/user.interface';
 import { RolesService } from 'modules/roles/roles.service';
 import { UsersService } from 'modules/users/users.service';
-import { Response } from 'express';
+import { CookieOptions, Response } from 'express';
 import { SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { generatedRoomUserId } from 'helper';
@@ -12,6 +12,8 @@ import { generatedRoomUserId } from 'helper';
 @WebSocketGateway({ namespace: '/login' })
 @Injectable()
 export class AuthService {
+  private readonly refreshCookieName = 'refresh_token';
+
   @WebSocketServer()
   server: Server;
   constructor(
@@ -19,7 +21,47 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private rolesService: RolesService,
-  ) { }
+  ) {}
+
+  private getRefreshCookieOptions(refreshToken?: string): CookieOptions {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV')?.toLowerCase() ===
+      'production';
+
+    const options: CookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+    };
+
+    if (refreshToken) {
+      const decoded = this.jwtService.decode(refreshToken) as {
+        exp?: number;
+      } | null;
+
+      if (decoded?.exp) {
+        options.maxAge = Math.max(0, decoded.exp * 1000 - Date.now());
+      }
+    }
+
+    return options;
+  }
+
+  private setRefreshCookie(response: Response, refreshToken: string) {
+    response.cookie(
+      this.refreshCookieName,
+      refreshToken,
+      this.getRefreshCookieOptions(refreshToken),
+    );
+  }
+
+  private clearRefreshCookie(response: Response) {
+    response.clearCookie(
+      this.refreshCookieName,
+      this.getRefreshCookieOptions(),
+    );
+  }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
@@ -68,10 +110,7 @@ export class AuthService {
     };
     const refresh_token = this.createdRefreshToken(payload);
     await this.usersService.updateUserToken(refresh_token, id);
-    response.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      maxAge: this.configService.get<number>('JWT_REFRESH_EXPIRATION_TIME'),
-    });
+    this.setRefreshCookie(response, refresh_token);
     this.server.to(generatedRoomUserId(id)).emit('response-login', {
       email: email,
       fullName: fullName,
@@ -88,12 +127,15 @@ export class AuthService {
         },
         permissions: role?.permissions,
       },
-      refresh_token: refresh_token,
     };
   }
 
   processNewToken = async (refreshToken: string, response: Response) => {
     try {
+      if (!refreshToken) {
+        throw new BadRequestException('Invalid refresh token');
+      }
+
       this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET_KEY'),
       });
@@ -122,10 +164,7 @@ export class AuthService {
           ? ((await this.rolesService.findOne(userRole.id)) as any)
           : null;
 
-        response.cookie('refresh_token', refresh_token, {
-          httpOnly: true,
-          maxAge: this.configService.get<number>('JWT_REFRESH_EXPIRATION_TIME'),
-        });
+        this.setRefreshCookie(response, refresh_token);
 
         return {
           access_token: this.jwtService.sign(payload),
@@ -143,7 +182,29 @@ export class AuthService {
         throw new BadRequestException('Invalid refresh token');
       }
     } catch (error) {
+      if (refreshToken) {
+        try {
+          const user = await this.usersService.findUserByToken(refreshToken);
+          if (user) {
+            await this.usersService.updateUserToken(null, user.id);
+          }
+        } catch {
+          // Cookie cleanup must still happen if database cleanup is unavailable.
+        }
+      }
+
+      this.clearRefreshCookie(response);
       throw new BadRequestException('Invalid refresh token');
     }
   };
+
+  async logout(userId: string, response: Response) {
+    try {
+      await this.usersService.updateUserToken(null, userId);
+    } finally {
+      this.clearRefreshCookie(response);
+    }
+
+    return { success: true };
+  }
 }

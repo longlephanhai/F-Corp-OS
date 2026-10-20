@@ -7,6 +7,7 @@ import {
   LogoutOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { useLogout } from '../../hooks/useLogout';
 const { Header } = Layout;
 const { Text } = Typography;
 
@@ -20,6 +21,7 @@ interface IProps {
 
 const HeaderLayout = (props: IProps) => {
   const { collapsed, setCollapsed, colorBgContainer, title, name } = props;
+  const { logout } = useLogout();
 
   return (
     <Header style={{ padding: 0, background: colorBgContainer }}>
@@ -56,10 +58,7 @@ const HeaderLayout = (props: IProps) => {
                   key: 'logout',
                   icon: <LogoutOutlined />,
                   label: 'Logout',
-                  onClick: () => {
-                    localStorage.removeItem('access_token');
-                    window.location.href = '/login';
-                  },
+                  onClick: logout,
                 },
               ],
             }}

@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DeepPartial } from 'typeorm';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 import { SkillEvidence } from './entities/skill-evidence.entity';
 import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { IUser } from 'common/types/user.interface';
+import { User } from 'modules/users/entities/user.entity';
+import { UserSkillService } from 'modules/user-skill/user-skill.service';
 
 export type EvidenceStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -27,9 +35,19 @@ export class SkillEvidencesService {
     private readonly userSkillRepo: Repository<UserSkill>,
 
     private readonly notificationsService: NotificationsService,
+
+    private readonly userSkillService: UserSkillService,
   ) {}
 
-  async verifyEvidence(id: string, updateData: VerifyEvidenceDto) {
+  async verifyEvidence(
+    id: string,
+    updateData: VerifyEvidenceDto,
+    requester: IUser,
+  ) {
+    if (requester.role?.name?.toUpperCase() !== 'PM') {
+      throw new ForbiddenException('Only project managers can verify evidence');
+    }
+
     const evidence = await this.evidenceRepo.findOne({
       where: { id },
       relations: {
@@ -41,19 +59,40 @@ export class SkillEvidencesService {
       throw new NotFoundException('Không tìm thấy Bằng chứng này');
     }
 
-    evidence.status = updateData.status;
+    const managedDeveloper = await this.userSkillRepo.manager
+      .getRepository(User)
+      .findOne({
+        where: {
+          id: evidence.userSkill.userId,
+          managerId: requester.id,
+          isDeleted: false,
+        },
+        select: {
+          id: true,
+        },
+      });
 
-    if (updateData.rejectReason) {
-      evidence.rejectReason = updateData.rejectReason;
+    if (!managedDeveloper) {
+      throw new ForbiddenException(
+        'You can only verify evidence for developers you manage',
+      );
     }
+
+    const rejectReason = updateData.rejectReason?.trim();
+    if (updateData.status === 'REJECTED' && !rejectReason) {
+      throw new BadRequestException('Reject reason is required');
+    }
+
+    evidence.status = updateData.status;
+    evidence.rejectReason =
+      updateData.status === 'REJECTED' ? rejectReason! : null;
+    evidence.updatedBy = {
+      id: requester.id,
+      email: requester.email,
+    };
 
     await this.evidenceRepo.save(evidence);
-
-    if (updateData.status === 'APPROVED' && evidence.userSkill) {
-      evidence.userSkill.confidenceScore = 100;
-
-      await this.userSkillRepo.save(evidence.userSkill);
-    }
+    await this.userSkillService.recalculateUserSkill(evidence.userSkill.id);
 
     return evidence;
   }

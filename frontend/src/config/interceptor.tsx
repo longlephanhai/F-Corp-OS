@@ -4,7 +4,7 @@ import { Mutex } from "async-mutex";
 
 import { store } from "../redux/store";
 
-import { setRefreshTokenAction } from "../redux/account/accountSlice";
+import { clearAccountState } from "../redux/account/accountSlice";
 
 // ==========================================
 // CUSTOM AXIOS CONFIG
@@ -40,6 +40,27 @@ const instance = axios.create({
 const mutex = new Mutex();
 
 const NO_RETRY_HEADER = "x-no-retry";
+const SESSION_TERMINATION_KEY = "session_termination_requested";
+
+let isRedirectingToLogin = false;
+let isSessionTerminationRequested =
+  localStorage.getItem(SESSION_TERMINATION_KEY) === "true";
+
+export const prepareSessionLogout = async () => {
+  isSessionTerminationRequested = true;
+  localStorage.setItem(SESSION_TERMINATION_KEY, "true");
+  await mutex.runExclusive(async () => undefined);
+};
+
+const expireSession = () => {
+  localStorage.removeItem("access_token");
+  store.dispatch(clearAccountState());
+
+  if (window.location.pathname !== "/login" && !isRedirectingToLogin) {
+    isRedirectingToLogin = true;
+    window.location.replace("/login");
+  }
+};
 
 // ==========================================
 // GLOBAL ERROR TOAST DEDUPE
@@ -177,12 +198,32 @@ const showGlobalApiError = (error: any) => {
 // REFRESH TOKEN
 // ==========================================
 
-const handleRefreshToken = async (): Promise<string | null> => {
+const handleRefreshToken = async (
+  failedAccessToken: string,
+  persistAccessToken = true,
+): Promise<string | null> => {
   return await mutex.runExclusive(async () => {
-    const res = await instance.get<AccessTokenResponse>("/auth/refresh");
+    if (isRedirectingToLogin) {
+      return null;
+    }
 
-    if (res && res.data) {
-      return res.data.access_token;
+    const currentAccessToken = localStorage.getItem("access_token") ?? "";
+
+    if (currentAccessToken && currentAccessToken !== failedAccessToken) {
+      return currentAccessToken;
+    }
+
+    const res = await instance.get<AccessTokenResponse>("/auth/refresh", {
+      suppressGlobalErrorToast: true,
+    });
+
+    const accessToken = res?.data?.access_token;
+
+    if (accessToken) {
+      if (persistAccessToken) {
+        localStorage.setItem("access_token", accessToken);
+      }
+      return accessToken;
     }
 
     return null;
@@ -226,7 +267,15 @@ instance.interceptors.request.use(
 // ==========================================
 
 instance.interceptors.response.use(
-  (res) => res.data,
+  (res) => {
+    if (String(res.config?.url ?? "").includes("/auth/login")) {
+      isSessionTerminationRequested = false;
+      isRedirectingToLogin = false;
+      localStorage.removeItem(SESSION_TERMINATION_KEY);
+    }
+
+    return res.data;
+  },
 
   async (error) => {
     const requestUrl = String(error?.config?.url ?? "");
@@ -234,6 +283,8 @@ instance.interceptors.response.use(
     const isLoginRequest = requestUrl.includes("/auth/login");
 
     const isRefreshRequest = requestUrl.includes("/auth/refresh");
+
+    const isLogoutRequest = requestUrl.includes("/auth/logout");
 
     // ========================================
     // 401 → TRY REFRESH TOKEN FIRST
@@ -248,18 +299,27 @@ instance.interceptors.response.use(
       Number(error.response.status) === 401 &&
       !isLoginRequest &&
       !isRefreshRequest &&
+      (!isSessionTerminationRequested || isLogoutRequest) &&
       !error.config.headers[NO_RETRY_HEADER]
     ) {
-      const accessToken = await handleRefreshToken();
-
       error.config.headers[NO_RETRY_HEADER] = "true";
 
-      if (accessToken) {
-        error.config.headers["Authorization"] = `Bearer ${accessToken}`;
+      const failedAccessToken = String(
+        error.config.headers?.Authorization ?? "",
+      ).replace(/^Bearer\s+/i, "");
 
-        localStorage.setItem("access_token", accessToken);
+      try {
+        const accessToken = await handleRefreshToken(
+          failedAccessToken,
+          !isLogoutRequest,
+        );
 
-        return instance.request(error.config);
+        if (accessToken) {
+          error.config.headers["Authorization"] = `Bearer ${accessToken}`;
+          return instance.request(error.config);
+        }
+      } catch {
+        expireSession();
       }
     }
 
@@ -267,23 +327,14 @@ instance.interceptors.response.use(
     // REFRESH TOKEN FAILED
     // ========================================
 
-    if (
-      error.config &&
-      error.response &&
-      Number(error.response.status) === 400 &&
-      isRefreshRequest &&
-      location.pathname.startsWith("/admin")
+    if (isRefreshRequest) {
+      expireSession();
+    } else if (
+      Number(error?.response?.status) === 401 &&
+      !isLoginRequest &&
+      error.config?.headers?.[NO_RETRY_HEADER]
     ) {
-      const message =
-        error?.response?.data?.message ?? "Có lỗi xảy ra, vui lòng login.";
-
-      store.dispatch(
-        setRefreshTokenAction({
-          status: true,
-
-          message,
-        }),
-      );
+      expireSession();
     }
 
     // ========================================

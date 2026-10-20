@@ -1,3 +1,5 @@
+import type { StatusEvidenceType } from "../enum";
+
 export type UserSprintStatus =
   | "requested"
   | "pending_approval"
@@ -7,7 +9,7 @@ export type UserSprintStatus =
 // frontend/src/common/types/pm.d.ts
 
 export type EmployeeStatus = "AVAILABLE" | "IN_PROJECT" | "BENCH";
-export type EvidenceStatus = "pending" | "verified" | "rejected";
+export type EvidenceStatus = StatusEvidenceType;
 
 export interface RequiredSkill {
   skill_id: string;

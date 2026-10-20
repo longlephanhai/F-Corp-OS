@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY, IS_PUBLIC_PERMISSION } from 'decorator/customize';
+import { hasRoutePermission, normalizeRoutePath } from './permission-matcher';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -37,18 +38,21 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       );
     }
 
-    const targetMethod = request.method;
-    const targetEndPoint = request.route.path;
+    const targetMethod = request.method as string;
+    const targetEndPoint = request.route?.path as string | undefined;
 
     const permissions = user?.permissions || [];
 
-    let isExist = permissions.find(
-      (permission) =>
-        targetMethod === permission.method &&
-        targetEndPoint === permission.api_path,
-    );
+    let isExist =
+      typeof targetEndPoint === 'string' &&
+      hasRoutePermission(permissions, targetMethod, targetEndPoint);
 
-    if (targetEndPoint.startsWith('/api/v1/auth')) isExist = true;
+    if (
+      targetEndPoint &&
+      normalizeRoutePath(targetEndPoint).startsWith('/api/v1/auth')
+    ) {
+      isExist = true;
+    }
 
     if (!isExist && !isSkipPermission) {
       throw new ForbiddenException('Bạn không có quyền truy cập endpoint này');

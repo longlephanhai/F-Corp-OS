@@ -81,6 +81,23 @@ export const accountSlice = createSlice({
       state.isRefreshToken = action.payload?.status ?? false;
       state.errorRefreshToken = action.payload?.message ?? "";
     },
+    clearAccountState: (state) => {
+      state.isAuthenticated = false;
+      state.isLoading = false;
+      state.isRefreshToken = false;
+      state.errorRefreshToken = "";
+      state.user = {
+        id: "",
+        email: "",
+        fullName: "",
+        status: "AVAILABLE",
+        role: {
+          id: "",
+          name: "",
+        },
+        permissions: [],
+      };
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchAccount.pending, (state, action) => {
@@ -116,6 +133,10 @@ export const accountSlice = createSlice({
   },
 });
 
-export const { setUserLoginInfo, setRefreshTokenAction } = accountSlice.actions;
+export const {
+  setUserLoginInfo,
+  setRefreshTokenAction,
+  clearAccountState,
+} = accountSlice.actions;
 
 export default accountSlice.reducer;

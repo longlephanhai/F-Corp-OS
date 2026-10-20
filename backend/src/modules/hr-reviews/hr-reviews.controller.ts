@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import type { IUser } from 'common/types/user.interface';
-import { Public, ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import { ResponseMessage, User } from 'decorator/customize';
 import { CreateReviewCycleDto } from './dto/create-review-cycle.dto';
 import { GetReviewRecordsDto } from './dto/get-review-records.dto';
 import { UpdateReviewScoreDto } from './dto/update-review-score.dto';
@@ -20,7 +20,6 @@ export class HrReviewsController {
    * Tạo mới một Review Cycle. Lưu thông tin người tạo qua @User() decorator.
    */
   @Post('cycles')
-  @SkipCheckPermission()
   @ResponseMessage('Tạo kỳ đánh giá thành công')
   createCycle(
     @Body() createDto: CreateReviewCycleDto,
@@ -30,26 +29,11 @@ export class HrReviewsController {
   }
 
   /**
-   * POST /api/v1/hr-reviews/seed
-   * [DEV ONLY] Tạo dữ liệu mẫu vào database để test UI frontend.
-   * Dùng @Public() và @SkipCheckPermission() để bỏ qua JWT và phân quyền trong giai đoạn test.
-   * Xóa route này trước khi deploy lên production.
-   */
-  @Post('seed')
-  @Public()
-  @SkipCheckPermission()
-  @ResponseMessage('Seed dữ liệu thành công')
-  seedData() {
-    return this.hrReviewsService.seedData();
-  }
-
-  /**
    * GET /api/v1/hr-reviews/records/stats
    * Trả về số liệu tổng hợp (aggregate) theo từng trạng thái từ toàn bộ database.
    * PHẢI khai báo TRƯỚC route /records để NestJS không hiểu nhầm 'stats' là :id param.
    */
   @Get('records/stats')
-  @SkipCheckPermission()
   @ResponseMessage('Get review stats successfully')
   getRecordStats() {
     return this.hrReviewsService.getRecordStats();
@@ -60,7 +44,6 @@ export class HrReviewsController {
    * Lấy danh sách bản ghi đánh giá với phân trang và bộ lọc tùy chọn.
    */
   @Get('records')
-  @SkipCheckPermission()
   @ResponseMessage('Get review records successfully')
   findAllRecords(@Query() query: GetReviewRecordsDto) {
     return this.hrReviewsService.findAllRecords(query);
@@ -71,7 +54,6 @@ export class HrReviewsController {
    * Cập nhật trạng thái (và điểm số) của một bản ghi đánh giá cụ thể.
    */
   @Patch('records/:id/status')
-  @SkipCheckPermission()
   @ResponseMessage('Update review status successfully')
   updateRecordStatus(
     @Param('id') id: string,
@@ -87,7 +69,6 @@ export class HrReviewsController {
    * PM gửi tempScore + reviewerNote; HR gửi finalScore.
    */
   @Patch('records/:id/score')
-  @SkipCheckPermission()
   @ResponseMessage('Update review score successfully')
   updateRecordScore(
     @Param('id') id: string,
@@ -103,7 +84,6 @@ export class HrReviewsController {
    * PHẢI khai báo SAU /records/stats để tránh NestJS khớp 'stats' như một :id UUID.
    */
   @Get('records/:id')
-  @SkipCheckPermission()
   @ResponseMessage('Get review record detail successfully')
   getRecordById(@Param('id') id: string) {
     return this.hrReviewsService.getRecordById(id);

@@ -9,7 +9,6 @@ import {
 import { LocalAuthGuard } from './guard/local-auth.guard';
 import type { Request as REQ, Request, Response as RES } from 'express';
 import type { IUser } from 'common/types/user.interface';
-import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { RolesService } from 'modules/roles/roles.service';
 import { ApiBody } from '@nestjs/swagger';
 import { UserLoginDto } from './dto/login.dto';
@@ -68,15 +67,13 @@ export class AuthController {
     return this.authService.processNewToken(refreshToken, response);
   }
 
-  // @UseGuards(LocalAuthGuard)
-  // @Post('logout')
-  // async logout(@Request() req) {
-  //     return req.logout();
-  // }
+  @Post('logout')
+  @ResponseMessage('Logout Success')
+  logout(
+    @User() user: IUser,
+    @Res({ passthrough: true }) response: RES,
+  ) {
+    return this.authService.logout(user.id, response);
+  }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Get('profile')
-  // getProfile(@Request() req) {
-  //     return req.user;
-  // }
 }

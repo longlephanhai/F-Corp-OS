@@ -9,7 +9,8 @@ import {
   SkillEvidencesService,
   VerifyEvidenceDto,
 } from './skill-evidences.service';
-import { SkipCheckPermission } from 'decorator/customize';
+import { SkipCheckPermission, User } from 'decorator/customize';
+import type { IUser } from 'common/types/user.interface';
 // import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Controller('skill-evidences')
@@ -36,13 +37,13 @@ export class SkillEvidencesController {
   // ==========================================================
   // 💥 Đã fix cứng type VerifyEvidenceDto cho biến body
   // ==========================================================
-  @SkipCheckPermission()
   @Patch(':id/verify')
   async verifyEvidence(
     @Param('id') id: string,
     @Body() body: VerifyEvidenceDto, // Thay vì { status: string } như cũ
+    @User() user: IUser,
   ) {
-    const data = await this.evidencesService.verifyEvidence(id, body);
+    const data = await this.evidencesService.verifyEvidence(id, body, user);
     return {
       statusCode: 200,
       message: 'Cập nhật trạng thái bằng chứng thành công',

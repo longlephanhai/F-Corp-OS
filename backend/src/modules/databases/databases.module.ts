@@ -5,7 +5,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Role } from 'modules/roles/entities/role.entity';
 import { Permission } from 'modules/permissions/entities/permission.entity';
 import { User } from 'modules/users/entities/user.entity';
-import { UsersService } from 'modules/users/users.service';
 
 @Module({
   imports: [
@@ -14,6 +13,6 @@ import { UsersService } from 'modules/users/users.service';
     TypeOrmModule.forFeature([Permission]),
   ],
   controllers: [DatabasesController],
-  providers: [DatabasesService, UsersService],
+  providers: [DatabasesService],
 })
 export class DatabasesModule { }

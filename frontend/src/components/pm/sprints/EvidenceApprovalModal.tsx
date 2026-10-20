@@ -93,7 +93,7 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
   const handleVerify = async (evidenceId: string) => {
     try {
       await pmApi.verifyEvidence(evidenceId, {
-        status: "verified",
+        status: "APPROVED",
       });
 
       // Đợi lấy dữ liệu mới về xong
@@ -116,7 +116,7 @@ export const EvidenceApprovalModal: React.FC<Props> = ({
 
     try {
       await pmApi.verifyEvidence(evidenceId, {
-        status: "rejected",
+        status: "REJECTED",
         rejectReason,
       });
 

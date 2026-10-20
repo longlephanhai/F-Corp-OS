@@ -12,5 +12,6 @@ import { SkillEvidence } from 'modules/skill-evidences/entities/skill-evidence.e
   ],
   controllers: [UserSkillController],
   providers: [UserSkillService],
+  exports: [UserSkillService],
 })
 export class UserSkillModule { }
