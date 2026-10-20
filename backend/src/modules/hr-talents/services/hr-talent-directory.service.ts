@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'modules/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { GetHrTalentsDto } from '../dto/get-hr-talents.dto';
+import { DEFAULT_TALENT_ROLE } from '../talent-population.constant';
 
 @Injectable()
 export class HrTalentDirectoryService {
@@ -80,14 +81,16 @@ export class HrTalentDirectoryService {
             );
         }
 
-        if (role?.trim()) {
-            queryBuilder.andWhere(
-                'role.name = :role',
-                {
-                    role: role.trim(),
-                },
-            );
-        }
+        const effectiveRole =
+            role?.trim() ||
+            DEFAULT_TALENT_ROLE;
+
+        queryBuilder.andWhere(
+            'LOWER(role.name) = LOWER(:role)',
+            {
+                role: effectiveRole,
+            },
+        );
 
         queryBuilder
             .orderBy(

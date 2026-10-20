@@ -8,6 +8,12 @@ import type {
   UserSprintItem,
 } from "../common/types/pm";
 
+export interface ReleaseUserSprintPayload {
+  hardSkillRate: number;
+  softSkillRate: number;
+  reviewComment: string;
+}
+
 export const pmApi = {
   // Lấy danh sách nhân sự tham gia Sprint
   getSprintUsers: (sprintId: string) => {
@@ -174,8 +180,8 @@ export const pmApi = {
     return axios.post<IBackendRes<any>>(`/tasks/${taskId}/carry-over`, data);
   },
   // Giải phóng nhân sự kèm Đánh giá (Review)
-  releaseUserSprint: (id: string, reviewData: any) => {
-    return axios.patch<IBackendRes<any>>(
+  releaseUserSprint: (id: string, reviewData: ReleaseUserSprintPayload) => {
+    return axios.patch<IBackendRes<UserSprintItem>>(
       `/user-sprint/${id}/release`,
       reviewData,
     );

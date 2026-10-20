@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserStatusType } from 'common/enum/user.enum';
 import { Skill } from 'modules/skills/entities/skill.entity';
 import { Repository } from 'typeorm';
+import { DEFAULT_TALENT_ROLE } from '../talent-population.constant';
 
 interface SkillSupplyRow {
   skillId: string;
@@ -43,9 +44,20 @@ export class HrSkillSupplyInsightService {
         .leftJoin(
           'userSkill.user',
           'user',
-          'user.isDeleted = :userDeleted',
+          `
+            user.isDeleted = :userDeleted
+            AND user.role_id = (
+              SELECT talentRole.id
+              FROM roles talentRole
+              WHERE LOWER(talentRole.name) = LOWER(:talentRole)
+                AND talentRole.isDeleted = :talentRoleDeleted
+              LIMIT 1
+            )
+          `,
           {
             userDeleted: false,
+            talentRole: DEFAULT_TALENT_ROLE,
+            talentRoleDeleted: false,
           },
         )
 

@@ -51,7 +51,7 @@ export class HrReviewsController {
 
   /**
    * PATCH /api/v1/hr-reviews/records/:id/status
-   * Cập nhật trạng thái (và điểm số) của một bản ghi đánh giá cụ thể.
+   * Cập nhật trạng thái của một bản ghi đánh giá cụ thể.
    */
   @Patch('records/:id/status')
   @ResponseMessage('Update review status successfully')
@@ -66,7 +66,7 @@ export class HrReviewsController {
   /**
    * PATCH /api/v1/hr-reviews/records/:id/score
    * Cập nhật điểm số của một bản ghi đánh giá (tách biệt với cập nhật trạng thái).
-   * PM gửi tempScore + reviewerNote; HR gửi finalScore.
+   * HR gửi finalScore. PM source score được tạo từ release flow.
    */
   @Patch('records/:id/score')
   @ResponseMessage('Update review score successfully')

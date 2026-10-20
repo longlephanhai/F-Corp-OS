@@ -9,8 +9,9 @@ import {
   SkillEvidencesService,
   VerifyEvidenceDto,
 } from './skill-evidences.service';
-import { SkipCheckPermission, User } from 'decorator/customize';
+import { User } from 'decorator/customize';
 import type { IUser } from 'common/types/user.interface';
+import { SubmitSkillEvidenceDto } from './dto/submit-skill-evidence.dto';
 // import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Controller('skill-evidences')
@@ -20,12 +21,17 @@ export class SkillEvidencesController {
     // private readonly notificationsGateway: NotificationsGateway
   ) {}
 
-  @SkipCheckPermission()
   @Post()
-  async submitEvidence(@Body() body: any) {
+  async submitEvidence(
+    @Body() body: SubmitSkillEvidenceDto,
+    @User() user: IUser,
+  ) {
     // Gọi hàm uploadEvidence trong Service.
     // Hàm này sẽ tự động: Lưu DB -> Lấy ra ID mới -> Bắn Socket rung chuông!
-    const savedEvidence = await this.evidencesService.uploadEvidence(body);
+    const savedEvidence = await this.evidencesService.uploadEvidence(
+      body,
+      user,
+    );
 
     return {
       statusCode: 201,

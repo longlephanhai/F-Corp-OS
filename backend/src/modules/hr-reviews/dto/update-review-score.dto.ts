@@ -2,13 +2,13 @@ import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 /**
  * DTO cho endpoint PATCH /records/:id/score.
- * PM nhập tempScore và reviewerNote; HR nhập finalScore.
- * Tất cả các field đều optional để hỗ trợ partial update.
+ * HR nhập finalScore. tempScore/reviewerNote chỉ còn được hỗ trợ cho
+ * ReviewRecord thủ công/legacy, không được ghi đè nguồn PM release.
  */
 export class UpdateReviewScoreDto {
   /**
    * Điểm sơ bộ do PM chấm (thang 0–100).
-   * Chỉ PM mới nên gửi field này.
+   * Chỉ dùng cho ReviewRecord thủ công/legacy.
    */
   @IsOptional()
   @IsNumber({}, { message: 'tempScore phải là số' })

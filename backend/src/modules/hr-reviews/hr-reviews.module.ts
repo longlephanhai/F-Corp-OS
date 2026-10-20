@@ -7,6 +7,7 @@ import { HrReviewsController } from './hr-reviews.controller';
 import { HrReviewsService } from './hr-reviews.service';
 import { RewardRuleService } from './reward-rule.service';
 import { HrWalletsModule } from '../hr-wallets/hr-wallets.module';
+import { PmReleaseReviewService } from './pm-release-review.service';
 
 /**
  * HrReviewsModule — khai báo DI và import/export cho phân hệ đánh giá HR.
@@ -19,7 +20,7 @@ import { HrWalletsModule } from '../hr-wallets/hr-wallets.module';
     HrWalletsModule,
   ],
   controllers: [HrReviewsController],
-  providers: [HrReviewsService, RewardRuleService],
-  exports: [HrReviewsService],
+  providers: [HrReviewsService, RewardRuleService, PmReleaseReviewService],
+  exports: [HrReviewsService, PmReleaseReviewService],
 })
 export class HrReviewsModule {}

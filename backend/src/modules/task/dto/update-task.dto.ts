@@ -2,11 +2,9 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
-  IsInt,
   IsNumber,
   IsOptional,
   IsString,
-  Max,
   MaxLength,
   Min,
   ValidateNested,
@@ -15,21 +13,7 @@ import {
 import { Type } from 'class-transformer';
 
 import { TaskPriority } from '../entities/task.entity';
-
-class UpdateRequiredSkillDto {
-  @IsString()
-  skill_id: string;
-
-  @IsInt()
-  @Min(1)
-  @Max(5)
-  min_level: number;
-
-  @IsInt()
-  @Min(1)
-  @Max(10)
-  weight: number;
-}
+import { RequiredSkillDto } from './required-skill.dto';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -64,6 +48,6 @@ export class UpdateTaskDto {
   @ValidateNested({
     each: true,
   })
-  @Type(() => UpdateRequiredSkillDto)
-  requiredSkills?: UpdateRequiredSkillDto[];
+  @Type(() => RequiredSkillDto)
+  requiredSkills?: RequiredSkillDto[];
 }

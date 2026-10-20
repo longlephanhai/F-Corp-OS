@@ -17,6 +17,7 @@ import { SprintAllocationInvitationService } from './sprint-allocation-invitatio
 import { SprintAllocationResponseService } from './sprint-allocation-response.service';
 import { SprintAllocationRetryService } from './sprint-allocation-retry.service';
 import { WorkforceStatusService } from './workforce-status.service';
+import { HrReviewsModule } from '../hr-reviews/hr-reviews.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserSprint, Sprint, User, Task, Project]),
@@ -24,6 +25,7 @@ import { WorkforceStatusService } from './workforce-status.service';
     PmAccessModule,
     ProjectsModule,
     NotificationsModule,
+    HrReviewsModule,
   ],
 
   controllers: [UserSprintController],

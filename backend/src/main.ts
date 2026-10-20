@@ -68,6 +68,6 @@ async function bootstrap() {
 
   app.useWebSocketAdapter(new WebsocketAdapter(app));
 
-  await app.listen(process.env.PORT ?? 8080);
+  await app.listen(process.env.PORT || 8080);
 }
 bootstrap();

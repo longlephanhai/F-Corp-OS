@@ -16,6 +16,7 @@ import {
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 
 import { pmApi } from "../../../api/pm";
+import { useSkillCatalog } from "../../../hooks/useSkillCatalog";
 
 interface Props {
   open: boolean;
@@ -23,29 +24,6 @@ interface Props {
   onClose: () => void;
   onRefresh: () => void;
 }
-
-const MOCK_SKILLS = [
-  {
-    value: "sk-1",
-    label: "ReactJS",
-  },
-  {
-    value: "sk-2",
-    label: "NodeJS",
-  },
-  {
-    value: "sk-3",
-    label: "PostgreSQL",
-  },
-  {
-    value: "sk-4",
-    label: "Figma",
-  },
-  {
-    value: "sk-5",
-    label: "AWS",
-  },
-];
 
 export const CreateTaskModal: React.FC<Props> = ({
   open,
@@ -56,6 +34,8 @@ export const CreateTaskModal: React.FC<Props> = ({
   const [form] = Form.useForm();
 
   const [loading, setLoading] = useState(false);
+  const { options: skillOptions, loading: skillsLoading } =
+    useSkillCatalog(open);
 
   // ==========================================
   // SUBMIT
@@ -286,7 +266,15 @@ export const CreateTaskModal: React.FC<Props> = ({
                         width: 200,
                       }}
                       placeholder="Chọn kỹ năng"
-                      options={MOCK_SKILLS}
+                      options={skillOptions}
+                      loading={skillsLoading}
+                      showSearch
+                      optionFilterProp="label"
+                      notFoundContent={
+                        skillsLoading
+                          ? "Đang tải danh mục kỹ năng..."
+                          : "Chưa có kỹ năng trong danh mục"
+                      }
                     />
                   </Form.Item>
 
@@ -355,6 +343,7 @@ export const CreateTaskModal: React.FC<Props> = ({
                       weight: 1,
                     })
                   }
+                  disabled={skillsLoading || skillOptions.length === 0}
                   block
                   icon={<PlusOutlined />}
                 >

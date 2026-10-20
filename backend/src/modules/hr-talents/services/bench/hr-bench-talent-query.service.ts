@@ -7,6 +7,7 @@ import { User } from 'modules/users/entities/user.entity';
 import { Repository } from 'typeorm';
 
 import { GetHrBenchTalentsDto } from '../../dto/get-hr-bench-talents.dto';
+import { DEFAULT_TALENT_ROLE } from '../../talent-population.constant';
 
 @Injectable()
 export class HrBenchTalentQueryService {
@@ -102,7 +103,7 @@ export class HrBenchTalentQueryService {
 
     this.applyRoleFilter(
       queryBuilder,
-      role,
+      role?.trim() || DEFAULT_TALENT_ROLE,
     );
 
     this.applyTalentFilters(

@@ -11,10 +11,19 @@ import { PmRealtimeModule } from '../pm-realtime/pm-realtime.module';
 import { PmAccessModule } from '../pm-access/pm-access.module';
 import { SkillEvidence } from '../skill-evidences/entities/skill-evidence.entity';
 import { UserSkill } from '../user-skill/entities/user-skill.entity';
+import { Skill } from '../skills/entities/skill.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, User, Sprint, UserSprint, SkillEvidence, UserSkill]),
+    TypeOrmModule.forFeature([
+      Task,
+      User,
+      Sprint,
+      UserSprint,
+      SkillEvidence,
+      UserSkill,
+      Skill,
+    ]),
 
     TaskDependenciesModule,
 

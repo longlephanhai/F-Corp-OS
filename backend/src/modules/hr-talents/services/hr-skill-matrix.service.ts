@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { GetHrSkillMatrixDto } from '../dto/get-hr-skill-matrix.dto';
 import { UserSkill } from 'modules/user-skill/entities/user-skill.entity';
 import { GetHrSkillEmployeesDto } from '../dto/get-hr-skill-employees.dto';
+import { DEFAULT_TALENT_ROLE } from '../talent-population.constant';
 
 @Injectable()
 export class HrSkillMatrixService {
@@ -81,9 +82,20 @@ export class HrSkillMatrixService {
                 .leftJoin(
                     'userSkill.user',
                     'user',
-                    'user.isDeleted = :userDeleted',
+                    `
+                      user.isDeleted = :userDeleted
+                      AND user.role_id = (
+                        SELECT talentRole.id
+                        FROM roles talentRole
+                        WHERE LOWER(talentRole.name) = LOWER(:talentRole)
+                          AND talentRole.isDeleted = :talentRoleDeleted
+                        LIMIT 1
+                      )
+                    `,
                     {
                         userDeleted: false,
+                        talentRole: DEFAULT_TALENT_ROLE,
+                        talentRoleDeleted: false,
                     },
                 )
 
@@ -494,6 +506,13 @@ export class HrSkillMatrixService {
                     'user.isDeleted = :userDeleted',
                     {
                         userDeleted: false,
+                    },
+                )
+
+                .andWhere(
+                    'LOWER(role.name) = LOWER(:talentRole)',
+                    {
+                        talentRole: DEFAULT_TALENT_ROLE,
                     },
                 );
 

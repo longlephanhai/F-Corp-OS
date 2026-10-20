@@ -4,6 +4,7 @@ import { User } from 'modules/users/entities/user.entity';
 import { Repository } from 'typeorm';
 
 import { GetHrTalentDataQualityDto } from '../dto/get-hr-talent-data-quality.dto';
+import { DEFAULT_TALENT_ROLE } from '../talent-population.constant';
 
 @Injectable()
 export class HrTalentDataQualityService {
@@ -82,14 +83,16 @@ export class HrTalentDataQualityService {
          * Ví dụ:
          * ?role=DEVELOPER
          */
-        if (role?.trim()) {
-            queryBuilder.andWhere(
-                'LOWER(role.name) = LOWER(:role)',
-                {
-                    role: role.trim(),
-                },
-            );
-        }
+        const effectiveRole =
+            role?.trim() ||
+            DEFAULT_TALENT_ROLE;
+
+        queryBuilder.andWhere(
+            'LOWER(role.name) = LOWER(:role)',
+            {
+                role: effectiveRole,
+            },
+        );
 
         queryBuilder.orderBy(
             'user.fullName',
@@ -385,8 +388,7 @@ export class HrTalentDataQualityService {
         return {
             criteria: {
                 role:
-                    role?.trim() ||
-                    null,
+                    effectiveRole,
 
                 staleDays,
 

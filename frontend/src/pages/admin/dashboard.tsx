@@ -1,4 +1,4 @@
-import { Avatar, Breadcrumb, Card, Col, Flex, List, Row, Spin, Statistic, Tag, Typography } from 'antd';
+import { Breadcrumb, Card, Col, Flex, Row, Spin, Statistic, Tag, Typography } from 'antd';
 import {
     TeamOutlined,
     SafetyOutlined,
@@ -10,27 +10,6 @@ import { useEffect, useState } from 'react';
 import { callCountUsers, callCountRoles, callCountPermissions, callCountDisableAccount } from '../../api';
 
 const { Title } = Typography;
-
-const activityData = [
-    {
-        color: '#e6f4ff',
-        icon: <TeamOutlined style={{ color: '#1677ff' }} />,
-        content: <>User John Doe updated role <Link to="/admin/roles">'Developer'</Link></>,
-        time: '2 hours ago',
-    },
-    {
-        color: '#f6ffed',
-        icon: <SafetyOutlined style={{ color: '#52c41a' }} />,
-        content: <>New permission added to <Link to="/admin/roles">'Admin'</Link></>,
-        time: '4 hours ago',
-    },
-    {
-        color: '#fff2f0',
-        icon: <TeamOutlined style={{ color: '#ff4d4f' }} />,
-        content: <>User Jane Smith was deactivated.</>,
-        time: 'Yesterday',
-    },
-];
 
 const DashboardPage = () => {
     const [totalUsers, setTotalUsers] = useState<number>(0);
@@ -171,26 +150,6 @@ const DashboardPage = () => {
                     </Card>
                 </Col>
             </Row>
-
-            <Card
-                style={{ marginTop: 16 }}
-                title="Recent Activity"
-                extra={<Link to="/admin/users">View All</Link>}
-            >
-                <List
-                    itemLayout="horizontal"
-                    dataSource={activityData}
-                    renderItem={(item) => (
-                        <List.Item>
-                            <List.Item.Meta
-                                avatar={<Avatar style={{ background: item.color }} icon={item.icon} />}
-                                title={item.content}
-                                description={item.time}
-                            />
-                        </List.Item>
-                    )}
-                />
-            </Card>
         </>
     );
 };

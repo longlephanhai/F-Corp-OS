@@ -17,8 +17,10 @@ export class SkillsService {
   async create(createSkillDto: CreateSkillDto, user: IUser) {
     const isExist = await this.skillsRepository
       .createQueryBuilder('skills')
-      .where('skills.name = :name', { name: createSkillDto.name })
-      .andWhere("skills.createdBy->>'$.id' = :userId", { userId: user.id })
+      .where('LOWER(skills.name) = LOWER(:name)', {
+        name: createSkillDto.name.trim(),
+      })
+      .andWhere('skills.isDeleted = :isDeleted', { isDeleted: false })
       .getOne();
 
     if (isExist) {
@@ -35,17 +37,20 @@ export class SkillsService {
     return this.skillsRepository.save(skills);
   }
 
-  async findAll(currentPage: number, limit: number, qs: string, user: IUser) {
+  async findAll(currentPage: number, limit: number, qs: string, _user: IUser) {
     const { filter, sort } = aqp(qs);
     delete filter.current;
     delete filter.pageSize;
 
-    let offset = (+currentPage - 1) * (+limit);
-    let defaultLimit = +limit ? +limit : 10;
+    const normalizedPage = Number(currentPage) > 0 ? Number(currentPage) : 1;
+    const requestedLimit = Number(limit);
+    const withoutPagination = requestedLimit === 0;
+    const pageSize = requestedLimit > 0 ? requestedLimit : 10;
+    const offset = (normalizedPage - 1) * pageSize;
 
     const queryBuilder = this.skillsRepository
       .createQueryBuilder('skills')
-      .where("skills.createdBy->>'$.id' = :userId", { userId: user.id });
+      .where('skills.isDeleted = :isDeleted', { isDeleted: false });
 
     const likeFields = ['name', 'description'];
     Object.keys(filter).forEach((key) => {
@@ -61,16 +66,17 @@ export class SkillsService {
         queryBuilder.addOrderBy(`skills.${key}`, value === -1 ? 'DESC' : 'ASC');
       });
     }
-    const [result, totalItems] = await queryBuilder
-      .skip(offset)
-      .take(defaultLimit)
-      .getManyAndCount()
+    if (!withoutPagination) {
+      queryBuilder.skip(offset).take(pageSize);
+    }
+
+    const [result, totalItems] = await queryBuilder.getManyAndCount();
 
     return {
       meta: {
-        currentPage: +currentPage,
-        pageSize: +limit,
-        pages: Math.ceil(totalItems / defaultLimit),
+        currentPage: normalizedPage,
+        pageSize: withoutPagination ? totalItems : pageSize,
+        pages: withoutPagination ? (totalItems > 0 ? 1 : 0) : Math.ceil(totalItems / pageSize),
         total: totalItems,
       },
       result

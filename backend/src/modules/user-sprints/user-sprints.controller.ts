@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import { ResponseMessage, User } from 'decorator/customize';
 
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
@@ -26,9 +26,9 @@ import { SprintAllocationResponseService } from './sprint-allocation-response.se
 import { SprintAllocationRetryService } from './sprint-allocation-retry.service';
 import { RespondSprintInvitationDto } from './dto/respond-sprint-invitation.dto';
 import { RetrySprintInvitationDto } from './dto/retry-sprint-invitation.dto';
+import { ReleaseUserSprintDto } from './dto/release-user-sprint.dto';
 
 @UseGuards(JwtAuthGuard)
-@SkipCheckPermission()
 @Controller('user-sprint')
 export class UserSprintController {
   constructor(
@@ -401,7 +401,7 @@ export class UserSprintController {
     id: string,
 
     @Body()
-    body: any,
+    body: ReleaseUserSprintDto,
 
     @Req()
     req: any,
@@ -412,7 +412,7 @@ export class UserSprintController {
 
     await this.pmAccessService.assertAllocationAccess(req.user.id, id);
 
-    const data = await this.userSprintService.releaseUser(id, body);
+    const data = await this.userSprintService.releaseUser(id, body, req.user);
 
     return {
       statusCode: 200,

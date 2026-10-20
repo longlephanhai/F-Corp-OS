@@ -7,6 +7,7 @@ import { HrBenchPerformanceService } from './hr-bench-performance.service';
 import { HrBenchTalentQueryService } from './hr-bench-talent-query.service';
 
 import { mapBenchTalent } from './hr-bench-talent.mapper';
+import { DEFAULT_TALENT_ROLE } from '../../talent-population.constant';
 
 @Injectable()
 export class HrBenchTalentPoolService {
@@ -85,7 +86,7 @@ export class HrBenchTalentPoolService {
 
         role:
           role?.trim() ||
-          null,
+          DEFAULT_TALENT_ROLE,
 
         skillId:
           skillId ??

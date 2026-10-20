@@ -5,8 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Task, TaskPriority, TaskStatus } from './entities/task.entity';
+import { In, Repository } from 'typeorm';
+import {
+  RequiredSkillItem,
+  Task,
+  TaskPriority,
+  TaskStatus,
+} from './entities/task.entity';
 
 import { UpdateTaskLifecycleDto } from './dto/update-task-lifecycle.dto';
 import { User } from '../users/entities/user.entity';
@@ -28,6 +33,8 @@ import {
 import { SkillEvidence } from '../skill-evidences/entities/skill-evidence.entity';
 import { UserSkill } from '../user-skill/entities/user-skill.entity';
 import { EvidenceType } from 'common/enum/evidence.enum';
+import { Skill } from '../skills/entities/skill.entity';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @Injectable()
 export class TasksService {
@@ -44,6 +51,8 @@ export class TasksService {
     private readonly skillEvidenceRepo: Repository<SkillEvidence>,
     @InjectRepository(UserSkill)
     private readonly userSkillRepo: Repository<UserSkill>,
+    @InjectRepository(Skill)
+    private readonly skillRepo: Repository<Skill>,
 
     private readonly taskDependenciesService: TaskDependenciesService,
     private readonly pmRealtimeService: PmRealtimeService,
@@ -74,7 +83,7 @@ export class TasksService {
   }
 
   // 4. Tạo Task và gán kĩ năng yêu cầu (Required Skills JSON)
-  async createTask(data: any) {
+  async createTask(data: CreateTaskDto) {
     if (!data.sprintId) {
       throw new BadRequestException({
         code: 'SPRINT_REQUIRED',
@@ -93,6 +102,7 @@ export class TasksService {
 
     const sprint = await this.assertSprintMutable(data.sprintId);
     this.validateTaskTimeline(data.startDate, data.endDate, sprint);
+    await this.assertRequiredSkillsExist(data.requiredSkills ?? []);
     if (data.userId) {
       await this.assertUserAssignedToSprint(data.sprintId, data.userId);
     }
@@ -206,18 +216,7 @@ export class TasksService {
     // ==========================================
 
     if (data.requiredSkills !== undefined) {
-      const skillIds = data.requiredSkills.map((skill) => skill.skill_id);
-
-      const uniqueSkillIds = new Set(skillIds);
-
-      if (uniqueSkillIds.size !== skillIds.length) {
-        throw new ConflictException({
-          code: 'DUPLICATE_REQUIRED_SKILL',
-
-          message:
-            'Một kỹ năng không được xuất hiện nhiều lần trong Required Skills.',
-        });
-      }
+      await this.assertRequiredSkillsExist(data.requiredSkills);
     }
 
     // ==========================================
@@ -964,11 +963,38 @@ export class TasksService {
     // TASK SKILL REQUIREMENTS
     // ==========================================
 
+    const requiredSkillIds = [
+      ...new Set(
+        (task.requiredSkills ?? [])
+          .map((requirement) => requirement.skill_id)
+          .filter(Boolean),
+      ),
+    ];
+    const requiredSkillCatalog =
+      requiredSkillIds.length > 0
+        ? await this.skillRepo.find({
+            where: {
+              id: In(requiredSkillIds),
+              isDeleted: false,
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          })
+        : [];
+    const skillNameById = new Map(
+      requiredSkillCatalog.map((skill) => [skill.id, skill.name]),
+    );
+
     const requirements = (task.requiredSkills ?? []).map(
       (requirement: any) => ({
         identifier: requirement.skill_id ?? requirement.skill,
 
-        label: requirement.skill ?? requirement.skill_id ?? 'Chưa xác định',
+        label:
+          skillNameById.get(requirement.skill_id) ??
+          requirement.skill ??
+          `Kỹ năng không hợp lệ (${requirement.skill_id ?? 'không xác định'})`,
 
         minLevel: Number(requirement.min_level ?? requirement.level ?? 1),
       }),
@@ -1417,6 +1443,8 @@ export class TasksService {
     // ==========================================
     if (oldStatus !== TaskStatus.DONE && task.status === TaskStatus.DONE && task.userId) {
       if (task.requiredSkills && task.requiredSkills.length > 0) {
+        await this.assertRequiredSkillsExist(task.requiredSkills);
+
         for (const reqSkill of task.requiredSkills) {
           let userSkill = await this.userSkillRepo.findOne({
             where: { userId: task.userId, skillId: reqSkill.skill_id },
@@ -1451,6 +1479,49 @@ export class TasksService {
     await this.publishTaskChanged(savedTask, 'STATUS_CHANGED');
 
     return savedTask;
+  }
+
+  private async assertRequiredSkillsExist(
+    requiredSkills: RequiredSkillItem[],
+  ) {
+    if (requiredSkills.length === 0) {
+      return;
+    }
+
+    const skillIds = requiredSkills.map((skill) => skill.skill_id);
+    const uniqueSkillIds = [...new Set(skillIds)];
+
+    if (uniqueSkillIds.length !== skillIds.length) {
+      throw new ConflictException({
+        code: 'DUPLICATE_REQUIRED_SKILL',
+        message:
+          'Một kỹ năng không được xuất hiện nhiều lần trong Required Skills.',
+      });
+    }
+
+    const skills = await this.skillRepo.find({
+      where: {
+        id: In(uniqueSkillIds),
+        isDeleted: false,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const existingIds = new Set(skills.map((skill) => skill.id));
+    const invalidSkillIds = uniqueSkillIds.filter(
+      (skillId) => !existingIds.has(skillId),
+    );
+
+    if (invalidSkillIds.length > 0) {
+      throw new BadRequestException({
+        code: 'INVALID_REQUIRED_SKILL_IDS',
+        message:
+          'Required Skills chứa kỹ năng không tồn tại hoặc đã bị xóa.',
+        invalidSkillIds,
+      });
+    }
   }
 
   private validateTaskTimeline(

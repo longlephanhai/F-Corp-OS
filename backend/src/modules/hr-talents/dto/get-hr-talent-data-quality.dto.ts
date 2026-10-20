@@ -14,7 +14,7 @@ export class GetHrTalentDataQualityDto {
      * Ví dụ:
      * ?role=DEVELOPER
      *
-     * Mặc định không filter role.
+     * Mặc định dùng technical workforce DEVELOPER.
      */
     @IsOptional()
     @IsString()

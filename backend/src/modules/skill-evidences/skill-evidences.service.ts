@@ -13,6 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { IUser } from 'common/types/user.interface';
 import { User } from 'modules/users/entities/user.entity';
 import { UserSkillService } from 'modules/user-skill/user-skill.service';
+import { SubmitSkillEvidenceDto } from './dto/submit-skill-evidence.dto';
 
 export type EvidenceStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -97,14 +98,43 @@ export class SkillEvidencesService {
     return evidence;
   }
 
-  async uploadEvidence(data: DeepPartial<SkillEvidence>) {
+  async uploadEvidence(data: SubmitSkillEvidenceDto, requester: IUser) {
+    const userSkill = await this.userSkillRepo.findOne({
+      where: {
+        id: data.userSkillId,
+        isDeleted: false,
+      },
+      relations: {
+        user: true,
+        skill: true,
+      },
+    });
+
+    if (!userSkill) {
+      throw new NotFoundException('Không tìm thấy kỹ năng của nhân sự.');
+    }
+
+    if (userSkill.userId !== requester.id) {
+      throw new ForbiddenException(
+        'You can only submit evidence for your own skills',
+      );
+    }
+
     // ================================
     // 1. LƯU EVIDENCE
     // ================================
 
     const payload: DeepPartial<SkillEvidence> = {
-      ...data,
+      userSkillId: data.userSkillId,
+      type: data.type,
+      title: data.title,
+      url: data.url,
+      description: data.description,
       status: 'PENDING',
+      createdBy: {
+        id: requester.id,
+        email: requester.email,
+      },
     };
 
     const newEvidence: SkillEvidence = this.evidenceRepo.create(payload);
@@ -115,21 +145,6 @@ export class SkillEvidencesService {
     // ================================
     // 2. TÌM USER SKILL + DEV + SKILL
     // ================================
-
-    const userSkill = await this.userSkillRepo.findOne({
-      where: {
-        id: savedEvidence.userSkillId,
-      },
-
-      relations: {
-        user: true,
-        skill: true,
-      },
-    });
-
-    if (!userSkill) {
-      return savedEvidence;
-    }
 
     const developer = userSkill.user;
     const managerId = developer?.managerId;

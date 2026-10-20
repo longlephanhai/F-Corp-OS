@@ -1,8 +1,9 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl, IsUUID } from "class-validator";
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
 import { EvidenceType } from "common/enum/evidence.enum";
 
 export class CreateSkillEvidenceDto {
     @IsNotEmpty({ message: 'Evidence Type is required' })
+    @IsEnum(EvidenceType)
     type: EvidenceType;
 
     @IsNotEmpty({ message: 'Title is required' })

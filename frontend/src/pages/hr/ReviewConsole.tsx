@@ -329,6 +329,12 @@ const ReviewConsole: React.FC = () => {
             ),
         },
         {
+            title: 'Điểm PM', dataIndex: 'tempScore', key: 'tempScore',
+            width: 140, align: 'center',
+            render: (v: number | null) => <ScoreCell value={v} />,
+            sorter: (a, b) => (a.tempScore ?? -1) - (b.tempScore ?? -1),
+        },
+        {
             title: 'Điểm cuối (Final Score)', dataIndex: 'finalScore', key: 'finalScore',
             width: 170, align: 'center',
             render: (v: number | null) => <ScoreCell value={v} />,
@@ -807,6 +813,14 @@ const ReviewConsole: React.FC = () => {
                                     {Number(detailData.finalScore).toFixed(1)} / 100
                                   </Text>
                                 : <Text type="secondary">— Chưa có điểm</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Điểm sơ bộ (PM)">
+                            {detailData.tempScore != null
+                                ? <Text strong>{Number(detailData.tempScore).toFixed(1)} / 100</Text>
+                                : <Text type="secondary">— Chưa có điểm PM</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Nhận xét của PM">
+                            {detailData.reviewerNote || <Text type="secondary">— Chưa có nhận xét</Text>}
                         </Descriptions.Item>
                         <Descriptions.Item label="Trạng thái">
                             {(() => {

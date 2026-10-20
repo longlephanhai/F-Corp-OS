@@ -14,6 +14,7 @@ export interface ReviewRecordItem {
   tempScore: number | null;
   /** Ghi chú / nhận xét của PM */
   reviewerNote: string | null;
+  sourceUserSprintId?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Nhân viên được đánh giá */
@@ -57,7 +58,6 @@ export interface ReviewRecordListResponse {
 
 export interface UpdateReviewStatusPayload {
   status: ReviewRecordStatus;
-  finalScore?: number;
 }
 
 export interface CreateReviewCyclePaylod {
@@ -109,7 +109,7 @@ export const hrReviewsApi = {
 
   /**
    * PATCH /hr-reviews/records/:id/status
-   * Cập nhật trạng thái và điểm số của một bản ghi đánh giá.
+   * Cập nhật trạng thái của một bản ghi đánh giá.
    */
   updateRecordStatus: (id: string, payload: UpdateReviewStatusPayload) => {
     return axios.patch<IBackendRes<ReviewRecordItem>>(
@@ -128,7 +128,7 @@ export const hrReviewsApi = {
 
   /**
    * PATCH /hr-reviews/records/:id/score
-   * Cập nhật điểm số của một bản ghi. PM gửi tempScore + reviewerNote; HR gửi finalScore.
+   * HR gửi finalScore. tempScore + reviewerNote chỉ dành cho record thủ công/legacy.
    */
   updateScore: (id: string, data: { tempScore?: number; finalScore?: number; reviewerNote?: string }) =>
     axios.patch<IBackendRes<ReviewRecordItem>>(`/hr-reviews/records/${id}/score`, data),

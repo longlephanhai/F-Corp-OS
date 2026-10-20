@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import {
   Button,
@@ -20,6 +20,10 @@ import dayjs from "dayjs";
 import type { TaskItem } from "../../../common/types/pm";
 
 import { pmApi } from "../../../api/pm";
+import {
+  useSkillCatalog,
+  type SkillCatalogOption,
+} from "../../../hooks/useSkillCatalog";
 
 interface Props {
   open: boolean;
@@ -31,29 +35,6 @@ interface Props {
   onRefresh: () => void | Promise<void>;
 }
 
-const MOCK_SKILLS = [
-  {
-    value: "sk-1",
-    label: "ReactJS",
-  },
-  {
-    value: "sk-2",
-    label: "NodeJS",
-  },
-  {
-    value: "sk-3",
-    label: "PostgreSQL",
-  },
-  {
-    value: "sk-4",
-    label: "Figma",
-  },
-  {
-    value: "sk-5",
-    label: "AWS",
-  },
-];
-
 export const EditTaskModal: React.FC<Props> = ({
   open,
   task,
@@ -63,6 +44,21 @@ export const EditTaskModal: React.FC<Props> = ({
   const [form] = Form.useForm();
 
   const [loading, setLoading] = useState(false);
+  const { options: skillOptions, loading: skillsLoading } =
+    useSkillCatalog(open);
+
+  const editSkillOptions = useMemo<SkillCatalogOption[]>(() => {
+    const knownIds = new Set(skillOptions.map((option) => option.value));
+    const legacyOptions = (task?.requiredSkills ?? [])
+      .filter((requiredSkill) => !knownIds.has(requiredSkill.skill_id))
+      .map((requiredSkill) => ({
+        value: requiredSkill.skill_id,
+        label: `Kỹ năng cũ không hợp lệ: ${requiredSkill.skill_id}`,
+        disabled: true,
+      }));
+
+    return [...skillOptions, ...legacyOptions];
+  }, [skillOptions, task]);
 
   // ==========================================
   // LOAD TASK INTO FORM
@@ -351,7 +347,15 @@ export const EditTaskModal: React.FC<Props> = ({
                         width: 200,
                       }}
                       placeholder="Kỹ năng"
-                      options={MOCK_SKILLS}
+                      options={editSkillOptions}
+                      loading={skillsLoading}
+                      showSearch
+                      optionFilterProp="label"
+                      notFoundContent={
+                        skillsLoading
+                          ? "Đang tải danh mục kỹ năng..."
+                          : "Chưa có kỹ năng trong danh mục"
+                      }
                     />
                   </Form.Item>
 
@@ -412,6 +416,7 @@ export const EditTaskModal: React.FC<Props> = ({
                     weight: 1,
                   })
                 }
+                disabled={skillsLoading || skillOptions.length === 0}
               >
                 Thêm Required Skill
               </Button>

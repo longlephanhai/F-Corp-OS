@@ -12,7 +12,10 @@ import {
   Typography,
 } from "antd";
 
-import { pmApi } from "../../../api/pm";
+import {
+  pmApi,
+  type ReleaseUserSprintPayload,
+} from "../../../api/pm";
 const { Text } = Typography;
 interface Props {
   open: boolean;
@@ -25,7 +28,7 @@ interface Props {
 interface ReleaseErrorData {
   code?: string;
   error?: { code?: string };
-  message?: string;
+  message?: string | string[];
   unfinishedTasks?: Array<{
     id: string;
     title?: string;
@@ -41,10 +44,10 @@ export const ReleaseReviewModal: React.FC<Props> = ({
   onClose,
   onRefresh,
 }) => {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<ReleaseUserSprintPayload>();
   const [loading, setLoading] = useState(false);
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: ReleaseUserSprintPayload) => {
     if (!userSprintId) return;
 
     try {
@@ -115,7 +118,12 @@ export const ReleaseReviewModal: React.FC<Props> = ({
 
         return;
       }
-      message.error("Có lỗi xảy ra khi giải phóng nhân sự!");
+      const backendMessage = errorData?.message;
+      message.error(
+        Array.isArray(backendMessage)
+          ? backendMessage.join("; ")
+          : backendMessage ?? "Có lỗi xảy ra khi giải phóng nhân sự!",
+      );
     } finally {
       setLoading(false);
     }
@@ -155,7 +163,10 @@ export const ReleaseReviewModal: React.FC<Props> = ({
           <Form.Item
             name="hardSkillRate"
             label="Kỹ năng chuyên môn (Hard Skills)"
-            rules={[{ required: true, message: "Vui lòng chấm điểm!" }]}
+            rules={[
+              { required: true, message: "Vui lòng chấm điểm!" },
+              { type: "number", min: 1, max: 5, message: "Điểm phải từ 1 đến 5" },
+            ]}
           >
             <Rate className="text-blue-500" />
           </Form.Item>
@@ -163,7 +174,10 @@ export const ReleaseReviewModal: React.FC<Props> = ({
           <Form.Item
             name="softSkillRate"
             label="Thái độ & Kỹ năng mềm (Soft Skills)"
-            rules={[{ required: true, message: "Vui lòng chấm điểm!" }]}
+            rules={[
+              { required: true, message: "Vui lòng chấm điểm!" },
+              { type: "number", min: 1, max: 5, message: "Điểm phải từ 1 đến 5" },
+            ]}
           >
             <Rate className="text-orange-400" />
           </Form.Item>

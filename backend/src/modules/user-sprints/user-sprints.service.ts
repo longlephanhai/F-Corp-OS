@@ -19,6 +19,8 @@ import { IUser } from 'common/types/user.interface';
 import { Project } from 'modules/projects/entities/project.entity';
 import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
 import { WorkforceStatusService } from './workforce-status.service';
+import { ReleaseUserSprintDto } from './dto/release-user-sprint.dto';
+import { PmReleaseReviewService } from '../hr-reviews/pm-release-review.service';
 
 @Injectable()
 export class UserSprintService {
@@ -41,6 +43,8 @@ export class UserSprintService {
     private readonly sprintAllocationInvitationService: SprintAllocationInvitationService,
 
     private readonly workforceStatusService: WorkforceStatusService,
+
+    private readonly pmReleaseReviewService: PmReleaseReviewService,
   ) { }
 
   // ==========================================
@@ -591,7 +595,11 @@ export class UserSprintService {
   }
 
   // Hàm Giải phóng & Lưu đánh giá
-  async releaseUser(id: string, reviewData: any) {
+  async releaseUser(
+    id: string,
+    reviewData: ReleaseUserSprintDto,
+    actor: IUser,
+  ) {
     const allocationIdentity = await this.userSprintRepo.findOne({
       where: {
         id,
@@ -606,6 +614,7 @@ export class UserSprintService {
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
     }
 
+    let didRelease = false;
     const savedAllocation =
       await this.workforceStatusService.executeAfterAllocationChange(
         allocationIdentity.userId,
@@ -647,6 +656,29 @@ export class UserSprintService {
           record.sprint = sprint;
           this.assertSprintMutable(sprint);
 
+          if (record.status === UserSprintStatus.RELEASED) {
+            const isSameReview =
+              Number(record.hardSkillRate) === reviewData.hardSkillRate &&
+              Number(record.softSkillRate) === reviewData.softSkillRate &&
+              record.reviewComment === reviewData.reviewComment;
+
+            if (!isSameReview) {
+              throw new ConflictException({
+                code: 'RELEASE_REVIEW_ALREADY_FINALIZED',
+                message:
+                  'Allocation đã được release với nội dung đánh giá khác.',
+              });
+            }
+
+            await this.pmReleaseReviewService.ensureReviewRecord(
+              manager,
+              record,
+              actor,
+            );
+
+            return record;
+          }
+
           if (record.status !== UserSprintStatus.ASSIGNED) {
             throw new ConflictException({
               code: 'INVALID_RELEASE',
@@ -666,14 +698,24 @@ export class UserSprintService {
           record.softSkillRate = reviewData.softSkillRate;
           record.reviewComment = reviewData.reviewComment;
 
-          return allocationRepository.save(record);
+          const savedRecord = await allocationRepository.save(record);
+          await this.pmReleaseReviewService.ensureReviewRecord(
+            manager,
+            savedRecord,
+            actor,
+          );
+          didRelease = true;
+
+          return savedRecord;
         },
         {
           whenNoActiveAssignment: 'BENCH',
         },
       );
 
-    await this.publishAllocationChanged(savedAllocation, 'RELEASED');
+    if (didRelease) {
+      await this.publishAllocationChanged(savedAllocation, 'RELEASED');
+    }
 
     return savedAllocation;
   }

@@ -11,8 +11,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { SkipCheckPermission } from 'decorator/customize';
-
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
 import { PmAccessService } from '../pm-access/pm-access.service';
@@ -28,9 +26,9 @@ import { UpdateTaskTimelineDto } from './dto/update-task-timeline.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
 import { CarryOverTaskDto } from './dto/carry-over-task.dto';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @UseGuards(JwtAuthGuard)
-@SkipCheckPermission()
 @Controller('tasks')
 export class TasksController {
   constructor(
@@ -134,7 +132,7 @@ export class TasksController {
   @Post()
   async createTask(
     @Body()
-    body: any,
+    body: CreateTaskDto,
 
     @Req()
     req: any,

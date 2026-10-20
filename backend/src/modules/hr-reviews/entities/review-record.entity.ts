@@ -5,12 +5,15 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ReviewCycle } from './review-cycle.entity';
+import { UserSprint } from 'modules/user-sprints/entities/user-sprint.entity';
 
 /**
  * Entity ánh xạ bảng `hr_review_records`.
@@ -18,6 +21,9 @@ import { ReviewCycle } from './review-cycle.entity';
  * trong một chu kỳ đánh giá cụ thể.
  */
 @Entity('hr_review_records')
+@Index('uq_hr_review_records_source_user_sprint', ['sourceUserSprintId'], {
+  unique: true,
+})
 export class ReviewRecord {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -38,21 +44,21 @@ export class ReviewRecord {
    * Chỉ HR mới được phép ghi field này (thông qua endpoint /score).
    */
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-  finalScore: number;
+  finalScore: number | null;
 
   /**
    * Điểm sơ bộ do PM chấm trước khi HR xác nhận (thang 0–100).
    * Nullable vì PM có thể chưa chấm điểm.
    */
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-  tempScore: number;
+  tempScore: number | null;
 
   /**
    * Ghi chú / nhận xét của PM khi đánh giá nhân viên.
    * Nullable — không bắt buộc.
    */
   @Column({ type: 'text', nullable: true })
-  reviewerNote: string;
+  reviewerNote: string | null;
 
   // --- Relations ---
 
@@ -65,6 +71,19 @@ export class ReviewRecord {
   @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'employee_id', referencedColumnName: 'id' })
   employee: User;
+
+  /** PM release source. Null keeps legacy/manual HR records valid. */
+  @Column({
+    name: 'source_user_sprint_id',
+    type: 'varchar',
+    length: 36,
+    nullable: true,
+  })
+  sourceUserSprintId: string | null;
+
+  @OneToOne(() => UserSprint, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'source_user_sprint_id', referencedColumnName: 'id' })
+  sourceUserSprint: UserSprint | null;
 
   // --- Audit Fields (BẮT BUỘC theo guidelines) ---
 

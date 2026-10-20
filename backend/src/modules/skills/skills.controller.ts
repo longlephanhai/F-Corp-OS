@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { SkillsService } from './skills.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
-import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import { ResponseMessage, User } from 'decorator/customize';
 import type { IUser } from 'common/types/user.interface';
 
 @Controller('skills')
@@ -10,20 +10,17 @@ export class SkillsController {
   constructor(private readonly skillsService: SkillsService) { }
 
   @Post()
-  @SkipCheckPermission()
   @ResponseMessage('Skill created successfully')
   create(@Body() createSkillDto: CreateSkillDto, @User() user: IUser) {
     return this.skillsService.create(createSkillDto, user);
   }
 
   @Get('all')
-  @SkipCheckPermission()
   findAllWithoutPagination(@User() user: IUser) {
     return this.skillsService.findAll(1, 0, '', user);
   }
 
   @Get()
-  @SkipCheckPermission()
   findAll(
     @Query("current") currentPage: string,
     @Query("pageSize") limit: string,
