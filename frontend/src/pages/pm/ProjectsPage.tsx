@@ -61,8 +61,6 @@ export const ProjectsPage: React.FC = () => {
         description: values.description,
         startDate: values.dateRange[0].format("YYYY-MM-DD"),
         endDate: values.dateRange[1].format("YYYY-MM-DD"),
-        // Tạm thời hardcode ID của PM (Lấy từ bảng users trong DB của bác)
-        pmId: values.id,
       };
 
       // Gọi API tạo dự án
@@ -155,7 +153,7 @@ export const ProjectsPage: React.FC = () => {
 
   return (
     <Card
-      bordered={false}
+      variant="borderless"
       style={{
         boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
         minHeight: "100%",
@@ -207,7 +205,7 @@ export const ProjectsPage: React.FC = () => {
         confirmLoading={loading}
         okText="Tạo Dự án"
         cancelText="Hủy bỏ"
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ marginBottom: 24, marginTop: 8 }}>
           <Text type="secondary">

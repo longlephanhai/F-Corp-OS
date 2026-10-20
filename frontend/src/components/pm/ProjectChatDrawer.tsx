@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Drawer, Input, Button, Avatar, Typography, Spin, Empty, Tooltip } from "antd";
 import { SendOutlined, TeamOutlined } from "@ant-design/icons";
-import { chatSocket } from "../../config/socket.config";
+import { chatSocket, connectSocket } from "../../config/socket.config";
 import { chatApi } from "../../api/chat";
 import type { ChatMember, ChatMessage } from "../../common/types/pm";
 import { useAppSelector } from "../../hooks/hooks";
@@ -92,6 +92,8 @@ export const ProjectChatDrawer: React.FC<ProjectChatDrawerProps> = ({
   // Join / leave room qua socket + lắng nghe tin nhắn realtime
   useEffect(() => {
     if (!open || !projectId) return;
+
+    connectSocket('/chat');
 
     const doJoin = () => {
       chatSocket.emit("join-project", { projectId }, (res: any) => {

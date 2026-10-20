@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserSkillDto } from './dto/create-user-skill.dto';
 import { UpdateUserSkillDto } from './dto/update-user-skill.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -93,6 +93,7 @@ export class UserSkillService {
       userId: user.id,
       skillId: createUserSkillDto.skillId,
       description: createUserSkillDto.description,
+      evidenceNote: createUserSkillDto.evidenceNotes,
       years: createUserSkillDto.years,
       createdBy: {
         id: user.id,
@@ -126,9 +127,11 @@ export class UserSkillService {
     // this.server.emit('user-skill-updated', {
     //   message: `User ${user.fullName} has added a new skill...`,
     // });
-    this.server.to(generatedRoomUserId(user?.managerId)).emit('user-skill-updated', {
-      message: `User ${user.fullName} has added a new skill with evidence: ${createUserSkillDto.description}`,
-    });
+    if (user?.managerId) {
+      this.server?.to(generatedRoomUserId(user.managerId)).emit('user-skill-updated', {
+        message: `User ${user.fullName} has added a new skill with evidence: ${createUserSkillDto.description}`,
+      });
+    }
     return await this.recalculateUserSkill(savedUserSkill.id);
   }
 
@@ -204,19 +207,83 @@ export class UserSkillService {
     return nodes;
   }
 
-  findAll() {
-    return `This action returns all userSkill`;
+  findAll(user: IUser) {
+    return this.userSkillsRepository.find({
+      where: { userId: user.id, isDeleted: false },
+      relations: {
+        skill: true,
+        evidences: true,
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} userSkill`;
+  async findOne(id: string, user: IUser) {
+    const userSkill = await this.userSkillsRepository.findOne({
+      where: { id, userId: user.id, isDeleted: false },
+      relations: {
+        skill: true,
+        evidences: true,
+      },
+    });
+
+    if (!userSkill) {
+      throw new NotFoundException(`UserSkill with id "${id}" not found`);
+    }
+
+    return userSkill;
   }
 
-  update(id: number, updateUserSkillDto: UpdateUserSkillDto) {
-    return `This action updates a #${id} userSkill`;
+  async update(
+    id: string,
+    updateUserSkillDto: UpdateUserSkillDto,
+    user: IUser,
+  ) {
+    const userSkill = await this.findOne(id, user);
+
+    if (
+      updateUserSkillDto.skillId &&
+      updateUserSkillDto.skillId !== userSkill.skillId
+    ) {
+      const duplicate = await this.userSkillsRepository.findOne({
+        where: {
+          userId: user.id,
+          skillId: updateUserSkillDto.skillId,
+          isDeleted: false,
+        },
+      });
+
+      if (duplicate) {
+        throw new BadRequestException('User skill already exists');
+      }
+
+      userSkill.skillId = updateUserSkillDto.skillId;
+    }
+
+    if (updateUserSkillDto.description !== undefined) {
+      userSkill.description = updateUserSkillDto.description;
+    }
+    if (updateUserSkillDto.years !== undefined) {
+      userSkill.years = updateUserSkillDto.years;
+    }
+    if (updateUserSkillDto.evidenceNotes !== undefined) {
+      userSkill.evidenceNote = updateUserSkillDto.evidenceNotes;
+    }
+
+    userSkill.updatedBy = { id: user.id, email: user.email };
+    await this.userSkillsRepository.save(userSkill);
+
+    return this.recalculateUserSkill(userSkill.id);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} userSkill`;
+  async remove(id: string, user: IUser) {
+    const userSkill = await this.findOne(id, user);
+
+    userSkill.isDeleted = true;
+    userSkill.deletedBy = { id: user.id, email: user.email };
+    await this.userSkillsRepository.save(userSkill);
+    await this.userSkillsRepository.softDelete(userSkill.id);
+
+    return { message: `UserSkill "${id}" deleted successfully` };
   }
 }

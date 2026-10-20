@@ -18,8 +18,6 @@ import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
 import { PmAccessService } from '../pm-access/pm-access.service';
 
-import { SkipCheckPermission } from 'decorator/customize';
-
 @Controller('projects')
 export class ProjectsController {
 
@@ -40,7 +38,6 @@ export class ProjectsController {
 
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Post()
 
   async createProject(
@@ -84,7 +81,6 @@ export class ProjectsController {
   // ==========================================
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Get('my-projects')
   async getMyProjects(
     @Req()
@@ -110,7 +106,6 @@ export class ProjectsController {
   // ==========================================
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Get(':projectId/manager-candidates')
   async searchProjectManagerCandidates(
     @Param('projectId')
@@ -150,7 +145,6 @@ export class ProjectsController {
   // ==========================================
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Get(':projectId/managers')
   async getProjectManagers(
     @Param('projectId')
@@ -181,7 +175,6 @@ export class ProjectsController {
   // ==========================================
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Post(':projectId/managers')
   async addProjectManager(
     @Param('projectId')
@@ -221,7 +214,6 @@ export class ProjectsController {
   // ==========================================
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Delete(':projectId/managers/:userId')
   async removeProjectManager(
     @Param('projectId')
@@ -263,7 +255,6 @@ export class ProjectsController {
   // ==========================================
 
   @UseGuards(JwtAuthGuard)
-  @SkipCheckPermission()
   @Get(':id')
   async getProjectById(
     @Param('id')

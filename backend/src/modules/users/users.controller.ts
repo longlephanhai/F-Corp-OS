@@ -14,11 +14,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import {
   ResponseMessage,
   User,
-  SkipCheckPermission,
 } from 'decorator/customize';
 import type { IUser } from 'common/types/user.interface';
 
-@SkipCheckPermission()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
@@ -31,7 +29,6 @@ export class UsersController {
   }
 
   @Get()
-  @SkipCheckPermission()
   @ResponseMessage('Get Users with Pagination')
   findAll(
     @Query('current') currentPage: string,
@@ -55,7 +52,7 @@ export class UsersController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+    return this.usersService.findOne(id);
   }
 
   @Patch(':id')
@@ -80,9 +77,6 @@ export class UsersController {
 
   @Get('pm/my-team')
   async getMyTeam(@User() user: IUser) {
-    // Tạm thời hardcode ID của PM (ví dụ ID: '2ff0de6e-2759-4d11-aab7-42ca161f2933')
-    // Thực tế sẽ dùng: const managerId = req.user.id;
-    // const managerId = 'bcaa97b4-5b73-45e4-854e-a601e25745b7';
     const data = await this.usersService.getMyTeam(user.id);
     return { statusCode: 200, message: 'Lấy My Team thành công', data };
   }

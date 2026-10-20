@@ -18,15 +18,36 @@ export class UsersService {
     @InjectRepository(Role) private rolesRepository: Repository<Role>,
   ) { }
 
+  private sanitizeUser(user: User) {
+    const {
+      password: _password,
+      refreshToken: _refreshToken,
+      ...safeUser
+    } = user;
+
+    return safeUser;
+  }
+
   findOneByEmail(email: string) {
     return this.usersRepository.findOne({
-      where: { email },
+      where: { email, isDeleted: false },
       relations: {
         role: {
           permissions: true,
         },
       },
     });
+  }
+
+  findOneByEmailForLogin(email: string) {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .leftJoinAndSelect('user.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'permission')
+      .where('user.email = :email', { email })
+      .andWhere('user.isDeleted = :isDeleted', { isDeleted: false })
+      .getOne();
   }
 
   isValidPassword(password: string, hash: string) {
@@ -94,7 +115,7 @@ export class UsersService {
       },
     });
 
-    return newUser;
+    return this.sanitizeUser(newUser);
   }
 
   async findAll(currentPage: number, limit: number, qs: string) {
@@ -155,7 +176,7 @@ export class UsersService {
         pages: Math.ceil(totalItems / defaultLimit),
         total: totalItems,
       },
-      result,
+      result: result.map((user) => this.sanitizeUser(user)),
     };
   }
 
@@ -173,8 +194,17 @@ export class UsersService {
 
     return { total };
   }
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findOne(id: string) {
+    const user = await this.usersRepository.findOne({
+      where: { id, isDeleted: false },
+      relations: { role: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException(`User with id "${id}" not found`);
+    }
+
+    return this.sanitizeUser(user);
   }
 
   async update(id: string, updateUserDto: UpdateUserDto, user: IUser) {
@@ -276,7 +306,7 @@ export class UsersService {
 
   // Lấy danh sách lính do PM quản lý
   async getMyTeam(managerId: string) {
-    return await this.usersRepository.find({
+    const users = await this.usersRepository.find({
       where: { managerId, isDeleted: false },
       relations: {
         userSkills: {
@@ -285,5 +315,7 @@ export class UsersService {
         },
       },
     });
+
+    return users.map((user) => this.sanitizeUser(user));
   }
 }

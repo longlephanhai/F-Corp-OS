@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { socket } from "../config/socket.config";
+import { connectSocket, socket } from "../config/socket.config";
 export interface PmProjectChangedEvent {
   type: "PM_PROJECT_CHANGED";
 
@@ -60,6 +60,8 @@ export const usePmProjectRealtime = ({
     if (!projectId) {
       return;
     }
+
+    connectSocket();
 
     const handleChange = (event: PmProjectChangedEvent) => {
       if (!event || event.projectId !== projectId) {

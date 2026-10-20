@@ -441,7 +441,11 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
       width: 110,
 
       render: (_: unknown, record: TaskCandidate) => (
-        <span>{Number(record.costRate ?? 0).toLocaleString()}</span>
+        <span>
+          {record.costRate === null || record.costRate === undefined
+            ? "Chưa có dữ liệu"
+            : Number(record.costRate).toLocaleString()}
+        </span>
       ),
     },
 

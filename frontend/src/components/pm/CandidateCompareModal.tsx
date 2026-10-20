@@ -26,7 +26,7 @@ export const CandidateCompareModal: React.FC<Props> = ({
       onCancel={onClose}
       footer={null}
       width={Math.max(800, candidates.length * 300)} // Tự động nở rộng theo số lượng Dev
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="mt-6 overflow-x-auto">
         <table className="w-full text-left border-collapse">
@@ -184,7 +184,9 @@ export const CandidateCompareModal: React.FC<Props> = ({
                   key={dev.id}
                   className="p-4 border-b border-gray-200 text-center font-bold text-lg text-blue-600"
                 >
-                  ${dev.costRate || Math.floor(Math.random() * 50 + 10)}/h
+                  {dev.costRate === null || dev.costRate === undefined
+                    ? "Chưa có dữ liệu"
+                    : `$${Number(dev.costRate).toLocaleString()}/h`}
                 </td>
               ))}
             </tr>

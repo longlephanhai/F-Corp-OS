@@ -23,7 +23,7 @@ export class User {
   @Column({ type: 'varchar', length: 100, unique: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, select: false })
   password: string;
 
   @Column({ type: 'varchar', length: 100 })
@@ -52,7 +52,7 @@ export class User {
   @OneToMany(() => UserSkill, (userSkill) => userSkill.user)
   userSkills: UserSkill[];
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, select: false })
   refreshToken: string | null;
 
   @Column({

@@ -1092,7 +1092,10 @@ export class TasksService {
 
           missingSkills,
 
-          costRate: Number(user.costRate ?? 0),
+          costRate:
+            user.costRate === null || user.costRate === undefined
+              ? null
+              : Number(user.costRate),
 
           // ====================================
           // CURRENT SPRINT ALLOCATION

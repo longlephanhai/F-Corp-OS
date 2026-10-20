@@ -24,7 +24,7 @@ export const getSocket = (namespace: string = ''): Socket => {
   if (!sockets[key]) {
     const socket = io(fullUrl, {
       transports: ['websocket'],
-      autoConnect: true,
+      autoConnect: false,
       auth: (cb) => {
         cb({ token: getCleanToken() });
       },
@@ -52,6 +52,11 @@ export const getSocket = (namespace: string = ''): Socket => {
 export const connectSocket = (namespace: string = '') => {
   const { key } = normalizeNamespace(namespace);
   const socket = getSocket(key);
+
+  if (!getCleanToken()) {
+    return socket;
+  }
+
   if (!socket.connected) {
     socket.connect();
   }
@@ -67,13 +72,7 @@ export const disconnectSocket = (namespace?: string) => {
   }
 };
 
-export const reconnectSocketWithAuth = () => {
-  Object.values(sockets).forEach((socket) => {
-    socket.disconnect();
-    socket.connect();
-  });
-};
-
-// Sockets thường dùng được khởi tạo sẵn
+// Shared clients are created eagerly for imports, but stay disconnected until
+// an authenticated consumer calls connectSocket().
 export const socket = getSocket('/');
 export const chatSocket = getSocket('/chat');

@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { UserSkillService } from './user-skill.service';
 import { CreateUserSkillDto } from './dto/create-user-skill.dto';
 import { UpdateUserSkillDto } from './dto/update-user-skill.dto';
-import { ResponseMessage, SkipCheckPermission, User } from 'decorator/customize';
+import { ResponseMessage, User } from 'decorator/customize';
 import type { IUser } from 'common/types/user.interface';
 
 @Controller('user-skill')
@@ -11,35 +11,37 @@ export class UserSkillController {
 
   @Post()
   @ResponseMessage('Create user skill successfully')
-  @SkipCheckPermission()
   create(@Body() createUserSkillDto: CreateUserSkillDto, @User() user: IUser) {
     return this.userSkillService.create(createUserSkillDto, user);
   }
 
   @Get('skill-tree')
   @ResponseMessage('Get skill tree successfully')
-  @SkipCheckPermission()
   getSkillTree(@User() user: IUser) {
     return this.userSkillService.getSkillTree(user);
   }
 
   @Get()
-  findAll() {
-    return this.userSkillService.findAll();
+  findAll(@User() user: IUser) {
+    return this.userSkillService.findAll(user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userSkillService.findOne(+id);
+  findOne(@Param('id') id: string, @User() user: IUser) {
+    return this.userSkillService.findOne(id, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserSkillDto: UpdateUserSkillDto) {
-    return this.userSkillService.update(+id, updateUserSkillDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateUserSkillDto: UpdateUserSkillDto,
+    @User() user: IUser,
+  ) {
+    return this.userSkillService.update(id, updateUserSkillDto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userSkillService.remove(+id);
+  remove(@Param('id') id: string, @User() user: IUser) {
+    return this.userSkillService.remove(id, user);
   }
 }

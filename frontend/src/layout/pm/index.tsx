@@ -26,6 +26,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { NotificationBell } from "../../components/pm/NotificationBell";
+import { useAppSelector } from "../../hooks/hooks";
 import { useLogout } from "../../hooks/useLogout";
 
 const { Content, Sider, Header } = Layout;
@@ -54,6 +55,7 @@ const defaultStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
 const LayoutPM = () => {
 
   const { logout, isLoggingOut } = useLogout();
+  const currentUser = useAppSelector((state) => state.account.user);
 
   const [messageApi, contextHolder] = message.useMessage();
   // const socketRef = useRef<Socket | null>(null);
@@ -293,7 +295,10 @@ const LayoutPM = () => {
               >
                 <Text type="secondary">Welcome,</Text>
 
-                <Text strong>Khanh Nguyễn (PM)</Text>
+                <Text strong>
+                  {currentUser.fullName || currentUser.email || "Project Manager"}
+                  {currentUser.role?.name ? ` (${currentUser.role.name})` : ""}
+                </Text>
               </Flex>
 
               <Button

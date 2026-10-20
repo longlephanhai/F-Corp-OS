@@ -29,7 +29,6 @@ describe('HrReviewsService review workflow', () => {
     const service = new HrReviewsService(
       {} as any,
       {} as any,
-      {} as any,
       dataSource,
       rewardRuleService as any,
       walletService as any,

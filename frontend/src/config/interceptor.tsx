@@ -5,6 +5,7 @@ import { Mutex } from "async-mutex";
 import { store } from "../redux/store";
 
 import { clearAccountState } from "../redux/account/accountSlice";
+import { disconnectSocket } from "./socket.config";
 
 // ==========================================
 // CUSTOM AXIOS CONFIG
@@ -53,6 +54,7 @@ export const prepareSessionLogout = async () => {
 };
 
 const expireSession = () => {
+  disconnectSocket();
   localStorage.removeItem("access_token");
   store.dispatch(clearAccountState());
 

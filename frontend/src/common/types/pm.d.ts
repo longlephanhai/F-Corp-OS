@@ -68,7 +68,7 @@ export interface TaskCandidate {
   matchScore: number;
   matchedSkills: string[];
   missingSkills: string[];
-  costRate: number;
+  costRate: number | null;
 
   employeeStatus?: string;
 

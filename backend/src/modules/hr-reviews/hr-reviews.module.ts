@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'modules/users/entities/user.entity';
 import { ReviewCycle } from './entities/review-cycle.entity';
 import { ReviewRecord } from './entities/review-record.entity';
 import { HrReviewsController } from './hr-reviews.controller';
@@ -15,8 +14,7 @@ import { PmReleaseReviewService } from './pm-release-review.service';
  */
 @Module({
   imports: [
-    // Đăng ký User entity để HrReviewsService có thể inject UserRepository (dùng cho seed)
-    TypeOrmModule.forFeature([ReviewCycle, ReviewRecord, User]),
+    TypeOrmModule.forFeature([ReviewCycle, ReviewRecord]),
     HrWalletsModule,
   ],
   controllers: [HrReviewsController],
