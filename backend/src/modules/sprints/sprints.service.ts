@@ -1933,6 +1933,11 @@ export class SprintsService {
       });
     }
 
+    // Reuse the cancellation guard so an UPCOMING sprint cannot be archived
+    // while it still owns an active assignment. Pending/requested invitations
+    // are not active workforce assignments and are cleaned up consistently.
+    await this.prepareSprintCancellation(sprint);
+
     sprint.isDeleted = true;
 
     sprint.deletedAt = new Date();

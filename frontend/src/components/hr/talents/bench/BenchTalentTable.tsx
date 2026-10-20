@@ -65,6 +65,10 @@ const BenchTalentTable:
         columns={columns}
         dataSource={data}
         loading={loading}
+        locale={{
+          emptyText:
+            'Không có nhân sự Bench phù hợp.',
+        }}
         scroll={{
           x: 1550,
         }}

@@ -18,6 +18,7 @@ import {
 import { IUser } from 'common/types/user.interface';
 import { Project } from 'modules/projects/entities/project.entity';
 import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
+import { WorkforceStatusService } from './workforce-status.service';
 
 @Injectable()
 export class UserSprintService {
@@ -38,6 +39,8 @@ export class UserSprintService {
     private readonly projectRepo: Repository<Project>,
 
     private readonly sprintAllocationInvitationService: SprintAllocationInvitationService,
+
+    private readonly workforceStatusService: WorkforceStatusService,
   ) { }
 
   // ==========================================
@@ -534,8 +537,9 @@ export class UserSprintService {
   private async assertUserCanBeReleasedFromSprint(
     sprintId: string,
     userId: string,
+    taskRepository: Repository<Task> = this.taskRepo,
   ) {
-    const ownedTasks = await this.taskRepo.find({
+    const ownedTasks = await taskRepository.find({
       where: {
         sprintId,
         userId,
@@ -588,68 +592,86 @@ export class UserSprintService {
 
   // Hàm Giải phóng & Lưu đánh giá
   async releaseUser(id: string, reviewData: any) {
-    const record = await this.userSprintRepo.findOne({
+    const allocationIdentity = await this.userSprintRepo.findOne({
       where: {
         id,
       },
-
-      relations: {
-        sprint: true,
+      select: {
+        id: true,
+        userId: true,
       },
     });
-    if (!record) {
+
+    if (!allocationIdentity) {
       throw new NotFoundException('Không tìm thấy bản ghi phân bổ này!');
     }
-    if (!record.sprint) {
-      throw new NotFoundException('Không tìm thấy Sprint của allocation.');
-    }
 
-    this.assertSprintMutable(record.sprint);
+    const savedAllocation =
+      await this.workforceStatusService.executeAfterAllocationChange(
+        allocationIdentity.userId,
+        async (manager) => {
+          const allocationRepository = manager.getRepository(UserSprint);
+          const sprintRepository = manager.getRepository(Sprint);
+          const taskRepository = manager.getRepository(Task);
+          const record = await allocationRepository.findOne({
+            where: {
+              id,
+              userId: allocationIdentity.userId,
+            },
+            lock: {
+              mode: 'pessimistic_write',
+            },
+          });
 
-    if (record.status !== UserSprintStatus.ASSIGNED) {
-      throw new ConflictException({
-        code: 'INVALID_RELEASE',
+          if (!record) {
+            throw new NotFoundException(
+              'Không tìm thấy bản ghi phân bổ này!',
+            );
+          }
 
-        message: 'Chỉ nhân sự đang ASSIGNED mới được giải phóng.',
+          const sprint = await sprintRepository.findOne({
+            where: {
+              id: record.sprintId,
+            },
+            lock: {
+              mode: 'pessimistic_write',
+            },
+          });
 
-        currentStatus: record.status,
-      });
-    }
+          if (!sprint) {
+            throw new NotFoundException(
+              'Không tìm thấy Sprint của allocation.',
+            );
+          }
 
-    // ==========================================
-    // TASK OWNERSHIP GUARD
-    // ==========================================
-    //
-    // Chỉ khi allocation đang ASSIGNED
-    // mới kiểm tra xem nhân sự còn đang
-    // sở hữu Task chưa DONE hay không.
-    //
-    // Nếu còn:
-    // → chặn Release
-    //
-    // Nếu không:
-    // → cho Release
-    // ==========================================
+          record.sprint = sprint;
+          this.assertSprintMutable(sprint);
 
-    await this.assertUserCanBeReleasedFromSprint(
-      record.sprintId,
-      record.userId,
-    );
+          if (record.status !== UserSprintStatus.ASSIGNED) {
+            throw new ConflictException({
+              code: 'INVALID_RELEASE',
+              message: 'Chỉ nhân sự đang ASSIGNED mới được giải phóng.',
+              currentStatus: record.status,
+            });
+          }
 
-    // Cập nhật trạng thái và thông tin đánh giá
-    // ==========================================
-    // RELEASE + REVIEW
-    // ==========================================
+          await this.assertUserCanBeReleasedFromSprint(
+            record.sprintId,
+            record.userId,
+            taskRepository,
+          );
 
-    record.status = UserSprintStatus.RELEASED;
+          record.status = UserSprintStatus.RELEASED;
+          record.hardSkillRate = reviewData.hardSkillRate;
+          record.softSkillRate = reviewData.softSkillRate;
+          record.reviewComment = reviewData.reviewComment;
 
-    record.hardSkillRate = reviewData.hardSkillRate;
-
-    record.softSkillRate = reviewData.softSkillRate;
-
-    record.reviewComment = reviewData.reviewComment;
-
-    const savedAllocation = await this.userSprintRepo.save(record);
+          return allocationRepository.save(record);
+        },
+        {
+          whenNoActiveAssignment: 'BENCH',
+        },
+      );
 
     await this.publishAllocationChanged(savedAllocation, 'RELEASED');
 

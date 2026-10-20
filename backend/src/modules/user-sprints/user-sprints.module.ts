@@ -16,6 +16,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { SprintAllocationInvitationService } from './sprint-allocation-invitation.service';
 import { SprintAllocationResponseService } from './sprint-allocation-response.service';
 import { SprintAllocationRetryService } from './sprint-allocation-retry.service';
+import { WorkforceStatusService } from './workforce-status.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserSprint, Sprint, User, Task, Project]),
@@ -32,6 +33,7 @@ import { SprintAllocationRetryService } from './sprint-allocation-retry.service'
     SprintAllocationInvitationService,
     SprintAllocationResponseService,
     SprintAllocationRetryService,
+    WorkforceStatusService,
   ],
 })
 export class UserSprintsModule {}

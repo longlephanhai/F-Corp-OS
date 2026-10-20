@@ -10,12 +10,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { UserSprint, UserSprintStatus } from './entities/user-sprint.entity';
+import { Sprint } from '../sprints/entities/sprint.entity';
+import { Project } from '../projects/entities/project.entity';
 
 import { SprintInvitationDecision } from './dto/respond-sprint-invitation.dto';
 
 import { PmRealtimeService } from '../pm-realtime/pm-realtime.service';
 
 import { NotificationsService } from '../notifications/notifications.service';
+import { WorkforceStatusService } from './workforce-status.service';
 
 @Injectable()
 export class SprintAllocationResponseService {
@@ -26,6 +29,8 @@ export class SprintAllocationResponseService {
     private readonly pmRealtimeService: PmRealtimeService,
 
     private readonly notificationsService: NotificationsService,
+
+    private readonly workforceStatusService: WorkforceStatusService,
   ) {}
 
   // ==========================================
@@ -93,127 +98,112 @@ export class SprintAllocationResponseService {
 
     reason?: string,
   ) {
-    // ========================================
-    // LOAD OWN INVITATION
-    //
-    // Query cả id + userId để user không thể
-    // phản hồi invitation của người khác.
-    // ========================================
+    const accepted = decision === SprintInvitationDecision.ACCEPT;
+    const saved = await this.workforceStatusService.executeAfterAllocationChange(
+      userId,
+      async (manager, user) => {
+        const allocationRepository = manager.getRepository(UserSprint);
+        const sprintRepository = manager.getRepository(Sprint);
+        const projectRepository = manager.getRepository(Project);
+        const allocation = await allocationRepository.findOne({
+          where: {
+            id: allocationId,
+            userId,
+          },
+          lock: {
+            mode: 'pessimistic_write',
+          },
+        });
 
-    const allocation = await this.userSprintRepo.findOne({
-      where: {
-        id: allocationId,
+        if (!allocation) {
+          throw new NotFoundException({
+            code: 'SPRINT_INVITATION_NOT_FOUND',
+            message: 'Không tìm thấy lời mời Sprint.',
+          });
+        }
 
-        userId,
-      },
+        if (allocation.status !== UserSprintStatus.PENDING_APPROVAL) {
+          throw new ConflictException({
+            code: 'SPRINT_INVITATION_ALREADY_RESPONDED',
+            message: 'Lời mời này đã được xử lý.',
+            currentStatus: allocation.status,
+          });
+        }
 
-      relations: {
-        user: true,
+        const sprint = await sprintRepository.findOne({
+          where: {
+            id: allocation.sprintId,
+          },
+          lock: {
+            mode: 'pessimistic_write',
+          },
+        });
 
-        sprint: {
-          project: {
+        if (!sprint) {
+          throw new NotFoundException({
+            code: 'SPRINT_NOT_FOUND',
+            message: 'Không tìm thấy Sprint của lời mời.',
+          });
+        }
+
+        const sprintStatus = (sprint.status ?? '').toString().toUpperCase();
+
+        if (sprintStatus === 'COMPLETED' || sprintStatus === 'CANCELLED') {
+          throw new ConflictException({
+            code: 'SPRINT_INVITATION_EXPIRED',
+            message:
+              'Sprint đã hoàn thành hoặc bị hủy nên lời mời không còn hiệu lực.',
+            sprintStatus: sprint.status,
+          });
+        }
+
+        const project = await projectRepository.findOne({
+          where: {
+            id: sprint.projectId,
+          },
+          relations: {
             managers: true,
           },
-        },
-      },
-    });
-
-    if (!allocation) {
-      throw new NotFoundException({
-        code: 'SPRINT_INVITATION_NOT_FOUND',
-
-        message: 'Không tìm thấy lời mời Sprint.',
-      });
-    }
-
-    // ========================================
-    // PENDING ONLY
-    // ========================================
-
-    if (allocation.status !== UserSprintStatus.PENDING_APPROVAL) {
-      throw new ConflictException({
-        code: 'SPRINT_INVITATION_ALREADY_RESPONDED',
-
-        message: 'Lời mời này đã được xử lý.',
-
-        currentStatus: allocation.status,
-      });
-    }
-
-    const sprint = allocation.sprint;
-
-    if (!sprint) {
-      throw new NotFoundException({
-        code: 'SPRINT_NOT_FOUND',
-
-        message: 'Không tìm thấy Sprint của lời mời.',
-      });
-    }
-
-    // ========================================
-    // TERMINAL SPRINT
-    // ========================================
-
-    const sprintStatus = (sprint.status ?? '').toString().toUpperCase();
-
-    if (sprintStatus === 'COMPLETED' || sprintStatus === 'CANCELLED') {
-      throw new ConflictException({
-        code: 'SPRINT_INVITATION_EXPIRED',
-
-        message:
-          'Sprint đã hoàn thành hoặc bị hủy nên lời mời không còn hiệu lực.',
-
-        sprintStatus: sprint.status,
-      });
-    }
-
-    // ========================================
-    // DECLINE
-    // ========================================
-
-    if (decision === SprintInvitationDecision.DECLINE) {
-      const normalizedReason = reason?.trim();
-
-      if (!normalizedReason) {
-        throw new BadRequestException({
-          code: 'DECLINE_REASON_REQUIRED',
-
-          message: 'Vui lòng nhập lý do từ chối.',
         });
-      }
 
-      allocation.status = UserSprintStatus.DECLINED;
+        if (project) {
+          sprint.project = project;
+        }
 
-      allocation.responseReason = normalizedReason;
+        allocation.user = user;
+        allocation.sprint = sprint;
 
-      allocation.respondedAt = new Date();
+        if (!accepted) {
+          const normalizedReason = reason?.trim();
 
-      const saved = await this.userSprintRepo.save(allocation);
+          if (!normalizedReason) {
+            throw new BadRequestException({
+              code: 'DECLINE_REASON_REQUIRED',
+              message: 'Vui lòng nhập lý do từ chối.',
+            });
+          }
 
-      await this.afterResponse(saved, false);
+          allocation.status = UserSprintStatus.DECLINED;
+          allocation.responseReason = normalizedReason;
+          allocation.respondedAt = new Date();
 
-      return saved;
-    }
+          return allocationRepository.save(allocation);
+        }
 
-    // ========================================
-    // ACCEPT
-    //
-    // Re-check capacity tại thời điểm Dev
-    // chấp nhận, vì capacity có thể đã thay đổi
-    // kể từ lúc PM gửi invitation.
-    // ========================================
+        await this.assertCapacityStillAvailable(
+          allocation,
+          allocationRepository,
+        );
 
-    await this.assertCapacityStillAvailable(allocation);
+        allocation.status = UserSprintStatus.ASSIGNED;
+        allocation.responseReason = null;
+        allocation.respondedAt = new Date();
 
-    allocation.status = UserSprintStatus.ASSIGNED;
+        return allocationRepository.save(allocation);
+      },
+    );
 
-    allocation.responseReason = null;
-
-    allocation.respondedAt = new Date();
-
-    const saved = await this.userSprintRepo.save(allocation);
-
-    await this.afterResponse(saved, true);
+    await this.afterResponse(saved, accepted);
 
     return saved;
   }
@@ -222,7 +212,10 @@ export class SprintAllocationResponseService {
   // CAPACITY RE-CHECK
   // ==========================================
 
-  private async assertCapacityStillAvailable(allocation: UserSprint) {
+  private async assertCapacityStillAvailable(
+    allocation: UserSprint,
+    allocationRepository: Repository<UserSprint>,
+  ) {
     const sprint = allocation.sprint;
 
     if (!sprint.startDate || !sprint.endDate) {
@@ -241,7 +234,7 @@ export class SprintAllocationResponseService {
       UserSprintStatus.ASSIGNED,
     ];
 
-    const otherAllocations = await this.userSprintRepo
+    const otherAllocations = await allocationRepository
       .createQueryBuilder('allocation')
 
       .innerJoinAndSelect('allocation.sprint', 'sprint')
