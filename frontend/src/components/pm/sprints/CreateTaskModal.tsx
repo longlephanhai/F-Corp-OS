@@ -18,6 +18,20 @@ import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { pmApi } from "../../../api/pm";
 import { useSkillCatalog } from "../../../hooks/useSkillCatalog";
 
+const normalizeBudgetRate = (value: unknown): number | undefined => {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return undefined;
+  }
+
+  const normalizedValue = Number(value);
+
+  return Number.isFinite(normalizedValue) ? normalizedValue : undefined;
+};
+
 interface Props {
   open: boolean;
   sprintId: string;
@@ -54,7 +68,7 @@ export const CreateTaskModal: React.FC<Props> = ({
 
         priority: values.priority ?? "MEDIUM",
 
-        budgetRate: values.budgetRate,
+        budgetRate: normalizeBudgetRate(values.budgetRate),
 
         startDate: values.dateRange?.[0]?.format("YYYY-MM-DD"),
 

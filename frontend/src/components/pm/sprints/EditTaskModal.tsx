@@ -25,6 +25,20 @@ import {
   type SkillCatalogOption,
 } from "../../../hooks/useSkillCatalog";
 
+const normalizeBudgetRate = (value: unknown): number | null => {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
+
+  const normalizedValue = Number(value);
+
+  return Number.isFinite(normalizedValue) ? normalizedValue : null;
+};
+
 interface Props {
   open: boolean;
 
@@ -120,7 +134,7 @@ export const EditTaskModal: React.FC<Props> = ({
 
         priority: values.priority,
 
-        budgetRate: values.budgetRate ?? null,
+        budgetRate: normalizeBudgetRate(values.budgetRate),
 
         startDate: values.dateRange?.[0]?.format("YYYY-MM-DD"),
 

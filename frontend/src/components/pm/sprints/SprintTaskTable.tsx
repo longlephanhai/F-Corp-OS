@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import {
   Button,
@@ -24,6 +24,7 @@ import {
 import type { TaskItem } from "../../../common/types/pm";
 
 import { pmApi } from "../../../api/pm";
+import { useSkillCatalog } from "../../../hooks/useSkillCatalog";
 
 const { Text } = Typography;
 
@@ -99,6 +100,11 @@ export const SprintTaskTable: React.FC<Props> = ({
   onCarryOverTask,
 }) => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const { options: skillOptions } = useSkillCatalog(true);
+  const skillNamesById = useMemo(
+    () => new Map(skillOptions.map((option) => [option.value, option.label])),
+    [skillOptions],
+  );
 
   // ========================================
   // UPDATE TASK
@@ -494,7 +500,11 @@ export const SprintTaskTable: React.FC<Props> = ({
               level?: number;
             };
 
-            const name = legacy.skill_id ?? legacy.skill ?? "Skill";
+            const name =
+              skillNamesById.get(legacy.skill_id) ??
+              legacy.skill ??
+              legacy.skill_id ??
+              "Skill";
 
             const level = legacy.min_level ?? legacy.level;
 

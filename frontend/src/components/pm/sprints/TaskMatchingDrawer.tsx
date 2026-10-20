@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Avatar,
@@ -18,6 +18,7 @@ import type { TaskCandidate, TaskItem } from "../../../common/types/pm";
 import { CandidateCompareModal } from "../CandidateCompareModal";
 
 import { pmApi } from "../../../api/pm";
+import { useSkillCatalog } from "../../../hooks/useSkillCatalog";
 
 const { Text } = Typography;
 interface Props {
@@ -52,6 +53,11 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
   const [isCompareOpen, setIsCompareOpen] = useState(false);
 
   const [assignLoading, setAssignLoading] = useState(false);
+  const { options: skillOptions } = useSkillCatalog(open);
+  const skillNamesById = useMemo(
+    () => new Map(skillOptions.map((option) => [option.value, option.label])),
+    [skillOptions],
+  );
 
   // ==========================================
   // LOAD MATCHING CANDIDATES
@@ -560,7 +566,10 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
                 };
 
                 const skillName =
-                  legacySkill.skill_id ?? legacySkill.skill ?? "Chưa xác định";
+                  skillNamesById.get(legacySkill.skill_id) ??
+                  legacySkill.skill ??
+                  legacySkill.skill_id ??
+                  "Chưa xác định";
 
                 const level = legacySkill.min_level ?? legacySkill.level;
 
@@ -568,7 +577,7 @@ export const TaskMatchingDrawer: React.FC<Props> = ({
                   <Tag key={`${skillName}-${index}`} color="blue">
                     {skillName}
 
-                    {level !== undefined ? ` (Level ${level})` : ""}
+                    {level !== undefined ? ` Lv.${level}` : ""}
                   </Tag>
                 );
               })
