@@ -1,0 +1,32 @@
+# Local .terraform directories (chứa binary của AWS provider)
+**/.terraform/*
+
+# .tfstate files (LƯU Ý: Chứa mật khẩu và thông tin hạ tầng ở dạng plaintext)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files with real secrets
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+
+# Exclude keypair folder and all private key files
+keypair/
+*.pem
+*.key
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+command.sh

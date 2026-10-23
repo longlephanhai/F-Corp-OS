@@ -1,0 +1,34 @@
+services:
+  backend:
+    image: ${DOCKER_IMAGE:-fcorp-backend:latest}
+    container_name: fcorp_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DATABASE_TYPE=mysql
+      - DATABASE_HOST=${DATABASE_HOST:-db.yourdomain.com}
+      - DATABASE_PORT=${DATABASE_PORT:-3306}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME:-fcorp_db}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_EXPIRATION_TIME=${JWT_EXPIRATION_TIME:-1d}
+      - JWT_REFRESH_SECRET_KEY=${JWT_REFRESH_SECRET_KEY}
+      - JWT_REFRESH_EXPIRATION_TIME=${JWT_REFRESH_EXPIRATION_TIME:-7d}
+      - INIT_DATABASE=${INIT_DATABASE:-true}
+      - INIT_PASSWORD=${INIT_PASSWORD}
+      - TYPEORM_MIGRATIONS_RUN=${TYPEORM_MIGRATIONS_RUN:-true}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

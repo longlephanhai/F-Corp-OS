@@ -1,0 +1,17 @@
+# AWS Region
+aws_region = "ap-southeast-1"
+
+# Tên dự án và môi trường
+project_name = "fcorp"
+environment  = "dev"
+
+# Tên miền đã mua trên Route 53 (Ví dụ: yourdomain.com)
+domain_name = "yourdomain.com"
+
+# IP cá nhân để SSH (Dùng để bảo mật cổng 22, có thể để 0.0.0.0/0 nếu chưa biết)
+admin_ip = "0.0.0.0/0"
+
+# Cấu hình Database RDS MySQL
+db_name     = "fcorp_db"
+db_username = "admin"
+db_password = "YourStrongPassword123!" # Tối thiểu 8 ký tự

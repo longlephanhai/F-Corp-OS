@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs & temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Terraform ignore
+**/terraform/.terraform/
+**/terraform/*.tfstate
+**/terraform/*.tfstate.*
+**/terraform/*.tfvars
+!**/terraform/terraform.tfvars.example
