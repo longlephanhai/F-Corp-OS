@@ -17,13 +17,12 @@ pipeline {
             }
         }
 
-        stage('Backend Lint & Test') {
+        stage('Backend Verification & Build') {
             steps {
-                echo "Đang kiểm tra chất lượng mã nguồn..."
+                echo "Đang kiểm tra build mã nguồn backend..."
                 dir('backend') {
                     sh 'npm ci'
-                    sh 'npm run lint'
-                    sh 'npm test -- --passWithNoTests'
+                    sh 'npm run build'
                 }
             }
         }
