@@ -87,7 +87,7 @@ import { ChatMessage } from 'modules/chat/entities/chat-message.entity';
         ],
         migrations: [join(__dirname, '..', 'migration', '*.{ts,js}')],
         migrationsRun: configService.get<boolean>('TYPEORM_MIGRATIONS_RUN', false),
-        synchronize: false,
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),
